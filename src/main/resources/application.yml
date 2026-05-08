@@ -1,0 +1,37 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: stock-analysis
+  config:
+    import: "optional:file:.env[.properties]"
+  datasource:
+    url: ${POSTGRES_URL:jdbc:postgresql://127.0.0.1:5432/stock_analysis}
+    username: ${POSTGRES_USERNAME:postgres}
+    password: ${POSTGRES_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+
+mybatis-plus:
+  type-aliases-package: com.bin.stockanalysis.repository
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+
+
+sa-token:
+  token-name: satoken
+  timeout: 86400
+  is-concurrent: true
+  is-share: true
+  token-style: jwt
+  jwt-secret-key: aa3e7c8f2b9d4a6e8f0c1d2b3a4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0
+
+logging:
+  level:
+    com.bin.stockanalysis: DEBUG
+    org.springframework: INFO
+    com.baomidou.mybatisplus: DEBUG

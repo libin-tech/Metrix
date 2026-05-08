@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: stock-analysis-postgres
+    environment:
+      POSTGRES_DB: stock_analysis
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - stock-analysis-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: stock-analysis-app
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/stock_analysis
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    networks:
+      - stock-analysis-network
+
+volumes:
+  postgres_data:
+
+networks:
+  stock-analysis-network:
+    driver: bridge
