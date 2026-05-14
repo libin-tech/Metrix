@@ -470,6 +470,31 @@ marked.use({
   breaks: true
 });
 
+const renderMarkdown = (content) => {
+  if (!content) return '';
+
+  try {
+    // Preprocess: escape < that could be mistaken as HTML tags (e.g. "< 5日均量")
+    // but preserve valid HTML tags like <br>, <div>, etc.
+    const cleaned = content
+      .replace(/<(?!\/?([a-zA-Z][a-zA-Z0-9]*|\/?[a-zA-Z]))/g, '&lt;')
+      .replace(/\u201C|\u201D/g, '"')
+      .replace(/\u2018|\u2019/g, "'");
+    return marked.parse(cleaned);
+  } catch (e) {
+    console.error('[renderMarkdown] marked.parse failed:', e);
+    // Fallback: escape HTML, preserve line breaks
+    const safe = content
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    return safe
+      .split(/\n{2,}/)
+      .map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`)
+      .join('');
+  }
+};
+
 const router = useRouter();
 const { t } = useI18n();
 const form = reactive({
@@ -896,15 +921,6 @@ const getCorrelationColor = (score) => {
   if (num >= 60) return 'blue';
   if (num >= 40) return 'yellow';
   return 'gray';
-};
-
-const renderMarkdown = (content) => {
-  if (!content) return '';
-  try {
-    return marked.parse(content);
-  } catch {
-    return content;
-  }
 };
 
 const getStatusText = (status) => {

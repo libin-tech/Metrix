@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bin.stockanalysis.enums.StockAnalysisStatus;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
@@ -89,7 +90,20 @@ public class StockAnalysisController {
         try {
             // 查询股票基本信息
             StockBasic stockBasic = stockBasicService.getByTsCode(stockCode);
-            
+
+            // 检查该股票是否已在分析中
+            Long analyzingCount = recordMapper.selectCount(
+                    new LambdaQueryWrapper<StockAnalysisRecord>()
+                            .eq(StockAnalysisRecord::getStockCode, stockCode)
+                            .eq(StockAnalysisRecord::getStatus, StockAnalysisStatus.ANALYZING));
+            if (analyzingCount > 0) {
+                Map<String, Object> result = new HashMap<>();
+                result.put("stockCode", stockCode);
+                result.put("stockName", stockBasic.getName());
+                result.put("message", "已添加到分析列表中，耐心等待");
+                return ApiResponse.success("已添加到分析列表中，耐心等待", result);
+            }
+
             // 创建分析记录，初始状态为"分析中"
             StockAnalysisRecord record = new StockAnalysisRecord();
             record.setStockCode(stockBasic.getTsCode());

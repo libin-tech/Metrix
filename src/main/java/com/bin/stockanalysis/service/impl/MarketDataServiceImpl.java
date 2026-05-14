@@ -46,7 +46,7 @@ public class MarketDataServiceImpl implements MarketDataService {
      * 常量定义接口
      */
     private interface Constants {
-        String DATA_SOURCE_TICKFLOW = "TICKFLOW";
+
 
         String RESPONSE_STATUS = "status";
         String RESPONSE_DATA = "data";
@@ -61,8 +61,7 @@ public class MarketDataServiceImpl implements MarketDataService {
      */
     private MarketDataConfig getTickFlowConfig() {
         LambdaQueryWrapper<MarketDataConfig> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(MarketDataConfig::getSourceName, Constants.DATA_SOURCE_TICKFLOW)
-                .eq(MarketDataConfig::getIsActive, true);
+        queryWrapper.eq(MarketDataConfig::getIsActive, true);
         MarketDataConfig config = configMapper.selectOne(queryWrapper);
 
         if (config == null) {
