@@ -10,10 +10,21 @@
           @search="handleSearch"
         />
         <a-button type="primary" @click="showImport = true">{{ $t('stockBasic.importCsv') }}</a-button>
+        <a-button
+          type="text"
+          size="small"
+          class="mask-toggle-btn"
+          @click="toggleMask"
+          :title="masked ? $t('analysis.showData') : $t('analysis.maskData')"
+        >
+          <EyeOutlined v-if="!masked" />
+          <EyeInvisibleOutlined v-else />
+        </a-button>
       </div>
     </div>
 
     <a-table
+      :class="{ 'masked-table': masked }"
       :dataSource="records"
       :columns="columns"
       row-key="id"
@@ -30,6 +41,15 @@
       size="small"
     >
       <template #bodyCell="{ column, text }">
+        <template v-if="column.key === 'tsCode'">
+          <span class="cell-ts-code">{{ text }}</span>
+        </template>
+        <template v-if="column.key === 'symbol'">
+          <span class="cell-symbol">{{ text }}</span>
+        </template>
+        <template v-if="column.key === 'name'">
+          <span class="cell-name">{{ text }}</span>
+        </template>
         <template v-if="column.key === 'listDate'">
           {{ text || '-' }}
         </template>
@@ -55,7 +75,7 @@
 <script setup>
 import {computed, onMounted, ref} from 'vue'
 import {useI18n} from 'vue-i18n'
-import {InboxOutlined} from '@ant-design/icons-vue'
+import {InboxOutlined, EyeOutlined, EyeInvisibleOutlined} from '@ant-design/icons-vue'
 import {message} from 'ant-design-vue'
 import axios from 'axios'
 
@@ -70,6 +90,11 @@ const loading = ref(false)
 const showImport = ref(false)
 const importFile = ref(null)
 const importing = ref(false)
+const masked = ref(true)
+
+const toggleMask = () => {
+  masked.value = !masked.value
+}
 
 const columns = computed(() => [
   { title: t('stockBasic.id'), dataIndex: 'id', key: 'id', width: 70 },
@@ -161,5 +186,22 @@ onMounted(() => {
   display: flex;
   gap: 12px;
   align-items: center;
+}
+
+.masked-table .cell-ts-code,
+.masked-table .cell-symbol,
+.masked-table .cell-name {
+  filter: blur(6px);
+  user-select: none;
+  transition: filter 0.3s ease;
+}
+
+.mask-toggle-btn {
+  color: #8c8c8c;
+  font-size: 16px;
+}
+
+.mask-toggle-btn:hover {
+  color: #1890ff !important;
 }
 </style>

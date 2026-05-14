@@ -1,6 +1,6 @@
 export default {
   login: {
-    title: 'Quantitative Decision Analysis',
+    title: 'Metrix',
     subtitle: 'Investment is like sailing ─ always prepare a life jacket. This analysis is for reference only; you must light your own beacon.',
     username: 'Username',
     usernamePlaceholder: 'Please enter username',
@@ -26,12 +26,12 @@ export default {
     logout: 'Logout',
   },
   layout: {
-    logo: 'Quantitative Decision Analysis',
-    systemName: 'Quantitative Decision Analysis',
+    logo: 'Metrix',
+    systemName: 'Metrix',
     admin: 'Admin',
     logoutSuccess: 'Logged out successfully',
     confirmLogout: 'Logout',
-    pageTitleDefault: 'Quantitative Decision Analysis',
+    pageTitleDefault: 'Metrix',
   },
   home: {
     title: 'Dashboard',
@@ -116,6 +116,8 @@ export default {
     pdfExportFailed: 'Failed to export PDF',
     deleteSuccess: 'Deleted successfully',
     deleteFailed: 'Failed to delete',
+    maskData: 'Mask sensitive data',
+    showData: 'Show sensitive data',
   },
   stockBasic: {
     title: 'Stock List',
