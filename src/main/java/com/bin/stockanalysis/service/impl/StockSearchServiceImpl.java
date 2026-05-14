@@ -37,7 +37,7 @@ public class StockSearchServiceImpl implements StockSearchService {
         List<StockBasic> list = stockBasicMapper.selectList(wrapper);
 
         return list.stream()
-                .map(s -> new StockInfo(s.getSymbol(), s.getName(), s.getMarket()))
+                .map(s -> new StockInfo(s.getTsCode(), s.getName(), s.getMarket()))
                 .collect(Collectors.toList());
     }
 }

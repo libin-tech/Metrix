@@ -1,15 +1,15 @@
 <template>
   <div class="stock-basic-container">
     <div class="header">
-      <h3>股票列表</h3>
+      <h3>{{ $t('stockBasic.title') }}</h3>
       <div class="header-actions">
         <a-input-search
           v-model:value="keyword"
-          placeholder="搜索 TS代码 / 股票代码 / 名称 / 拼音缩写"
+          :placeholder="$t('stockBasic.searchPlaceholder')"
           style="width: 360px"
           @search="handleSearch"
         />
-        <a-button type="primary" @click="showImport = true">导入CSV</a-button>
+        <a-button type="primary" @click="showImport = true">{{ $t('stockBasic.importCsv') }}</a-button>
       </div>
     </div>
 
@@ -23,7 +23,7 @@
         pageSize: size,
         total,
         showSizeChanger: true,
-        showTotal: t => `共 ${t} 条`,
+        showTotal: n => `${$t('stockBasic.total')} ${n} ${$t('stockBasic.items')}`,
         onChange: (p, s) => { page = p; size = s; loadData(); }
       }"
       :loading="loading"
@@ -36,7 +36,7 @@
       </template>
     </a-table>
 
-    <a-modal title="导入CSV" v-model:visible="showImport" @ok="importCsv" @cancel="showImport = false" :confirmLoading="importing">
+    <a-modal :title="$t('stockBasic.importCsv')" v-model:visible="showImport" @ok="importCsv" @cancel="showImport = false" :confirmLoading="importing">
       <a-upload-dragger
         :beforeUpload="file => { importFile = file; return false }"
         accept=".csv"
@@ -45,18 +45,21 @@
         <p class="ant-upload-drag-icon">
           <InboxOutlined />
         </p>
-        <p class="ant-upload-text">点击或拖拽 CSV 文件到此区域</p>
-        <p class="ant-upload-hint">以 ts_code 为唯一标识，存在则更新，不存在则新增</p>
+        <p class="ant-upload-text">{{ $t('stockBasic.uploadHint') }}</p>
+        <p class="ant-upload-hint">{{ $t('stockBasic.uploadDesc') }}</p>
       </a-upload-dragger>
     </a-modal>
   </div>
 </template>
 
 <script setup>
-import {onMounted, ref} from 'vue'
+import {computed, onMounted, ref} from 'vue'
+import {useI18n} from 'vue-i18n'
 import {InboxOutlined} from '@ant-design/icons-vue'
 import {message} from 'ant-design-vue'
 import axios from 'axios'
+
+const {t} = useI18n()
 
 const records = ref([])
 const total = ref(0)
@@ -68,19 +71,19 @@ const showImport = ref(false)
 const importFile = ref(null)
 const importing = ref(false)
 
-const columns = [
-  { title: 'ID', dataIndex: 'id', key: 'id', width: 70 },
-  { title: 'TS代码', dataIndex: 'tsCode', key: 'tsCode', width: 120 },
-  { title: '股票代码', dataIndex: 'symbol', key: 'symbol', width: 90 },
-  { title: '股票名称', dataIndex: 'name', key: 'name', width: 120 },
-  { title: '地域', dataIndex: 'area', key: 'area', width: 80 },
-  { title: '行业', dataIndex: 'industry', key: 'industry', width: 100 },
-  { title: '拼音缩写', dataIndex: 'cnspell', key: 'cnspell', width: 80 },
-  { title: '市场', dataIndex: 'market', key: 'market', width: 80 },
-  { title: '上市日期', dataIndex: 'listDate', key: 'listDate', width: 100 },
-  { title: '实际控制人', dataIndex: 'actName', key: 'actName', width: 120, ellipsis: true },
-  { title: '企业性质', dataIndex: 'actEntType', key: 'actEntType', width: 100, ellipsis: true },
-]
+const columns = computed(() => [
+  { title: t('stockBasic.id'), dataIndex: 'id', key: 'id', width: 70 },
+  { title: t('stockBasic.tsCode'), dataIndex: 'tsCode', key: 'tsCode', width: 120 },
+  { title: t('stockBasic.stockCode'), dataIndex: 'symbol', key: 'symbol', width: 90 },
+  { title: t('stockBasic.stockName'), dataIndex: 'name', key: 'name', width: 120 },
+  { title: t('stockBasic.area'), dataIndex: 'area', key: 'area', width: 80 },
+  { title: t('stockBasic.industry'), dataIndex: 'industry', key: 'industry', width: 100 },
+  { title: t('stockBasic.spellAbbr'), dataIndex: 'cnspell', key: 'cnspell', width: 80 },
+  { title: t('stockBasic.market'), dataIndex: 'market', key: 'market', width: 80 },
+  { title: t('stockBasic.listDate'), dataIndex: 'listDate', key: 'listDate', width: 100 },
+  { title: t('stockBasic.controller'), dataIndex: 'actName', key: 'actName', width: 120, ellipsis: true },
+  { title: t('stockBasic.enterpriseType'), dataIndex: 'actEntType', key: 'actEntType', width: 100, ellipsis: true },
+])
 
 const loadData = async () => {
   loading.value = true
@@ -94,7 +97,7 @@ const loadData = async () => {
     records.value = body.data.records
     total.value = body.data.total
   } catch (e) {
-    message.error('加载失败')
+    message.error(t('stockBasic.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -107,7 +110,7 @@ const handleSearch = () => {
 
 const importCsv = async () => {
   if (!importFile.value) {
-    message.warning('请选择文件')
+    message.warning(t('stockBasic.selectFile'))
     return
   }
   importing.value = true
@@ -126,7 +129,7 @@ const importCsv = async () => {
     importFile.value = null
     loadData()
   } catch (e) {
-    message.error(e.response?.data?.message || '导入失败')
+    message.error(e.response?.data?.message || t('stockBasic.importFailed'))
   } finally {
     importing.value = false
   }

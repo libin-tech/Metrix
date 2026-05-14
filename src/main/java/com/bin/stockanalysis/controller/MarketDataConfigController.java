@@ -56,15 +56,4 @@ public class MarketDataConfigController {
         return ApiResponse.success("Market data config deleted successfully", null);
     }
 
-    @GetMapping("/stock/{stockCode}")
-    public ApiResponse<Map<String, Object>> fetchMarketData(@PathVariable String stockCode) {
-        Map<String, Object> result = marketDataService.fetchMarketData(stockCode);
-        return ApiResponse.success(result);
-    }
-
-    @GetMapping("/stock/{stockCode}/realtime")
-    public ApiResponse<Map<String, Object>> fetchRealTimeData(@PathVariable String stockCode) {
-        Map<String, Object> result = marketDataService.fetchRealTimeData(stockCode);
-        return ApiResponse.success(result);
-    }
 }

@@ -1,8 +1,6 @@
-version: '3.8'
-
 services:
   postgres:
-    image: postgres:16
+    image: postgres:16-alpine
     container_name: stock-analysis-postgres
     environment:
       POSTGRES_DB: stock_analysis
@@ -14,6 +12,13 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - stock-analysis-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d stock_analysis"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
 
   app:
     build:
@@ -27,9 +32,11 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     networks:
       - stock-analysis-network
+    restart: unless-stopped
 
 volumes:
   postgres_data:

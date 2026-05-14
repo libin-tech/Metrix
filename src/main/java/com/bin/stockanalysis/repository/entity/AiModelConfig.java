@@ -52,4 +52,10 @@ public class AiModelConfig extends BaseEntity {
      */
     @TableField(value = "is_active")
     private Boolean isActive;
+
+    /**
+     * 超时时间（秒）
+     */
+    @TableField(value = "timeout")
+    private Integer timeout;
 }

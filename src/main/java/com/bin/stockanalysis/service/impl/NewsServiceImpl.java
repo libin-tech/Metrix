@@ -5,8 +5,10 @@ import cn.hutool.http.HttpResponse;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.bin.stockanalysis.dto.request.NewsSourceConfigRequest;
 import com.bin.stockanalysis.repository.entity.NewsSourceConfig;
+import com.bin.stockanalysis.repository.entity.StockBasic;
 import com.bin.stockanalysis.repository.mapper.NewsSourceConfigMapper;
 import com.bin.stockanalysis.service.AiModelService;
 import com.bin.stockanalysis.service.NewsService;
@@ -32,12 +34,19 @@ public class NewsServiceImpl implements NewsService {
     @Override
     @Transactional
     public NewsSourceConfig createConfig(NewsSourceConfigRequest request) {
+        if (Boolean.TRUE.equals(request.getIsActive())) {
+            configMapper.update(null, new LambdaUpdateWrapper<NewsSourceConfig>()
+                    .set(NewsSourceConfig::getIsActive, false));
+        }
+
         NewsSourceConfig config = new NewsSourceConfig();
         config.setSourceName(request.getSourceName());
         config.setApiUrl(request.getApiUrl());
         config.setApiKey(request.getApiKey());
         config.setRequestInterval(request.getRequestInterval());
         config.setIsActive(request.getIsActive());
+        config.setTimeout(request.getTimeout());
+        config.setRemark(request.getRemark());
         config.setCreateTime(LocalDateTime.now());
         config.setUpdateTime(LocalDateTime.now());
         configMapper.insert(config);
@@ -51,11 +60,20 @@ public class NewsServiceImpl implements NewsService {
         if (config == null) {
             throw new RuntimeException("News source config not found");
         }
+
+        if (Boolean.TRUE.equals(request.getIsActive())) {
+            configMapper.update(null, new LambdaUpdateWrapper<NewsSourceConfig>()
+                    .set(NewsSourceConfig::getIsActive, false)
+                    .ne(NewsSourceConfig::getId, id));
+        }
+
         config.setSourceName(request.getSourceName());
         config.setApiUrl(request.getApiUrl());
         config.setApiKey(request.getApiKey());
         config.setRequestInterval(request.getRequestInterval());
         config.setIsActive(request.getIsActive());
+        config.setTimeout(request.getTimeout());
+        config.setRemark(request.getRemark());
         config.setUpdateTime(LocalDateTime.now());
         configMapper.updateById(config);
         return config;
@@ -89,48 +107,109 @@ public class NewsServiceImpl implements NewsService {
     }
 
     @Override
-    public Map<String, Object> fetchStockNews(String stockCode) {
+    public Map<String, Object> fetchStockNews(StockBasic stockBasic) {
+        log.info("开始获取股票新闻: stockCode={}", stockBasic.getTsCode());
+        
         LambdaQueryWrapper<NewsSourceConfig> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(NewsSourceConfig::getSourceName, "BOCHA");
         NewsSourceConfig config = configMapper.selectOne(queryWrapper);
         if (config == null) {
-            throw new RuntimeException("Bocha news source config not found");
+            String errorMsg = "Bocha新闻源配置不存在";
+            log.error(errorMsg);
+            throw new RuntimeException(errorMsg);
         }
 
         Map<String, Object> result = new HashMap<>();
         
         try {
-            String url = config.getApiUrl() + "/api/search/news";
+            // 构建请求URL，处理末尾斜杠
+            String apiUrl = config.getApiUrl();
+            if (apiUrl.endsWith("/")) {
+                apiUrl = apiUrl.substring(0, apiUrl.length() - 1);
+            }
+            String url = apiUrl + "/v1/web-search";
             
-            HttpResponse response = HttpRequest.get(url)
+            log.info("调用博查搜索API: {}", url);
+            
+            // 构建请求体（JSON格式）
+            JSONObject requestBody = new JSONObject();
+            requestBody.set("query",  "搜索 " + stockBasic.getTsCode() + " " +  stockBasic.getName() +"  股票的当前时间近一周内最相关的重要新闻、公告、舆情信息");
+            requestBody.set("count", 10);
+            requestBody.set("freshness", "oneWeek");
+            requestBody.set("summary", true);
+            
+            int timeoutMs = (config.getTimeout() != null ? config.getTimeout() : 60) * 1000;
+
+            HttpResponse response = HttpRequest.post(url)
                     .charset(StandardCharsets.UTF_8)
                     .header("Authorization", "Bearer " + config.getApiKey())
-                    .form("keyword", stockCode)
-                    .form("limit", 10)
+                    .header("Content-Type", "application/json")
+                    .body(requestBody.toString())
+                    .timeout(timeoutMs)
                     .execute();
 
-            String responseBody = response.body();
-            JSONObject jsonResult = JSONUtil.parseObj(responseBody);
+            int statusCode = response.getStatus();
+            log.info("博查API响应状态码: {}", statusCode);
             
-            if ("success".equals(jsonResult.getStr("status"))) {
-                result.put("status", "success");
-                result.put("data", jsonResult.getJSONArray("data"));
-                result.put("count", jsonResult.getInt("count"));
-            } else {
+            if (statusCode >= 400) {
                 result.put("status", "error");
-                result.put("message", jsonResult.getStr("message"));
+                result.put("message", String.format("请求失败(HTTP %d)", statusCode));
+                log.error("博查API请求失败: HTTP {}", statusCode);
+                return result;
+            }
+            
+            String responseBody = response.body();
+            
+            if (responseBody == null || responseBody.isEmpty()) {
+                result.put("status", "error");
+                result.put("message", "从博查服务器接收到空响应");
+                log.error("博查API返回空响应");
+                return result;
+            }
+            
+            JSONObject jsonResult = JSONUtil.parseObj(responseBody);
+            log.debug("博查API响应: {}", responseBody);
+            
+            // 解析博查API响应格式
+            int code = jsonResult.getInt("code", -1);
+            if (code == 200) {
+                JSONObject data = jsonResult.getJSONObject("data");
+                if (data != null) {
+                    JSONObject webPages = data.getJSONObject("webPages");
+                    if (webPages != null) {
+                        result.put("status", "success");
+                        result.put("data", webPages.getJSONArray("value"));
+                        result.put("count", webPages.getInt("totalEstimatedMatches", 0));
+                        int resultCount = webPages.getJSONArray("value") != null 
+                                ? webPages.getJSONArray("value").size() : 0;
+                        log.info("博查新闻搜索成功，返回{}条结果", resultCount);
+                    } else {
+                        result.put("status", "error");
+                        result.put("message", "响应数据中缺少webPages字段");
+                        log.error("博查API响应缺少webPages字段");
+                    }
+                } else {
+                    result.put("status", "error");
+                    result.put("message", "响应数据为空");
+                    log.error("博查API响应data字段为空");
+                }
+            } else {
+                String errorMsg = jsonResult.getStr("msg", "未知错误");
+                result.put("status", "error");
+                result.put("message", String.format("请求失败(代码: %d): %s", code, errorMsg));
+                log.error("博查API返回错误: code={}, msg={}", code, errorMsg);
             }
         } catch (Exception e) {
-            log.error("Failed to fetch news from Bocha", e);
+            log.error("获取新闻失败", e);
             result.put("status", "error");
-            result.put("message", e.getMessage());
+            result.put("message", "获取新闻失败: " + e.getMessage());
         }
 
         return result;
     }
 
     @Override
-    public String summarizeNews(List<Map<String, Object>> newsList) {
+    public String summarizeNews(List<Map<String, Object>> newsList, String modelType) {
         StringBuilder newsText = new StringBuilder();
         for (Map<String, Object> news : newsList) {
             newsText.append("标题: ").append(news.get("title")).append("\n");
@@ -138,10 +217,10 @@ public class NewsServiceImpl implements NewsService {
             newsText.append("来源: ").append(news.get("source")).append("\n\n");
         }
 
-        String prompt = "请对以下股票相关新闻进行总结分析：\n\n" + newsText.toString() + "\n\n请提供简洁的总结，包括主要事件、市场影响和投资建议。";
+        String prompt = "请对以下股票相关新闻进行总结分析：\n\n" + newsText + "\n\n请提供简洁的总结，包括主要事件、市场影响和投资建议。";
         
         try {
-            return aiModelService.generateAnalysis(prompt, "OPENAI");
+            return aiModelService.generateAnalysis(prompt, modelType);
         } catch (Exception e) {
             log.error("Failed to summarize news", e);
             return "新闻摘要生成失败: " + e.getMessage();

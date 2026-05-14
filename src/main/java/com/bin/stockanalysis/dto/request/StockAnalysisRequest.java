@@ -15,7 +15,5 @@ public class StockAnalysisRequest {
 
     private String analysisType = "COMPREHENSIVE";
 
-    private Boolean includeNews = true;
-
-    private Boolean includeMarketData = true;
+    private Boolean pushToFeishu = false;
 }

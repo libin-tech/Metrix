@@ -15,4 +15,16 @@ public interface NotificationService {
     void deleteConfig(Long id);
     boolean sendFeishuNotification(String title, String content);
     boolean sendFeishuNotification(String title, String content, Map<String, Object> attachments);
+
+    /**
+     * 发送飞书卡片消息
+     *
+     * @param stockName 股票名称
+     * @param stockCode 股票代码
+     * @param coreInsight 核心洞察
+     * @param overviewJson 概览JSON字符串
+     * @param analysisTime 分析时间
+     * @return 是否发送成功
+     */
+    boolean sendFeishuCardMessage(String stockName, String stockCode, String coreInsight, String overviewJson, String analysisTime);
 }

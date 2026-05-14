@@ -36,7 +36,12 @@ export const login = data => service.post('/auth/login', data)
 export const getAnalysisById = id => service.get(`/analysis/${id}`)
 export const getAllAnalysis = () => service.get('/analysis')
 export const createAnalysis = data => service.post('/analysis', data)
+export const deleteAnalysis = id => service.delete(`/analysis/${id}`)
 export const pushToFeishu = id => service.post(`/analysis/${id}/push-feishu`)
+export const exportPdf = id => service.get(`/analysis/${id}/pdf`, { responseType: 'blob' })
+export const getAnalysisDetail = id => service.get(`/analysis/${id}/detail`)
+export const getAnalysisMarkdown = id => service.get(`/analysis/${id}/markdown`)
+export const getQueueStatus = () => service.get('/analysis/queue/status')
 
 export const searchStocks = keyword => service.get('/stocks/search', { params: { keyword } })
 

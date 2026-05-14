@@ -28,4 +28,6 @@ public class AiModelConfigRequest {
     private Integer maxTokens = 2048;
 
     private Boolean isActive = true;
+
+    private Integer timeout = 120;
 }

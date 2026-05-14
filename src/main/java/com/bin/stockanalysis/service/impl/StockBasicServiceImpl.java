@@ -108,6 +108,11 @@ public class StockBasicServiceImpl implements StockBasicService {
         }
     }
 
+    @Override
+    public StockBasic getByTsCode(String stockCode) {
+        return stockBasicMapper.selectOne(new LambdaQueryWrapper<StockBasic>().eq(StockBasic::getTsCode, stockCode));
+    }
+
     private StockBasic rowToEntity(CsvRow row) {
         try {
             StockBasic entity = new StockBasic();

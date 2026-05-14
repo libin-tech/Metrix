@@ -56,9 +56,5 @@ public class NewsSourceConfigController {
         return ApiResponse.success("News source config deleted successfully", null);
     }
 
-    @GetMapping("/stock/{stockCode}")
-    public ApiResponse<Map<String, Object>> fetchStockNews(@PathVariable String stockCode) {
-        Map<String, Object> result = newsService.fetchStockNews(stockCode);
-        return ApiResponse.success(result);
-    }
+
 }

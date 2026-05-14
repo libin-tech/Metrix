@@ -9,4 +9,6 @@ public interface StockBasicService {
     PageResult<StockBasic> pageQuery(String keyword, int page, int size);
 
     String importCsv(MultipartFile file);
+
+    StockBasic getByTsCode(String stockCode);
 }

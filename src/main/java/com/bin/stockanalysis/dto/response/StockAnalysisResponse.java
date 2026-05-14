@@ -17,7 +17,6 @@ public class StockAnalysisResponse {
     private String stockName;
     private String analysisType;
     private String analysisResult;
-    private BigDecimal confidenceScore;
     private Map<String, Object> marketData;
     private Map<String, Object> newsSummary;
     private LocalDateTime createdAt;

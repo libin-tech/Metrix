@@ -1,240 +1,361 @@
--- ============================================================
--- 版本: V1
--- 描述: 初始化数据库表结构
--- 说明: 根据实体类逆向生成，包含表注释和字段注释
--- ============================================================
+-- ----------------------------
+-- Chat2DB export data , export time: 2026-05-14 14:57:58
+-- ----------------------------
+DROP SEQUENCE IF EXISTS "users_id_seq";
+CREATE SEQUENCE "users_id_seq"
+ START WITH 1
+ INCREMENT BY 1
+ MAXVALUE 9223372036854775807
+ MINVALUE 1
+ CACHE 1
+NO CYCLE
+;
 
--- 用户表
-CREATE TABLE IF NOT EXISTS users (
-    id              BIGSERIAL           PRIMARY KEY,
-    username        VARCHAR(50)         NOT NULL,
-    password        VARCHAR(255)        NOT NULL,
-    email           VARCHAR(100),
-    role            VARCHAR(20)         NOT NULL DEFAULT 'USER',
-    is_active       BOOLEAN             NOT NULL DEFAULT TRUE,
-    create_time     TIMESTAMP WITHOUT TIME ZONE    NOT NULL DEFAULT NOW(),
-    update_time     TIMESTAMP WITHOUT TIME ZONE,
-    version         INTEGER             NOT NULL DEFAULT 0,
-    creator         VARCHAR(50),
-    modifier        VARCHAR(50)
-);
+DROP SEQUENCE IF EXISTS "stock_analysis_record_id_seq";
+CREATE SEQUENCE "stock_analysis_record_id_seq"
+ START WITH 1
+ INCREMENT BY 1
+ MAXVALUE 9223372036854775807
+ MINVALUE 1
+ CACHE 1
+NO CYCLE
+;
 
-COMMENT ON TABLE users IS '用户表';
-COMMENT ON COLUMN users.id IS '主键ID';
-COMMENT ON COLUMN users.username IS '用户名';
-COMMENT ON COLUMN users.password IS '密码（MD5加密）';
-COMMENT ON COLUMN users.email IS '邮箱';
-COMMENT ON COLUMN users.role IS '角色（ADMIN/USER）';
-COMMENT ON COLUMN users.is_active IS '是否激活';
-COMMENT ON COLUMN users.create_time IS '创建时间';
-COMMENT ON COLUMN users.update_time IS '更新时间';
-COMMENT ON COLUMN users.version IS '版本号（乐观锁）';
-COMMENT ON COLUMN users.creator IS '创建人';
-COMMENT ON COLUMN users.modifier IS '修改人';
+DROP SEQUENCE IF EXISTS "market_data_config_id_seq";
+CREATE SEQUENCE "market_data_config_id_seq"
+ START WITH 1
+ INCREMENT BY 1
+ MAXVALUE 9223372036854775807
+ MINVALUE 1
+ CACHE 1
+NO CYCLE
+;
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users (username);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email);
+DROP SEQUENCE IF EXISTS "news_source_config_id_seq";
+CREATE SEQUENCE "news_source_config_id_seq"
+ START WITH 1
+ INCREMENT BY 1
+ MAXVALUE 9223372036854775807
+ MINVALUE 1
+ CACHE 1
+NO CYCLE
+;
 
--- 插入默认管理员用户（密码：admin@2026，MD5加密后为：dffd3d7872472b8fce1750da3f1e3cbd）
-INSERT INTO users (username, password, email, role, is_active, create_time, update_time, version, creator, modifier)
-VALUES ('admin', 'dffd3d7872472b8fce1750da3f1e3cbd', 'admin@example.com', 'ADMIN', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 'SYSTEM', 'SYSTEM')
-ON CONFLICT (username) DO NOTHING;
+DROP SEQUENCE IF EXISTS "notification_config_id_seq";
+CREATE SEQUENCE "notification_config_id_seq"
+ START WITH 1
+ INCREMENT BY 1
+ MAXVALUE 9223372036854775807
+ MINVALUE 1
+ CACHE 1
+NO CYCLE
+;
 
--- 股票分析记录表
-CREATE TABLE IF NOT EXISTS stock_analysis_record (
-    id                  BIGSERIAL           PRIMARY KEY,
-    stock_code          VARCHAR(20)         NOT NULL,
-    stock_name          VARCHAR(100)        NOT NULL,
-    analysis_type       VARCHAR(50)         NOT NULL,
-    analysis_result     TEXT,
-    confidence_score    NUMERIC(5, 4),
-    market_data         TEXT,
-    news_summary        TEXT,
-    create_time         TIMESTAMP WITHOUT TIME ZONE    NOT NULL DEFAULT NOW(),
-    update_time         TIMESTAMP WITHOUT TIME ZONE,
-    version             INTEGER             NOT NULL DEFAULT 0,
-    creator             VARCHAR(50),
-    modifier            VARCHAR(50)
-);
+DROP SEQUENCE IF EXISTS "ai_model_config_id_seq";
+CREATE SEQUENCE "ai_model_config_id_seq"
+ START WITH 1
+ INCREMENT BY 1
+ MAXVALUE 9223372036854775807
+ MINVALUE 1
+ CACHE 1
+NO CYCLE
+;
 
-COMMENT ON TABLE stock_analysis_record IS '股票分析记录表';
-COMMENT ON COLUMN stock_analysis_record.id IS '主键ID';
-COMMENT ON COLUMN stock_analysis_record.stock_code IS '股票代码';
-COMMENT ON COLUMN stock_analysis_record.stock_name IS '股票名称';
-COMMENT ON COLUMN stock_analysis_record.analysis_type IS '分析类型';
-COMMENT ON COLUMN stock_analysis_record.analysis_result IS '分析结果';
-COMMENT ON COLUMN stock_analysis_record.confidence_score IS '置信度分数';
-COMMENT ON COLUMN stock_analysis_record.market_data IS '市场数据（JSON格式）';
-COMMENT ON COLUMN stock_analysis_record.news_summary IS '新闻摘要（JSON格式）';
-COMMENT ON COLUMN stock_analysis_record.create_time IS '创建时间';
-COMMENT ON COLUMN stock_analysis_record.update_time IS '更新时间';
-COMMENT ON COLUMN stock_analysis_record.version IS '版本号（乐观锁）';
-COMMENT ON COLUMN stock_analysis_record.creator IS '创建人';
-COMMENT ON COLUMN stock_analysis_record.modifier IS '修改人';
-
-CREATE INDEX IF NOT EXISTS idx_analysis_stock_code ON stock_analysis_record (stock_code);
-CREATE INDEX IF NOT EXISTS idx_analysis_created_at ON stock_analysis_record (create_time);
-
--- 市场数据配置表
-CREATE TABLE IF NOT EXISTS market_data_config (
-    id                  BIGSERIAL           PRIMARY KEY,
-    source_name         VARCHAR(50)         NOT NULL,
-    api_url             VARCHAR(500)        NOT NULL,
-    api_key             VARCHAR(500),
-    data_type           VARCHAR(50)         NOT NULL,
-    request_interval    INTEGER             NOT NULL DEFAULT 60,
-    is_active           BOOLEAN             NOT NULL DEFAULT TRUE,
-    create_time         TIMESTAMP WITHOUT TIME ZONE    NOT NULL DEFAULT NOW(),
-    update_time         TIMESTAMP WITHOUT TIME ZONE,
-    version             INTEGER             NOT NULL DEFAULT 0,
-    creator             VARCHAR(50),
-    modifier            VARCHAR(50)
-);
-
-COMMENT ON TABLE market_data_config IS '市场数据配置表';
-COMMENT ON COLUMN market_data_config.id IS '主键ID';
-COMMENT ON COLUMN market_data_config.source_name IS '源名称（TICKFLOW）';
-COMMENT ON COLUMN market_data_config.api_url IS 'API URL';
-COMMENT ON COLUMN market_data_config.api_key IS 'API密钥';
-COMMENT ON COLUMN market_data_config.data_type IS '数据类型';
-COMMENT ON COLUMN market_data_config.request_interval IS '请求间隔（秒）';
-COMMENT ON COLUMN market_data_config.is_active IS '是否激活';
-COMMENT ON COLUMN market_data_config.create_time IS '创建时间';
-COMMENT ON COLUMN market_data_config.update_time IS '更新时间';
-COMMENT ON COLUMN market_data_config.version IS '版本号（乐观锁）';
-COMMENT ON COLUMN market_data_config.creator IS '创建人';
-COMMENT ON COLUMN market_data_config.modifier IS '修改人';
-
-CREATE INDEX IF NOT EXISTS idx_market_data_source ON market_data_config (source_name);
-
--- 新闻源配置表
-CREATE TABLE IF NOT EXISTS news_source_config (
-    id                  BIGSERIAL           PRIMARY KEY,
-    source_name         VARCHAR(50)         NOT NULL,
-    api_url             VARCHAR(500)        NOT NULL,
-    api_key             VARCHAR(500),
-    request_interval    INTEGER             NOT NULL DEFAULT 60,
-    is_active           BOOLEAN             NOT NULL DEFAULT TRUE,
-    create_time         TIMESTAMP WITHOUT TIME ZONE    NOT NULL DEFAULT NOW(),
-    update_time         TIMESTAMP WITHOUT TIME ZONE,
-    version             INTEGER             NOT NULL DEFAULT 0,
-    creator             VARCHAR(50),
-    modifier            VARCHAR(50)
-);
-
-COMMENT ON TABLE news_source_config IS '新闻源配置表';
-COMMENT ON COLUMN news_source_config.id IS '主键ID';
-COMMENT ON COLUMN news_source_config.source_name IS '源名称（BOCHA）';
-COMMENT ON COLUMN news_source_config.api_url IS 'API URL';
-COMMENT ON COLUMN news_source_config.api_key IS 'API密钥';
-COMMENT ON COLUMN news_source_config.request_interval IS '请求间隔（秒）';
-COMMENT ON COLUMN news_source_config.is_active IS '是否激活';
-COMMENT ON COLUMN news_source_config.create_time IS '创建时间';
-COMMENT ON COLUMN news_source_config.update_time IS '更新时间';
-COMMENT ON COLUMN news_source_config.version IS '版本号（乐观锁）';
-COMMENT ON COLUMN news_source_config.creator IS '创建人';
-COMMENT ON COLUMN news_source_config.modifier IS '修改人';
-
-CREATE INDEX IF NOT EXISTS idx_news_source ON news_source_config (source_name);
-
--- 通知配置表
-CREATE TABLE IF NOT EXISTS notification_config (
-    id                  BIGSERIAL           PRIMARY KEY,
-    channel_type        VARCHAR(50)         NOT NULL,
-    webhook_url         VARCHAR(500)        NOT NULL,
-    secret              VARCHAR(500),
-    is_active           BOOLEAN             NOT NULL DEFAULT TRUE,
-    create_time         TIMESTAMP WITHOUT TIME ZONE    NOT NULL DEFAULT NOW(),
-    update_time         TIMESTAMP WITHOUT TIME ZONE,
-    version             INTEGER             NOT NULL DEFAULT 0,
-    creator             VARCHAR(50),
-    modifier            VARCHAR(50)
-);
-
-COMMENT ON TABLE notification_config IS '通知配置表';
-COMMENT ON COLUMN notification_config.id IS '主键ID';
-COMMENT ON COLUMN notification_config.channel_type IS '渠道类型（FEISHU）';
-COMMENT ON COLUMN notification_config.webhook_url IS 'WebHook URL';
-COMMENT ON COLUMN notification_config.secret IS '密钥';
-COMMENT ON COLUMN notification_config.is_active IS '是否激活';
-COMMENT ON COLUMN notification_config.create_time IS '创建时间';
-COMMENT ON COLUMN notification_config.update_time IS '更新时间';
-COMMENT ON COLUMN notification_config.version IS '版本号（乐观锁）';
-COMMENT ON COLUMN notification_config.creator IS '创建人';
-COMMENT ON COLUMN notification_config.modifier IS '修改人';
-
-CREATE INDEX IF NOT EXISTS idx_notification_channel ON notification_config (channel_type);
-
--- AI模型配置表
-CREATE TABLE IF NOT EXISTS ai_model_config (
-    id                  BIGSERIAL           PRIMARY KEY,
-    model_type          VARCHAR(50)         NOT NULL,
-    model_name          VARCHAR(100)        NOT NULL,
-    api_base_url        VARCHAR(500)        NOT NULL,
-    api_key             VARCHAR(500),
-    temperature         DOUBLE PRECISION    DEFAULT 0.7,
-    is_active           BOOLEAN             NOT NULL DEFAULT TRUE,
-    create_time         TIMESTAMP WITHOUT TIME ZONE    NOT NULL DEFAULT NOW(),
-    update_time         TIMESTAMP WITHOUT TIME ZONE,
-    version             INTEGER             NOT NULL DEFAULT 0,
-    creator             VARCHAR(50),
-    modifier            VARCHAR(50)
-);
-
-COMMENT ON TABLE ai_model_config IS 'AI模型配置表';
-COMMENT ON COLUMN ai_model_config.id IS '主键ID';
-COMMENT ON COLUMN ai_model_config.model_type IS '模型类型（OPENAI/OLLAMA）';
-COMMENT ON COLUMN ai_model_config.model_name IS '模型名称';
-COMMENT ON COLUMN ai_model_config.api_base_url IS 'API基础URL';
-COMMENT ON COLUMN ai_model_config.api_key IS 'API密钥';
-COMMENT ON COLUMN ai_model_config.temperature IS '温度参数';
-COMMENT ON COLUMN ai_model_config.is_active IS '是否激活';
-COMMENT ON COLUMN ai_model_config.create_time IS '创建时间';
-COMMENT ON COLUMN ai_model_config.update_time IS '更新时间';
-COMMENT ON COLUMN ai_model_config.version IS '版本号（乐观锁）';
-COMMENT ON COLUMN ai_model_config.creator IS '创建人';
-COMMENT ON COLUMN ai_model_config.modifier IS '修改人';
-
-CREATE INDEX IF NOT EXISTS idx_ai_model_type ON ai_model_config (model_type);
+DROP SEQUENCE IF EXISTS "stock_basic_id_seq";
+CREATE SEQUENCE "stock_basic_id_seq"
+ START WITH 1
+ INCREMENT BY 1
+ MAXVALUE 9223372036854775807
+ MINVALUE 1
+ CACHE 1
+NO CYCLE
+;
 
 
--- 股票基本信息表
-CREATE TABLE IF NOT EXISTS stock_basic (
-                                           id                  BIGSERIAL           PRIMARY KEY,
-                                           ts_code             VARCHAR(20)         NOT NULL,
-                                           symbol              VARCHAR(6)          NOT NULL,
-                                           name                VARCHAR(100)        NOT NULL,
-                                           area                VARCHAR(50),
-                                           industry            VARCHAR(100),
-                                           cnspell             VARCHAR(20),
-                                           market              VARCHAR(20),
-                                           list_date           DATE,
-                                           act_name            VARCHAR(200),
-                                           act_ent_type        VARCHAR(50),
-                                           create_time         TIMESTAMP WITHOUT TIME ZONE    NOT NULL DEFAULT NOW(),
-                                           update_time         TIMESTAMP WITHOUT TIME ZONE,
-                                           version             INTEGER             NOT NULL DEFAULT 0,
-                                           creator             VARCHAR(50),
-                                           modifier            VARCHAR(50)
-);
+DROP TABLE IF EXISTS "users";
+create table "users"
+(
+	id  	bigint default nextval('users_id_seq'::regclass) not null,
+	username  	varchar(50) not null,
+	password  	varchar(255) not null,
+	email  	varchar(100),
+	role  	varchar(20) default 'USER'::character varying not null,
+	is_active  	boolean default true not null,
+	create_time  	timestamp default now() not null,
+	update_time  	timestamp,
+	version  	integer default 0 not null,
+	creator  	varchar(50),
+	modifier  	varchar(50),
+	 constraint users_pkey primary key (id)
 
-COMMENT ON TABLE stock_basic IS 'A股股票基本信息表';
-COMMENT ON COLUMN stock_basic.id IS '主键ID';
-COMMENT ON COLUMN stock_basic.ts_code IS 'TS股票代码（唯一标识）';
-COMMENT ON COLUMN stock_basic.symbol IS '股票代码';
-COMMENT ON COLUMN stock_basic.name IS '股票名称';
-COMMENT ON COLUMN stock_basic.area IS '地域';
-COMMENT ON COLUMN stock_basic.industry IS '所属行业';
-COMMENT ON COLUMN stock_basic.cnspell IS '拼音缩写';
-COMMENT ON COLUMN stock_basic.market IS '市场类型（主板/创业板/科创板）';
-COMMENT ON COLUMN stock_basic.list_date IS '上市日期';
-COMMENT ON COLUMN stock_basic.act_name IS '实际控制人名称';
-COMMENT ON COLUMN stock_basic.act_ent_type IS '企业性质';
-COMMENT ON COLUMN stock_basic.create_time IS '创建时间';
-COMMENT ON COLUMN stock_basic.update_time IS '更新时间';
-COMMENT ON COLUMN stock_basic.version IS '版本号（乐观锁）';
-COMMENT ON COLUMN stock_basic.creator IS '创建人';
-COMMENT ON COLUMN stock_basic.modifier IS '修改人';
+) tablespace pg_default;
+CREATE UNIQUE INDEX idx_users_username ON public.users USING btree (username);
+CREATE UNIQUE INDEX idx_users_email ON public.users USING btree (email);
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_stock_basic_ts_code ON stock_basic (ts_code);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_stock_basic_symbol ON stock_basic (symbol);
+comment on table users is '用户表';
+comment on column users.id is '主键ID';
+comment on column users.username is '用户名';
+comment on column users.password is '密码（MD5加密）';
+comment on column users.email is '邮箱';
+comment on column users.role is '角色（ADMIN/USER）';
+comment on column users.is_active is '是否激活';
+comment on column users.create_time is '创建时间';
+comment on column users.update_time is '更新时间';
+comment on column users.version is '版本号（乐观锁）';
+comment on column users.creator is '创建人';
+comment on column users.modifier is '修改人';
+
+alter table "users" owner to postgres;
+
+
+
+DROP TABLE IF EXISTS "market_data_config";
+create table "market_data_config"
+(
+	id  	bigint default nextval('market_data_config_id_seq'::regclass) not null,
+	source_name  	varchar(50) not null,
+	api_url  	varchar(500) not null,
+	api_key  	varchar(500),
+	data_type  	varchar(50) not null,
+	request_interval  	integer default 60 not null,
+	is_active  	boolean default true not null,
+	create_time  	timestamp default now() not null,
+	update_time  	timestamp,
+	version  	integer default 0 not null,
+	creator  	varchar(50),
+	modifier  	varchar(50),
+	timeout  	integer default 60 not null,
+	remark  	varchar(100),
+	 constraint market_data_config_pkey primary key (id)
+
+) tablespace pg_default;
+CREATE INDEX idx_market_data_source ON public.market_data_config USING btree (source_name);
+
+comment on table market_data_config is '市场数据配置表';
+comment on column market_data_config.id is '主键ID';
+comment on column market_data_config.source_name is '源名称（TICKFLOW）';
+comment on column market_data_config.api_url is 'API URL';
+comment on column market_data_config.api_key is 'API密钥';
+comment on column market_data_config.data_type is '数据类型';
+comment on column market_data_config.request_interval is '请求间隔（秒）';
+comment on column market_data_config.is_active is '是否激活';
+comment on column market_data_config.create_time is '创建时间';
+comment on column market_data_config.update_time is '更新时间';
+comment on column market_data_config.version is '版本号（乐观锁）';
+comment on column market_data_config.creator is '创建人';
+comment on column market_data_config.modifier is '修改人';
+comment on column market_data_config.timeout is '请求超时时间（秒），默认60秒';
+comment on column market_data_config.remark is '备注，限制100字以内';
+
+alter table "market_data_config" owner to postgres;
+
+
+
+DROP TABLE IF EXISTS "notification_config";
+create table "notification_config"
+(
+	id  	bigint default nextval('notification_config_id_seq'::regclass) not null,
+	channel_type  	varchar(50) not null,
+	webhook_url  	varchar(500) not null,
+	secret  	varchar(500),
+	is_active  	boolean default true not null,
+	create_time  	timestamp default now() not null,
+	update_time  	timestamp,
+	version  	integer default 0 not null,
+	creator  	varchar(50),
+	modifier  	varchar(50),
+	 constraint notification_config_pkey primary key (id)
+
+) tablespace pg_default;
+CREATE INDEX idx_notification_channel ON public.notification_config USING btree (channel_type);
+
+comment on table notification_config is '通知配置表';
+comment on column notification_config.id is '主键ID';
+comment on column notification_config.channel_type is '渠道类型（FEISHU）';
+comment on column notification_config.webhook_url is 'WebHook URL';
+comment on column notification_config.secret is '密钥';
+comment on column notification_config.is_active is '是否激活';
+comment on column notification_config.create_time is '创建时间';
+comment on column notification_config.update_time is '更新时间';
+comment on column notification_config.version is '版本号（乐观锁）';
+comment on column notification_config.creator is '创建人';
+comment on column notification_config.modifier is '修改人';
+
+alter table "notification_config" owner to postgres;
+
+
+
+DROP TABLE IF EXISTS "stock_analysis_record";
+create table "stock_analysis_record"
+(
+	id  	bigint default nextval('stock_analysis_record_id_seq'::regclass) not null,
+	stock_code  	varchar(20) not null,
+	stock_name  	varchar(100) not null,
+	analysis_type  	varchar(50) not null,
+	analysis_result  	text,
+	market_data  	text,
+	news_summary  	text,
+	create_time  	timestamp default now() not null,
+	update_time  	timestamp,
+	version  	integer default 0 not null,
+	creator  	varchar(50),
+	modifier  	varchar(50),
+	status  	varchar(20) default 'COMPLETED'::character varying not null,
+	analysis_overview  	text,
+	depth_data  	text,
+	klines_data  	text,
+	 constraint stock_analysis_record_pkey primary key (id)
+
+) tablespace pg_default;
+CREATE INDEX idx_analysis_stock_code ON public.stock_analysis_record USING btree (stock_code);
+CREATE INDEX idx_analysis_created_at ON public.stock_analysis_record USING btree (create_time);
+CREATE INDEX idx_stock_analysis_record_status ON public.stock_analysis_record USING btree (status);
+
+comment on table stock_analysis_record is '股票分析记录表';
+comment on column stock_analysis_record.id is '主键ID';
+comment on column stock_analysis_record.stock_code is '股票代码';
+comment on column stock_analysis_record.stock_name is '股票名称';
+comment on column stock_analysis_record.analysis_type is '分析类型';
+comment on column stock_analysis_record.analysis_result is '分析结果';
+comment on column stock_analysis_record.market_data is '实时行情（JSON格式）';
+comment on column stock_analysis_record.news_summary is '新闻摘要（JSON格式）';
+comment on column stock_analysis_record.create_time is '创建时间';
+comment on column stock_analysis_record.update_time is '更新时间';
+comment on column stock_analysis_record.version is '版本号（乐观锁）';
+comment on column stock_analysis_record.creator is '创建人';
+comment on column stock_analysis_record.modifier is '修改人';
+comment on column stock_analysis_record.status is '分析状态：ANALYZING-分析中，COMPLETED-分析完成，FAILED-分析失败';
+comment on column stock_analysis_record.analysis_overview is '分析概览（JSON格式）';
+comment on column stock_analysis_record.depth_data is '深度行情（JSON格式）';
+comment on column stock_analysis_record.klines_data is '日K数据（JSON格式）';
+
+alter table "stock_analysis_record" owner to postgres;
+
+
+
+DROP TABLE IF EXISTS "ai_model_config";
+create table "ai_model_config"
+(
+	id  	bigint default nextval('ai_model_config_id_seq'::regclass) not null,
+	model_type  	varchar(50) not null,
+	model_name  	varchar(100) not null,
+	api_base_url  	varchar(500) not null,
+	api_key  	varchar(500),
+	temperature  	double precision default 0.7,
+	is_active  	boolean default true not null,
+	create_time  	timestamp default now() not null,
+	update_time  	timestamp,
+	version  	integer default 0 not null,
+	creator  	varchar(50),
+	modifier  	varchar(50),
+	timeout  	integer default 120 not null,
+	 constraint ai_model_config_pkey primary key (id)
+
+) tablespace pg_default;
+CREATE INDEX idx_ai_model_type ON public.ai_model_config USING btree (model_type);
+
+comment on table ai_model_config is 'AI模型配置表';
+comment on column ai_model_config.id is '主键ID';
+comment on column ai_model_config.model_type is '模型类型（OPENAI/OLLAMA）';
+comment on column ai_model_config.model_name is '模型名称';
+comment on column ai_model_config.api_base_url is 'API基础URL';
+comment on column ai_model_config.api_key is 'API密钥';
+comment on column ai_model_config.temperature is '温度参数';
+comment on column ai_model_config.is_active is '是否激活';
+comment on column ai_model_config.create_time is '创建时间';
+comment on column ai_model_config.update_time is '更新时间';
+comment on column ai_model_config.version is '版本号（乐观锁）';
+comment on column ai_model_config.creator is '创建人';
+comment on column ai_model_config.modifier is '修改人';
+comment on column ai_model_config.timeout is '超时时间（秒），默认120秒';
+
+alter table "ai_model_config" owner to postgres;
+
+
+
+DROP TABLE IF EXISTS "news_source_config";
+create table "news_source_config"
+(
+	id  	bigint default nextval('news_source_config_id_seq'::regclass) not null,
+	source_name  	varchar(50) not null,
+	api_url  	varchar(500) not null,
+	api_key  	varchar(500),
+	request_interval  	integer default 60 not null,
+	is_active  	boolean default true not null,
+	create_time  	timestamp default now() not null,
+	update_time  	timestamp,
+	version  	integer default 0 not null,
+	creator  	varchar(50),
+	modifier  	varchar(50),
+	timeout  	integer default 60 not null,
+	remark  	varchar(100),
+	 constraint news_source_config_pkey primary key (id)
+
+) tablespace pg_default;
+CREATE INDEX idx_news_source ON public.news_source_config USING btree (source_name);
+
+comment on table news_source_config is '新闻源配置表';
+comment on column news_source_config.id is '主键ID';
+comment on column news_source_config.source_name is '源名称（BOCHA）';
+comment on column news_source_config.api_url is 'API URL';
+comment on column news_source_config.api_key is 'API密钥';
+comment on column news_source_config.request_interval is '请求间隔（秒）';
+comment on column news_source_config.is_active is '是否激活';
+comment on column news_source_config.create_time is '创建时间';
+comment on column news_source_config.update_time is '更新时间';
+comment on column news_source_config.version is '版本号（乐观锁）';
+comment on column news_source_config.creator is '创建人';
+comment on column news_source_config.modifier is '修改人';
+comment on column news_source_config.timeout is '请求超时时间（秒），默认60秒';
+comment on column news_source_config.remark is '备注，限制100字以内';
+
+alter table "news_source_config" owner to postgres;
+
+
+
+DROP TABLE IF EXISTS "stock_basic";
+create table "stock_basic"
+(
+	id  	bigint default nextval('stock_basic_id_seq'::regclass) not null,
+	ts_code  	varchar(20) not null,
+	symbol  	varchar(6) not null,
+	name  	varchar(100) not null,
+	area  	varchar(50),
+	industry  	varchar(100),
+	cnspell  	varchar(20),
+	market  	varchar(20),
+	list_date  	date,
+	act_name  	varchar(200),
+	act_ent_type  	varchar(50),
+	create_time  	timestamp default now() not null,
+	update_time  	timestamp,
+	version  	integer default 0 not null,
+	creator  	varchar(50),
+	modifier  	varchar(50),
+	 constraint stock_basic_pkey primary key (id)
+
+) tablespace pg_default;
+CREATE UNIQUE INDEX idx_stock_basic_ts_code ON public.stock_basic USING btree (ts_code);
+CREATE UNIQUE INDEX idx_stock_basic_symbol ON public.stock_basic USING btree (symbol);
+
+comment on table stock_basic is 'A股股票基本信息表';
+comment on column stock_basic.id is '主键ID';
+comment on column stock_basic.ts_code is 'TS股票代码（唯一标识）';
+comment on column stock_basic.symbol is '股票代码';
+comment on column stock_basic.name is '股票名称';
+comment on column stock_basic.area is '地域';
+comment on column stock_basic.industry is '所属行业';
+comment on column stock_basic.cnspell is '拼音缩写';
+comment on column stock_basic.market is '市场类型（主板/创业板/科创板）';
+comment on column stock_basic.list_date is '上市日期';
+comment on column stock_basic.act_name is '实际控制人名称';
+comment on column stock_basic.act_ent_type is '企业性质';
+comment on column stock_basic.create_time is '创建时间';
+comment on column stock_basic.update_time is '更新时间';
+comment on column stock_basic.version is '版本号（乐观锁）';
+comment on column stock_basic.creator is '创建人';
+comment on column stock_basic.modifier is '修改人';
+
+alter table "stock_basic" owner to postgres;
+
+

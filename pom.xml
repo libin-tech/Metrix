@@ -24,6 +24,7 @@
         <satoken.version>1.36.0</satoken.version>
         <hutool.version>5.8.13</hutool.version>
         <mybatis-plus.version>3.5.15</mybatis-plus.version>
+        <flexmark.version>0.64.8</flexmark.version>
     </properties>
 
     <dependencies>
@@ -113,6 +114,19 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
+        </dependency>
+
+        <!-- Flexmark: Markdown 转 HTML -->
+        <dependency>
+            <groupId>com.vladsch.flexmark</groupId>
+            <artifactId>flexmark-all</artifactId>
+            <version>${flexmark.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.vladsch.flexmark</groupId>
+                    <artifactId>flexmark-pdf-converter</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- Test -->

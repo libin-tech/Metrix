@@ -1,6 +1,6 @@
 <template>
   <div class="home-container">
-    <h2>决策仪表盘</h2>
+    <h2>{{ $t('home.title') }}</h2>
     
     <div class="stats-cards">
       <a-card class="stat-card">
@@ -9,7 +9,7 @@
         </div>
         <div class="stat-info">
           <p class="stat-value">{{ analysisCount }}</p>
-          <p class="stat-label">分析记录</p>
+          <p class="stat-label">{{ $t('home.analysisRecords') }}</p>
         </div>
       </a-card>
       
@@ -19,7 +19,7 @@
         </div>
         <div class="stat-info">
           <p class="stat-value">{{ modelCount }}</p>
-          <p class="stat-label">AI模型配置</p>
+          <p class="stat-label">{{ $t('home.aiModelConfig') }}</p>
         </div>
       </a-card>
       
@@ -29,7 +29,7 @@
         </div>
         <div class="stat-info">
           <p class="stat-value">{{ notificationCount }}</p>
-          <p class="stat-label">通知配置</p>
+          <p class="stat-label">{{ $t('home.notificationConfig') }}</p>
         </div>
       </a-card>
       
@@ -39,7 +39,7 @@
         </div>
         <div class="stat-info">
           <p class="stat-value">{{ newsCount }}</p>
-          <p class="stat-label">新闻源配置</p>
+          <p class="stat-label">{{ $t('home.newsSourceConfig') }}</p>
         </div>
       </a-card>
 
@@ -49,17 +49,17 @@
         </div>
         <div class="stat-info">
           <p class="stat-value">{{ stockCount }}</p>
-          <p class="stat-label">股票总数</p>
+          <p class="stat-label">{{ $t('home.stockTotal') }}</p>
         </div>
       </a-card>
     </div>
     
     <div class="content-row">
-      <a-card class="recent-analysis" title="最近分析记录">
-        <a-table :columns="columns" :data-source="recentAnalysis" bordered row-key="id">
-          <template #bodyCell="{ column, text }">
-            <template v-if="column.key === 'confidenceScore'">
-              <a-progress :percent="Number((text * 100).toFixed(0))" :show-info="false" :stroke-width="8" />
+      <a-card class="recent-analysis" :title="$t('home.recentAnalysis')">
+        <a-table :columns="columns" :data-source="recentAnalysis" bordered row-key="id" :pagination="false">
+          <template #bodyCell="{ column, text, record }">
+            <template v-if="column.key === 'status'">
+              <a-tag :color="statusColor(record.status)">{{ statusText(record.status) }}</a-tag>
             </template>
             <template v-if="column.key === 'createTime'">
               {{ formatTime(text) }}
@@ -68,30 +68,30 @@
         </a-table>
       </a-card>
       
-      <a-card class="quick-actions" title="快速操作">
+      <a-card class="quick-actions" :title="$t('home.quickActions')">
         <div class="action-grid">
           <a-button type="primary" class="action-btn" @click="goToAnalysis">
             <LineChartOutlined />
-            <span>股票分析</span>
+            <span>{{ $t('home.stockAnalysis') }}</span>
           </a-button>
           
           <a-button type="primary" class="action-btn" ghost @click="goToAiConfig">
             <SettingOutlined />
-            <span>AI模型配置</span>
+            <span>{{ $t('home.aiModelConfig') }}</span>
           </a-button>
           
           <a-button type="primary" class="action-btn" ghost @click="goToNotification">
             <BellOutlined />
-            <span>通知配置</span>
+            <span>{{ $t('home.notificationConfig') }}</span>
           </a-button>
           
           <a-button type="primary" class="action-btn" ghost @click="goToNewsSource">
             <FileTextOutlined />
-            <span>新闻源配置</span>
+            <span>{{ $t('home.newsSourceConfig') }}</span>
           </a-button>
           <a-button type="primary" class="action-btn" ghost @click="goToStockBasic">
             <DatabaseOutlined />
-            <span>股票列表</span>
+            <span>{{ $t('home.stockList') }}</span>
           </a-button>
         </div>
       </a-card>
@@ -100,8 +100,9 @@
 </template>
 
 <script setup>
-import {onMounted, ref} from 'vue'
+import {computed, onMounted, ref} from 'vue'
 import {useRouter} from 'vue-router'
+import {useI18n} from 'vue-i18n'
 import {
   BellOutlined,
   DatabaseOutlined,
@@ -118,6 +119,7 @@ import {
 } from '../api'
 
 const router = useRouter()
+const {t} = useI18n()
 
 const analysisCount = ref(0)
 const modelCount = ref(0)
@@ -126,18 +128,28 @@ const newsCount = ref(0)
 const stockCount = ref(0)
 const recentAnalysis = ref([])
 
-const columns = [
-  { title: '股票代码', dataIndex: 'stockCode', key: 'stockCode' },
-  { title: '股票名称', dataIndex: 'stockName', key: 'stockName' },
-  { title: '分析类型', dataIndex: 'analysisType', key: 'analysisType' },
-  { title: '置信度', dataIndex: 'confidenceScore', key: 'confidenceScore', width: 120 },
-  { title: '分析时间', dataIndex: 'createTime', key: 'createTime', width: 150 }
-]
+const columns = computed(() => [
+  { title: t('home.stockCode'), dataIndex: 'stockCode', key: 'stockCode', width: 120 },
+  { title: t('home.stockName'), dataIndex: 'stockName', key: 'stockName', width: 140 },
+  { title: t('home.analysisType'), dataIndex: 'analysisType', key: 'analysisType', width: 100 },
+  { title: t('home.analysisStatus'), dataIndex: 'status', key: 'status', width: 100 },
+  { title: t('home.analysisTime'), dataIndex: 'createTime', key: 'createTime', width: 170 }
+])
+
+const statusColor = (status) => {
+  const colors = { ANALYZING: 'processing', COMPLETED: 'success', FAILED: 'error' }
+  return colors[status] || 'default'
+}
+
+const statusText = (status) => {
+  const texts = { ANALYZING: t('home.analyzing'), COMPLETED: t('home.completed'), FAILED: t('home.failed') }
+  return texts[status] || status
+}
 
 const loadData = async () => {
   try {
     const analysisResponse = await getAllAnalysis()
-    recentAnalysis.value = analysisResponse.data.slice(0, 5)
+    recentAnalysis.value = analysisResponse.data.slice(0, 10)
     analysisCount.value = analysisResponse.data.length
     
     const modelResponse = await getAiModelConfigs()
@@ -152,13 +164,13 @@ const loadData = async () => {
     const stockResponse = await getStockBasicPage('', 1, 1)
     stockCount.value = stockResponse.data.total
   } catch (error) {
-    console.error('加载数据失败:', error)
+    console.error(t('home.loadFailed'), error)
   }
 }
 
 const formatTime = (time) => {
   if (!time) return '-'
-  return new Date(time).toLocaleString('zh-CN')
+  return new Date(time).toLocaleString()
 }
 
 const goToAnalysis = () => router.push('/analysis')

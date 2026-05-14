@@ -1,19 +1,21 @@
 {
   "name": "stock-analysis-frontend",
   "version": "1.0.0",
-  "description": "量化交易决策分析系统前端",
+  "description": "量化决策分析前端",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
-    "vue": "^3.4.21",
-    "vue-router": "^4.3.0",
-    "axios": "^1.6.7",
-    "ant-design-vue": "^4.0.0",
     "@ant-design/icons-vue": "^7.0.0",
-    "echarts": "^5.5.0"
+    "ant-design-vue": "^4.0.0",
+    "axios": "^1.6.7",
+    "echarts": "^5.5.0",
+    "marked": "^18.0.3",
+    "vue": "^3.4.21",
+    "vue-i18n": "^9.14.5",
+    "vue-router": "^4.3.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.4",

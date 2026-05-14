@@ -1,38 +1,38 @@
 <template>
   <div class="config-container">
     <div class="config-header">
-      <h3>通知配置</h3>
-      <a-button type="primary" @click="showAddModal = true">添加配置</a-button>
+      <h3>{{ $t('notification.title') }}</h3>
+      <a-button type="primary" @click="showAddModal = true">{{ $t('config.add') }}</a-button>
     </div>
 
     <a-table :dataSource="configs" :columns="columns" row-key="id" bordered>
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'isActive'">
           <a-tag :color="record.isActive ? 'green' : 'red'">
-            {{ record.isActive ? '启用' : '禁用' }}
+            {{ record.isActive ? $t('config.active') : $t('config.inactive') }}
           </a-tag>
         </template>
         <template v-if="column.key === 'action'">
           <a-space>
-            <a-button size="small" @click="editConfig(record)">编辑</a-button>
-            <a-button size="small" danger @click="deleteConfig(record.id)">删除</a-button>
+            <a-button size="small" @click="editConfig(record)">{{ $t('config.edit') }}</a-button>
+            <a-button size="small" danger @click="deleteConfig(record.id)">{{ $t('config.delete') }}</a-button>
           </a-space>
         </template>
       </template>
     </a-table>
 
-    <a-modal :title="editing ? '编辑配置' : '添加配置'" v-model:visible="showAddModal" @ok="saveConfig" @cancel="showAddModal = false">
+    <a-modal :title="editing ? $t('config.editTitle') : $t('config.addTitle')" v-model:visible="showAddModal" @ok="saveConfig" @cancel="showAddModal = false">
       <a-form :model="form" layout="vertical">
-        <a-form-item label="渠道类型">
+        <a-form-item :label="$t('notification.channelType')">
           <a-input v-model:value="form.channelType" disabled />
         </a-form-item>
-        <a-form-item label="Webhook地址">
+        <a-form-item :label="$t('notification.webhookUrl')">
           <a-input v-model:value="form.webhookUrl" />
         </a-form-item>
-        <a-form-item label="密钥">
+        <a-form-item :label="$t('notification.secret')">
           <a-input v-model:value="form.secret" />
         </a-form-item>
-        <a-form-item label="启用">
+        <a-form-item :label="$t('config.enable')">
           <a-switch v-model:checked="form.isActive" />
         </a-form-item>
       </a-form>
@@ -41,7 +41,8 @@
 </template>
 
 <script setup>
-import {onMounted, reactive, ref} from 'vue'
+import {computed, onMounted, reactive, ref} from 'vue'
+import {useI18n} from 'vue-i18n'
 import {
   createNotificationConfig,
   deleteNotificationConfig,
@@ -50,16 +51,17 @@ import {
 } from '../api'
 import {message, Modal} from 'ant-design-vue'
 
-const columns = [
-  { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
-  { title: '渠道类型', dataIndex: 'channelType', key: 'channelType' },
-  { title: 'Webhook地址', dataIndex: 'webhookUrl', key: 'webhookUrl' },
-  { title: '状态', key: 'isActive', width: 80 },
-  { title: '操作', key: 'action', width: 200 }
-]
+const columns = computed(() => [
+  { title: t('config.id'), dataIndex: 'id', key: 'id', width: 80 },
+  { title: t('notification.channelType'), dataIndex: 'channelType', key: 'channelType' },
+  { title: t('notification.webhookUrl'), dataIndex: 'webhookUrl', key: 'webhookUrl' },
+  { title: t('config.status'), key: 'isActive', width: 80 },
+  { title: t('config.action'), key: 'action', width: 200 }
+])
 
 const configs = ref([])
 const showAddModal = ref(false)
+const {t} = useI18n()
 const editing = ref(false)
 const editingId = ref(null)
 
@@ -75,7 +77,7 @@ const loadConfigs = async () => {
     const response = await getNotificationConfigs()
     configs.value = response.data
   } catch (error) {
-    message.error('加载配置失败')
+    message.error(t('config.loadFailed'))
   }
 }
 
@@ -99,23 +101,23 @@ const saveConfig = async () => {
     showAddModal.value = false
     loadConfigs()
     resetForm()
-    message.success(editing.value ? '更新成功' : '创建成功')
+    message.success(t('config.saveSuccess'))
   } catch (error) {
-    message.error(error.response?.data?.message || '保存失败')
+    message.error(error.response?.data?.message || t('config.saveFailed'))
   }
 }
 
 const deleteConfig = (id) => {
   Modal.confirm({
-    title: '确认删除',
-    content: '确定删除该配置吗？',
+    title: t('config.confirmDelete'),
+    content: t('config.confirmDeleteContent'),
     onOk: async () => {
       try {
         await deleteNotificationConfig(id)
         loadConfigs()
-        message.success('删除成功')
+        message.success(t('config.deleteSuccess'))
       } catch (error) {
-        message.error('删除失败')
+        message.error(t('config.deleteFailed'))
       }
     }
   })

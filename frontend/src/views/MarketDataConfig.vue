@@ -1,52 +1,81 @@
 <template>
   <div class="config-container">
     <div class="config-header">
-      <h3>市场数据配置</h3>
-      <a-button type="primary" @click="showAddModal = true">添加配置</a-button>
+      <h3>{{ $t('marketData.title') }}</h3>
+      <a-button type="primary" @click="showAddModal = true">{{ $t('config.add') }}</a-button>
     </div>
 
     <a-table :dataSource="configs" :columns="columns" row-key="id" bordered>
       <template #bodyCell="{ column, record }">
+        <template v-if="column.key === 'sourceName'">
+          <a-tag color="blue">{{ record.sourceName }}</a-tag>
+        </template>
+        <template v-if="column.key === 'apiKey'">
+          <a-space>
+            <span>{{ visibleKeys[record.id] ? record.apiKey : maskApiKey(record.apiKey) }}</span>
+            <a-button
+              type="text"
+              size="small"
+              @click="toggleKeyVisibility(record.id)"
+            >
+              <template v-if="visibleKeys[record.id]">
+                <EyeInvisibleOutlined />
+              </template>
+              <template v-else>
+                <EyeOutlined />
+              </template>
+            </a-button>
+          </a-space>
+        </template>
         <template v-if="column.key === 'isActive'">
           <a-tag :color="record.isActive ? 'green' : 'red'">
-            {{ record.isActive ? '启用' : '禁用' }}
+            {{ record.isActive ? $t('config.active') : $t('config.inactive') }}
           </a-tag>
         </template>
         <template v-if="column.key === 'action'">
           <a-space>
-            <a-button size="small" @click="editConfig(record)">编辑</a-button>
-            <a-button size="small" danger @click="deleteConfig(record.id)">删除</a-button>
+            <a-button size="small" @click="editConfig(record)">{{ $t('config.edit') }}</a-button>
+            <a-button size="small" danger @click="deleteConfig(record.id)">{{ $t('config.delete') }}</a-button>
           </a-space>
         </template>
       </template>
     </a-table>
 
-    <a-modal :title="editing ? '编辑配置' : '添加配置'" v-model:visible="showAddModal" @ok="saveConfig" @cancel="showAddModal = false">
+    <a-modal :title="editing ? $t('config.editTitle') : $t('config.addTitle')" v-model:visible="showAddModal" @ok="saveConfig" @cancel="showAddModal = false">
       <a-form :model="form" layout="vertical">
         <a-alert type="info" show-icon style="margin-bottom: 16px">
           <template #message>
-            仅支持 TickFlow 数据源，请前往
-            <a href="https://tickflow.org" target="_blank">tickflow.org</a>
-            注册获取 API Key
+            {{ $t('marketData.tickflowOnly') }}
+            <a href="https://tickflow.org/auth/register?ref=DA54CXKKPB" target="_blank">tickflow.org</a>
+            {{ $t('marketData.registerLink') }}
           </template>
         </a-alert>
-        <a-form-item label="API地址">
+        <a-form-item :label="$t('marketData.sourceType')">
+          <a-input :value="form.sourceName" disabled />
+        </a-form-item>
+        <a-form-item :label="$t('marketData.apiUrl')">
           <a-input v-model:value="form.apiUrl" />
         </a-form-item>
-        <a-form-item label="API Key">
-          <a-input v-model:value="form.apiKey" />
+        <a-form-item :label="$t('marketData.apiKey')">
+          <a-input-password v-model:value="form.apiKey" />
         </a-form-item>
-        <a-form-item label="数据类型">
+        <a-form-item :label="$t('marketData.dataType')">
           <a-select v-model:value="form.dataType">
             <a-select-option value="STOCK_QUOTE">STOCK_QUOTE</a-select-option>
             <a-select-option value="INDEX">INDEX</a-select-option>
             <a-select-option value="FUTURE">FUTURE</a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="请求间隔(秒)">
+        <a-form-item :label="$t('marketData.interval')">
           <a-input-number v-model:value="form.requestInterval" />
         </a-form-item>
-        <a-form-item label="启用">
+        <a-form-item :label="$t('marketData.timeout')">
+          <a-input-number v-model:value="form.timeout" :min="1" />
+        </a-form-item>
+        <a-form-item :label="$t('marketData.remark')">
+          <a-textarea v-model:value="form.remark" :maxlength="100" :rows="2" show-count />
+        </a-form-item>
+        <a-form-item :label="$t('config.enable')">
           <a-switch v-model:checked="form.isActive" />
         </a-form-item>
       </a-form>
@@ -55,23 +84,31 @@
 </template>
 
 <script setup>
-import {onMounted, reactive, ref} from 'vue'
+import {computed, onMounted, reactive, ref} from 'vue'
+import {useI18n} from 'vue-i18n'
 import {createMarketDataConfig, deleteMarketDataConfig, getMarketDataConfigs, updateMarketDataConfig} from '../api'
 import {message, Modal} from 'ant-design-vue'
+import {EyeOutlined, EyeInvisibleOutlined} from '@ant-design/icons-vue'
 
-const columns = [
-  { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
-  { title: 'API地址', dataIndex: 'apiUrl', key: 'apiUrl' },
-  { title: '数据类型', dataIndex: 'dataType', key: 'dataType' },
-  { title: '请求间隔(秒)', dataIndex: 'requestInterval', key: 'requestInterval', width: 150 },
-  { title: '状态', key: 'isActive', width: 80 },
-  { title: '操作', key: 'action', width: 200 }
-]
+const columns = computed(() => [
+  { title: t('config.id'), dataIndex: 'id', key: 'id', width: 80 },
+  { title: t('marketData.sourceType'), key: 'sourceName', width: 120 },
+  { title: t('marketData.apiUrl'), dataIndex: 'apiUrl', key: 'apiUrl' },
+  { title: t('marketData.apiKey'), key: 'apiKey', width: 260 },
+  { title: t('marketData.dataType'), dataIndex: 'dataType', key: 'dataType' },
+  { title: t('marketData.interval'), dataIndex: 'requestInterval', key: 'requestInterval', width: 130 },
+  { title: t('marketData.timeout'), dataIndex: 'timeout', key: 'timeout', width: 130 },
+  { title: t('marketData.remark'), dataIndex: 'remark', key: 'remark', ellipsis: true },
+  { title: t('config.status'), key: 'isActive', width: 80 },
+  { title: t('config.action'), key: 'action', width: 200 }
+])
 
 const configs = ref([])
 const showAddModal = ref(false)
 const editing = ref(false)
 const editingId = ref(null)
+const visibleKeys = reactive({})
+const {t} = useI18n()
 
 const form = reactive({
   sourceName: 'TICKFLOW',
@@ -79,15 +116,26 @@ const form = reactive({
   apiKey: '',
   dataType: 'STOCK_QUOTE',
   requestInterval: 30,
+  timeout: 60,
+  remark: '',
   isActive: true
 })
+
+const maskApiKey = (key) => {
+  if (!key || key.length <= 8) return key
+  return key.substring(0, 4) + '****' + key.substring(key.length - 4)
+}
+
+const toggleKeyVisibility = (id) => {
+  visibleKeys[id] = !visibleKeys[id]
+}
 
 const loadConfigs = async () => {
   try {
     const response = await getMarketDataConfigs()
     configs.value = response.data
   } catch (error) {
-    message.error('加载配置失败')
+    message.error(t('config.loadFailed'))
   }
 }
 
@@ -99,6 +147,8 @@ const editConfig = (config) => {
   form.apiKey = config.apiKey
   form.dataType = config.dataType
   form.requestInterval = config.requestInterval
+  form.timeout = config.timeout
+  form.remark = config.remark
   form.isActive = config.isActive
   showAddModal.value = true
 }
@@ -113,23 +163,23 @@ const saveConfig = async () => {
     showAddModal.value = false
     loadConfigs()
     resetForm()
-    message.success(editing.value ? '更新成功' : '创建成功')
+    message.success(editing.value ? t('config.saveSuccess') : t('config.saveSuccess'))
   } catch (error) {
-    message.error(error.response?.data?.message || '保存失败')
+    message.error(error.response?.data?.message || t('config.saveFailed'))
   }
 }
 
 const deleteConfig = (id) => {
   Modal.confirm({
-    title: '确认删除',
-    content: '确定删除该配置吗？',
+    title: t('config.confirmDelete'),
+    content: t('config.confirmDeleteContent'),
     onOk: async () => {
       try {
         await deleteMarketDataConfig(id)
         loadConfigs()
-        message.success('删除成功')
+        message.success(t('config.deleteSuccess'))
       } catch (error) {
-        message.error('删除失败')
+        message.error(t('config.deleteFailed'))
       }
     }
   })
@@ -143,6 +193,8 @@ const resetForm = () => {
   form.apiKey = ''
   form.dataType = 'STOCK_QUOTE'
   form.requestInterval = 30
+  form.timeout = 60
+  form.remark = ''
   form.isActive = true
 }
 

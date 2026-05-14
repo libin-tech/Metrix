@@ -2,59 +2,59 @@
   <div class="app-container">
     <!-- 登录页面 - 独立显示 -->
     <router-view v-if="isLoginPage" />
-    
-    <!-- 主应用布局 - 包含侧边栏和头部 -->
+
+    <!-- 主应用布局 -->
     <a-layout v-else class="layout">
       <!-- 侧边栏 -->
       <a-layout-sider v-model:collapsed="collapsed" :width="200" class="sider">
         <div class="logo">
           <BarChartOutlined class="logo-icon" />
-          <span v-show="!collapsed" class="logo-text">量化交易决策分析</span>
+          <span v-show="!collapsed" class="logo-text">{{ $t('layout.logo') }}</span>
         </div>
         <a-menu theme="dark" mode="inline" :selected-keys="[currentPath]" class="main-menu">
           <a-menu-item key="/" @click="navigate('/')">
             <HomeOutlined />
-            <span>首页</span>
+            <span>{{ $t('menu.home') }}</span>
           </a-menu-item>
           <a-menu-item key="/analysis" @click="navigate('/analysis')">
             <LineChartOutlined />
-            <span>股票分析</span>
+            <span>{{ $t('menu.analysis') }}</span>
           </a-menu-item>
           <a-sub-menu key="settings">
             <template #title>
               <SettingOutlined />
-              <span>系统设置</span>
+              <span>{{ $t('menu.settings') }}</span>
             </template>
             <a-menu-item key="/settings/ai-model" @click="navigate('/settings/ai-model')">
               <ApiOutlined />
-              <span>AI模型配置</span>
+              <span>{{ $t('menu.aiModel') }}</span>
             </a-menu-item>
             <a-menu-item key="/settings/notification" @click="navigate('/settings/notification')">
               <BellOutlined />
-              <span>通知配置</span>
+              <span>{{ $t('menu.notification') }}</span>
             </a-menu-item>
             <a-menu-item key="/settings/news-source" @click="navigate('/settings/news-source')">
               <FileTextOutlined />
-              <span>新闻源配置</span>
+              <span>{{ $t('menu.newsSource') }}</span>
             </a-menu-item>
             <a-menu-item key="/settings/market-data" @click="navigate('/settings/market-data')">
               <DatabaseOutlined />
-              <span>行情数据配置</span>
+              <span>{{ $t('menu.marketData') }}</span>
             </a-menu-item>
             <a-menu-item key="/settings/stock-basic" @click="navigate('/settings/stock-basic')">
               <BookOutlined />
-              <span>股票基本信息</span>
+              <span>{{ $t('menu.stockBasic') }}</span>
             </a-menu-item>
           </a-sub-menu>
         </a-menu>
         <a-menu theme="dark" mode="inline" class="logout-menu">
           <a-menu-item key="logout" @click="handleLogout">
             <LogoutOutlined />
-            <span>退出登录</span>
+            <span>{{ $t('menu.logout') }}</span>
           </a-menu-item>
         </a-menu>
       </a-layout-sider>
-      
+
       <!-- 主内容区 -->
       <a-layout>
         <a-layout-header class="header">
@@ -63,6 +63,18 @@
             <MenuUnfoldOutlined v-else class="collapse-btn" @click="collapsed = !collapsed" />
             <span class="header-title">{{ pageTitle }}</span>
             <div class="header-actions">
+              <a-dropdown>
+                <a-button class="lang-btn">
+                  <GlobalOutlined />
+                  <span>{{ locale === 'zh-CN' ? '中文' : 'English' }}</span>
+                </a-button>
+                <template #overlay>
+                  <a-menu @click="switchLang">
+                    <a-menu-item key="zh-CN">中文</a-menu-item>
+                    <a-menu-item key="en">English</a-menu-item>
+                  </a-menu>
+                </template>
+              </a-dropdown>
               <a-dropdown>
                 <a-button class="user-btn">
                   <UserOutlined />
@@ -73,7 +85,7 @@
                   <a-menu>
                     <a-menu-item @click="handleLogout">
                       <LogoutOutlined />
-                      退出登录
+                      {{ $t('menu.logout') }}
                     </a-menu-item>
                   </a-menu>
                 </template>
@@ -83,6 +95,12 @@
         </a-layout-header>
         <a-layout-content class="content">
           <router-view />
+          <div class="app-footer">
+            <div class="footer-chrome">
+              <ChromeOutlined /> {{ $t('common.recommendChrome') }}
+            </div>
+            <div class="footer-copyright">{{ $t('common.copyright', { year: new Date().getFullYear() }) }}</div>
+          </div>
         </a-layout-content>
       </a-layout>
     </a-layout>
@@ -92,15 +110,18 @@
 <script setup>
 import {computed, onMounted, onUnmounted, ref} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
+import {useI18n} from 'vue-i18n'
 import {message} from 'ant-design-vue'
 import {
   ApiOutlined,
   BarChartOutlined,
   BellOutlined,
   BookOutlined,
+  ChromeOutlined,
   DatabaseOutlined,
   DownOutlined,
   FileTextOutlined,
+  GlobalOutlined,
   HomeOutlined,
   LineChartOutlined,
   LogoutOutlined,
@@ -110,6 +131,7 @@ import {
   UserOutlined
 } from '@ant-design/icons-vue'
 
+const {locale, t} = useI18n()
 const router = useRouter()
 const route = useRoute()
 
@@ -117,24 +139,31 @@ const collapsed = ref(false)
 const currentUser = ref('管理员')
 
 const isLoginPage = computed(() => route.path === '/login')
-
 const currentPath = computed(() => route.path)
 
 const pageTitleMap = {
-  '/': '首页',
-  '/home': '首页',
-  '/analysis': '股票分析',
-  '/settings/ai-model': 'AI模型配置',
-  '/settings/notification': '通知配置',
-  '/settings/news-source': '新闻源配置',
-  '/settings/market-data': '行情数据配置',
-  '/settings/stock-basic': '股票基本信息'
+  '/': () => t('menu.home'),
+  '/home': () => t('menu.home'),
+  '/analysis': () => t('menu.analysis'),
+  '/settings/ai-model': () => t('menu.aiModel'),
+  '/settings/notification': () => t('menu.notification'),
+  '/settings/news-source': () => t('menu.newsSource'),
+  '/settings/market-data': () => t('menu.marketData'),
+  '/settings/stock-basic': () => t('menu.stockBasic')
 }
 
-const pageTitle = computed(() => pageTitleMap[route.path] || '股票分析系统')
+const pageTitle = computed(() => {
+  const keyFn = pageTitleMap[route.path]
+  return keyFn ? keyFn() : t('layout.pageTitleDefault')
+})
 
 const navigate = (path) => {
   router.push(path)
+}
+
+const switchLang = ({key}) => {
+  locale.value = key
+  localStorage.setItem('locale', key)
 }
 
 const handleLogout = () => {
@@ -144,7 +173,6 @@ const handleLogout = () => {
 }
 
 const handleRouteChange = () => {
-  // 路由变化时的处理
 }
 
 onMounted(() => {
@@ -250,7 +278,14 @@ body {
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+}
+
+.lang-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
 }
 
 .user-btn {
@@ -264,5 +299,23 @@ body {
   padding: 20px;
   background: #f5f7fa;
   min-height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+}
+
+.app-footer {
+  text-align: center;
+  padding: 16px 0 8px;
+  font-size: 12px;
+  color: #bbb;
+  margin-top: auto;
+}
+
+.footer-chrome {
+  margin-bottom: 2px;
+}
+
+.footer-copyright {
+  color: #ccc;
 }
 </style>

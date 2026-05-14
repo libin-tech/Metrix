@@ -30,6 +30,11 @@ sa-token:
   token-style: jwt
   jwt-secret-key: aa3e7c8f2b9d4a6e8f0c1d2b3a4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0
 
+python:
+  executable: python
+  tickflow-script-path: python-service/tickflow.py
+  akshare-script-path: python-service/akshare.py
+
 logging:
   level:
     com.bin.stockanalysis: DEBUG

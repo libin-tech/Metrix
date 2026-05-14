@@ -1,53 +1,57 @@
 <template>
   <div class="config-container">
     <div class="config-header">
-      <h3>AI模型配置</h3>
-      <a-button type="primary" @click="showAddModal = true">添加配置</a-button>
+      <h3>{{ $t('aiModel.title') }}</h3>
+      <a-button type="primary" @click="showAddModal = true">{{ $t('config.add') }}</a-button>
     </div>
 
     <a-table :dataSource="configs" :columns="columns" row-key="id" bordered>
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'isActive'">
           <a-tag :color="record.isActive ? 'green' : 'red'">
-            {{ record.isActive ? '启用' : '禁用' }}
+            {{ record.isActive ? $t('config.active') : $t('config.inactive') }}
           </a-tag>
         </template>
         <template v-if="column.key === 'action'">
           <a-space>
-            <a-button size="small" @click="editConfig(record)">编辑</a-button>
-            <a-button size="small" danger @click="deleteConfig(record.id)">删除</a-button>
+            <a-button size="small" @click="editConfig(record)">{{ $t('config.edit') }}</a-button>
+            <a-button size="small" danger @click="deleteConfig(record.id)">{{ $t('config.delete') }}</a-button>
           </a-space>
         </template>
       </template>
     </a-table>
 
-    <a-modal :title="editing ? '编辑配置' : '添加配置'" v-model:visible="showAddModal" @ok="saveConfig" @cancel="showAddModal = false">
+    <a-modal :title="editing ? $t('config.editTitle') : $t('config.addTitle')" v-model:visible="showAddModal" @ok="saveConfig" @cancel="showAddModal = false">
       <a-form :model="form" layout="vertical">
-        <a-form-item label="模型类型">
+        <a-form-item :label="$t('aiModel.modelType')">
           <a-select v-model:value="form.modelType">
             <a-select-option value="OPENAI">OpenAI</a-select-option>
-            <a-select-option value="OLLAMA">Ollama（本地）</a-select-option>
+            <a-select-option value="OLLAMA">{{ $t('aiModel.ollama') }}</a-select-option>
           </a-select>
         </a-form-item>
 
         <a-form-item label="Base URL">
           <a-input v-model:value="form.apiBaseUrl" />
         </a-form-item>
-        <a-form-item label="API Key">
+        <a-form-item :label="$t('aiModel.apiKey')">
           <a-input v-model:value="form.apiKey" />
-          <span class="help-text">Ollama 本地模型可留空</span>
+          <span class="help-text">{{ $t('aiModel.apiKeyHelp') }}</span>
         </a-form-item>
         <a-form-item label="Temperature">
           <a-input-number v-model:value="form.temperature" :step="0.1" :min="0" :max="2" />
-          <span class="help-text">控制模型输出随机性，0 为确定性输出，2 为最大随机性，推荐 0.7</span>
+          <span class="help-text">{{ $t('aiModel.temperatureHelp') }}</span>
         </a-form-item>
-        <a-form-item label="模型名称">
+        <a-form-item :label="$t('aiModel.modelName')">
           <a-input v-model:value="form.modelName" />
           <a-space style="margin-top: 8px">
-            <a-button :loading="testing" @click="handleTestConnection">测试连接</a-button>
+            <a-button :loading="testing" @click="handleTestConnection">{{ $t('aiModel.testConnection') }}</a-button>
           </a-space>
         </a-form-item>
-        <a-form-item label="启用">
+        <a-form-item :label="$t('aiModel.timeout')">
+          <a-input-number v-model:value="form.timeout" :min="10" :max="600" :step="10" />
+          <span class="help-text">{{ $t('aiModel.timeoutHelp') }}</span>
+        </a-form-item>
+        <a-form-item :label="$t('config.enable')">
           <a-switch v-model:checked="form.isActive" />
         </a-form-item>
       </a-form>
@@ -56,7 +60,7 @@
 </template>
 
 <script setup>
-import {onMounted, reactive, ref, watch} from 'vue'
+import {computed, onMounted, reactive, ref, watch} from 'vue'
 import {
   createAiModelConfig,
   deleteAiModelConfig,
@@ -65,16 +69,20 @@ import {
   updateAiModelConfig
 } from '../api'
 import {message, Modal} from 'ant-design-vue'
+import {useI18n} from 'vue-i18n'
 
-const columns = [
-  { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
-  { title: '模型类型', dataIndex: 'modelType', key: 'modelType' },
-  { title: '模型名称', dataIndex: 'modelName', key: 'modelName' },
-  { title: 'API地址', dataIndex: 'apiBaseUrl', key: 'apiBaseUrl' },
+const {t} = useI18n()
+
+const columns = computed(() => [
+  { title: t('config.id'), dataIndex: 'id', key: 'id', width: 80 },
+  { title: t('aiModel.modelType'), dataIndex: 'modelType', key: 'modelType' },
+  { title: t('aiModel.modelName'), dataIndex: 'modelName', key: 'modelName' },
+  { title: t('aiModel.apiBaseUrl'), dataIndex: 'apiBaseUrl', key: 'apiBaseUrl' },
+  { title: t('aiModel.timeoutShort'), dataIndex: 'timeout', key: 'timeout', width: 100 },
   { title: 'Temperature', dataIndex: 'temperature', key: 'temperature', width: 100 },
-  { title: '状态', key: 'isActive', width: 80 },
-  { title: '操作', key: 'action', width: 200 }
-]
+  { title: t('config.status'), key: 'isActive', width: 80 },
+  { title: t('config.action'), key: 'action', width: 200 }
+])
 
 const configs = ref([])
 const showAddModal = ref(false)
@@ -88,6 +96,7 @@ const form = reactive({
   apiKey: '',
   temperature: 0.7,
   maxTokens: 4096,
+  timeout: 120,
   isActive: true
 })
 
@@ -96,7 +105,7 @@ const loadConfigs = async () => {
     const response = await getAiModelConfigs()
     configs.value = response.data
   } catch (error) {
-    message.error('加载配置失败')
+    message.error(t('config.loadFailed'))
   }
 }
 
@@ -109,6 +118,7 @@ const editConfig = (config) => {
   form.apiKey = config.apiKey
   form.temperature = config.temperature
   form.maxTokens = config.maxTokens
+  form.timeout = config.timeout ?? 120
   form.isActive = config.isActive
   showAddModal.value = true
 }
@@ -122,8 +132,8 @@ const saveConfig = () => {
     )
     if (conflict) {
       Modal.confirm({
-        title: '确认操作',
-        content: `已存在启用的「${conflict.modelName}」(${conflict.modelType})，是否将其禁用并启用当前配置？`,
+        title: t('aiModel.confirmAction'),
+        content: t('aiModel.conflictMessage', { name: conflict.modelName, type: conflict.modelType }),
         onOk: doSave
       })
       return
@@ -142,23 +152,23 @@ const doSave = async () => {
     showAddModal.value = false
     loadConfigs()
     resetForm()
-    message.success(editing.value ? '更新成功' : '创建成功')
+    message.success(t('config.saveSuccess'))
   } catch (error) {
-    message.error(error.response?.data?.message || '保存失败')
+    message.error(error.response?.data?.message || t('config.saveFailed'))
   }
 }
 
 const deleteConfig = (id) => {
   Modal.confirm({
-    title: '确认删除',
-    content: '确定删除该配置吗？',
+    title: t('config.confirmDelete'),
+    content: t('config.confirmDeleteContent'),
     onOk: async () => {
       try {
         await deleteAiModelConfig(id)
         loadConfigs()
-        message.success('删除成功')
+        message.success(t('config.deleteSuccess'))
       } catch (error) {
-        message.error('删除失败')
+        message.error(t('config.deleteFailed'))
       }
     }
   })
@@ -173,7 +183,7 @@ watch(() => form.modelType, (val) => {
 
 const handleTestConnection = async () => {
   if (!form.apiBaseUrl || !form.modelName) {
-    message.warning('请先填写 Base URL 和模型名称')
+    message.warning(t('aiModel.fillRequired'))
     return
   }
   testing.value = true
@@ -183,12 +193,13 @@ const handleTestConnection = async () => {
       modelName: form.modelName,
       apiBaseUrl: form.apiBaseUrl,
       apiKey: form.apiKey,
-      temperature: form.temperature
+      temperature: form.temperature,
+      timeout: form.timeout
     })
     const { modelName, elapsedMs } = response.data
-    message.success(`连接成功 · ${modelName} · ${elapsedMs} ms`)
+    message.success(t('aiModel.testSuccess', { name: modelName, time: elapsedMs }))
   } catch (error) {
-    message.error(error.response?.data?.message || '连接失败')
+    message.error(error.response?.data?.message || t('aiModel.testFailed'))
   } finally {
     testing.value = false
   }
@@ -203,6 +214,7 @@ const resetForm = () => {
   form.apiKey = ''
   form.temperature = 0.7
   form.maxTokens = 4096
+  form.timeout = 120
   form.isActive = true
 }
 
