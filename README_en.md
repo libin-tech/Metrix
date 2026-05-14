@@ -1,12 +1,8 @@
-# # Quantitative & Stock-analysis
+# # Metrix
 
 > English | [中文](./README.md)
 
-Stock Analysis System — An AI-powered multi-dimensional A-share stock analysis platform.
-
-## Product Preview
-
-<video src="https://raw.githubusercontent.com/libin-tech/stock_analysis/master/.doc/video/20260514_prd_preview.mp4" controls width="100%"></video>
+Metrix = Metric + Matrix - an asset evaluation tool based on the perspective of quantitative trading.
 
 ## Tech Stack
 

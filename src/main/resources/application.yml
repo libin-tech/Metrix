@@ -3,7 +3,7 @@ server:
 
 spring:
   application:
-    name: stock-analysis
+    name: metrix-service
   config:
     import: "optional:file:.env[.properties]"
   datasource:
@@ -16,7 +16,7 @@ spring:
       minimum-idle: 5
 
 mybatis-plus:
-  type-aliases-package: com.bin.stockanalysis.repository
+  type-aliases-package: com.bintech.metrix.repository
   configuration:
     map-underscore-to-camel-case: true
     log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl

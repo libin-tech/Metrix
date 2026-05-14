@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: stock-analysis-postgres
+    container_name: metrix-postgres
     environment:
       POSTGRES_DB: stock_analysis
       POSTGRES_USER: postgres
@@ -11,7 +11,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - stock-analysis-network
+      - metrix-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d stock_analysis"]
       interval: 10s
@@ -24,7 +24,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: stock-analysis-app
+    container_name: Metrix-Server
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/stock_analysis
       SPRING_DATASOURCE_USERNAME: postgres
@@ -35,25 +35,25 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - stock-analysis-network
+      - metrix-network
     restart: unless-stopped
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: stock-analysis-frontend
+    container_name: Metrix-Frontend
     ports:
       - "80:80"
     depends_on:
       - app
     networks:
-      - stock-analysis-network
+      - metrix-network
     restart: unless-stopped
 
 volumes:
   postgres_data:
 
 networks:
-  stock-analysis-network:
+  metrix-network:
     driver: bridge

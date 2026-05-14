@@ -1,12 +1,10 @@
-# Quantitative & Stock-analysis
+# Metrix
 
 > [English](./README_en.md) | 中文
 
-量化决策 —— 基于 AI 的多维度 A 股分析平台。
+Metrix = Metric（指标） + Matrix（矩阵）
 
-## 产品预览
-
-<video src="https://raw.githubusercontent.com/libin-tech/stock_analysis/master/.doc/video/20260514_prd_preview.mp4" controls width="100%"></video>
+一个基于量化交易视角的资产评估工具。
 
 ## 技术栈
 
