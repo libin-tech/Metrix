@@ -6,7 +6,7 @@ Stock Analysis System — An AI-powered multi-dimensional A-share stock analysis
 
 ## Product Preview
 
-<video src=".doc/video/20260514_prd_preview.mp4" controls width="100%"></video>
+<video src="https://raw.githubusercontent.com/libin-tech/stock_analysis/master/.doc/video/20260514_prd_preview.mp4" controls width="100%"></video>
 
 ## Tech Stack
 
@@ -66,8 +66,8 @@ Frontend runs at `http://localhost:5173`, backend API at `http://localhost:8080`
 ### Docker Deployment
 
 ```bash
-# Start all services
-docker compose up -d
+# Build and start all services (backend + frontend + database)
+docker compose up -d --build
 
 # Initialize database (first deployment only)
 docker compose exec -T postgres psql -U postgres -d stock_analysis < .doc/db/V1.0.0_init.sql
@@ -76,7 +76,29 @@ docker compose exec -T postgres psql -U postgres -d stock_analysis < .doc/db/V1.
 docker compose logs -f app
 ```
 
-Access `http://localhost:8080` to use the system.
+Access `http://localhost` to use the system.
+
+> **Architecture note**: In production, Nginx serves the Vue SPA static files and reverse-proxies `/api` requests to the Java backend, eliminating the need for CORS configuration.
+
+### Frontend Standalone Deployment (non-Docker)
+
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Build for production
+npm run build
+
+# Option 1: Deploy with nginx (recommended)
+# Copy dist/ to nginx html directory and configure nginx.conf to proxy /api to backend
+
+# Option 2: Vite preview (dev/test only)
+npm run preview
+```
+
+Frontend runs at `http://localhost:4173` (preview) or your nginx-configured port. The backend API must be reachable.
 
 ## Project Structure
 

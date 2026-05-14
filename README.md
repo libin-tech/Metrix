@@ -6,7 +6,7 @@
 
 ## 产品预览
 
-<video src=".doc/video/20260514_prd_preview.mp4" controls width="100%"></video>
+<video src="https://raw.githubusercontent.com/libin-tech/stock_analysis/master/.doc/video/20260514_prd_preview.mp4" controls width="100%"></video>
 
 ## 技术栈
 
@@ -66,8 +66,8 @@ npm run dev
 ### Docker 部署
 
 ```bash
-# 启动所有服务
-docker compose up -d
+# 构建并启动所有服务（后端 + 前端 + 数据库）
+docker compose up -d --build
 
 # 初始化数据库（首次部署）
 docker compose exec -T postgres psql -U postgres -d stock_analysis < .doc/db/V1.0.0_init.sql
@@ -76,7 +76,29 @@ docker compose exec -T postgres psql -U postgres -d stock_analysis < .doc/db/V1.
 docker compose logs -f app
 ```
 
-访问 `http://localhost:8080` 使用系统。
+访问 `http://localhost` 使用系统。
+
+> **架构说明**：生产环境中，Nginx 容器提供前端静态资源（Vue SPA），同时将 `/api` 请求反向代理到 Java 后端，无需单独配置跨域。
+
+### 前端单独部署（非 Docker）
+
+```bash
+cd frontend
+
+# 安装依赖
+npm install
+
+# 构建生产包
+npm run build
+
+# 方式一：使用 nginx 部署（推荐）
+# 将 dist/ 目录拷贝到 nginx 的 html 目录下，并配置 nginx.conf 代理 /api 到后端
+
+# 方式二：使用 Vite 预览（仅开发/测试）
+npm run preview
+```
+
+前端默认运行在 `http://localhost:4173`（preview）或 nginx 配置的端口，后端 API 需可访问。
 
 ## 项目结构
 

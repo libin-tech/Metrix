@@ -30,3 +30,5 @@ frontend/dist
 target/*
 
 .idea
+*.iml
+__pycache__/

@@ -38,6 +38,19 @@ services:
       - stock-analysis-network
     restart: unless-stopped
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: stock-analysis-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - app
+    networks:
+      - stock-analysis-network
+    restart: unless-stopped
+
 volumes:
   postgres_data:
 
