@@ -4,6 +4,9 @@
 
 Metrix = Metric + Matrix - an asset evaluation tool based on the perspective of quantitative trading.
 
+## Web preview
+![analysis](.doc/images/analysis_img_en.png)
+
 ## Tech Stack
 
 | Layer | Technology                                                   |
