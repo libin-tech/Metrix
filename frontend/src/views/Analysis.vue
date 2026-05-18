@@ -1,5 +1,5 @@
 <template>
-  <div class="analysis-page" :class="{ 'masked-mode': masked }">
+  <div class="analysis-page">
     <div class="analysis-layout">
       <!-- 左侧：分析记录列表 -->
       <div class="left-panel">
@@ -8,16 +8,6 @@
             <a-space>
               <a-button type="primary" size="small" @click="refreshRecords">
                 <ReloadOutlined /> {{ $t('analysis.refresh') }}
-              </a-button>
-              <a-button
-                type="text"
-                size="small"
-                class="mask-toggle-btn"
-                @click="toggleMask"
-                :title="masked ? $t('analysis.showData') : $t('analysis.maskData')"
-              >
-                <EyeOutlined v-if="!masked" />
-                <EyeInvisibleOutlined v-else />
               </a-button>
             </a-space>
           </div>
@@ -474,9 +464,7 @@ import {
   UserOutlined,
   LinkOutlined,
   RightOutlined,
-  PieChartOutlined,
-  EyeOutlined,
-  EyeInvisibleOutlined
+  PieChartOutlined
 } from '@ant-design/icons-vue';
 
 marked.use({
@@ -526,12 +514,6 @@ const pushingFeishu = ref(false);
 const exportingPdf = ref(false);
 const stockOptions = ref([]);
 const queueStatus = ref(null);
-const masked = ref(true);
-
-const toggleMask = () => {
-  masked.value = !masked.value;
-  document.body.classList.toggle('body-masked', masked.value);
-};
 
 let searchTimer = null;
 let pollingTimer = null;
@@ -779,6 +761,7 @@ const handleDelete = async (id) => {
   message.error(t('analysis.deleteFailed'));
  }
 };
+
 const formatTime = (time) => {
  if (!time)
  return '-';
@@ -984,7 +967,6 @@ const stopPolling = () => {
 onMounted(() => {
   loadAnalysisRecords();
   loadQueueStatus();
-  document.body.classList.add('body-masked');
   
   // 页面加载完成后自动启动定时轮询
   setTimeout(() => {
@@ -994,7 +976,6 @@ onMounted(() => {
 
 onUnmounted(() => {
   stopPolling();
-  document.body.classList.remove('body-masked');
 });
 </script>
 
@@ -2609,53 +2590,7 @@ onUnmounted(() => {
   }
 }
 
-/* ===== 脱敏模式 ===== */
-.masked-mode .ph-price,
-.masked-mode .ph-change-pct,
-.masked-mode .ph-change-amt,
-.masked-mode .ph-stat-value,
-.masked-mode .ph-vol-value,
-.masked-mode .ma-bar-value,
-.masked-mode .sr-value,
-.masked-mode .bp-price,
-.masked-mode .bp-rr-value,
-.masked-mode .cpl-value,
-.masked-mode .cm-value,
-.masked-mode .cm-hint,
-.masked-mode .stock-code,
-.masked-mode .stock-name,
-.masked-mode .core-insight-text {
-  filter: blur(6px);
-  user-select: none;
-  transition: filter 0.3s ease;
-}
-
-.masked-mode .core-insight-text p,
-.masked-mode .core-insight-text * {
-  filter: blur(6px);
-  user-select: none;
-}
-
-.masked-mode .result-card :deep(.ant-card-head-title),
-.masked-mode .detail-content .markdown-content,
-.masked-mode .detail-meta span {
-  filter: blur(6px);
-  user-select: none;
-}
-
-.masked-mode .stock-input-inline :deep(.ant-select-selection-item) {
-  filter: blur(6px);
-  user-select: none;
-}
-
-.mask-toggle-btn {
-  color: #8c8c8c;
-  font-size: 16px;
-}
-
-.mask-toggle-btn:hover {
-  color: #1890ff !important;
-}
+@media (max-width: 1100px) {
 </style>
 
 <style>
@@ -2872,10 +2807,5 @@ onUnmounted(() => {
   background: #fff3cd;
   padding: 2px 4px;
   border-radius: 2px;
-}
-
-.body-masked .ant-select-dropdown .ant-select-item-option-content {
-  filter: blur(6px);
-  user-select: none;
 }
 </style>  

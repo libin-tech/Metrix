@@ -56,25 +56,13 @@
     
     <div class="content-row">
       <a-card class="recent-analysis" :title="$t('home.recentAnalysis')">
-        <template #extra>
-          <a-button
-            type="text"
-            size="small"
-            class="mask-toggle-btn"
-            @click="toggleMask"
-            :title="masked ? $t('analysis.showData') : $t('analysis.maskData')"
-          >
-            <EyeOutlined v-if="!masked" />
-            <EyeInvisibleOutlined v-else />
-          </a-button>
-        </template>
-        <a-table :class="{ 'masked-table': masked }" :columns="columns" :data-source="recentAnalysis" bordered row-key="id" :pagination="false">
+        <a-table :columns="columns" :data-source="recentAnalysis" bordered row-key="id" :pagination="false">
           <template #bodyCell="{ column, text, record }">
             <template v-if="column.key === 'stockCode'">
-              <span class="cell-stock-code">{{ text }}</span>
+              <span>{{ text }}</span>
             </template>
             <template v-if="column.key === 'stockName'">
-              <span class="cell-stock-name">{{ text }}</span>
+              <span>{{ text }}</span>
             </template>
             <template v-if="column.key === 'status'">
               <a-tag :color="statusColor(record.status)">{{ statusText(record.status) }}</a-tag>
@@ -126,9 +114,7 @@ import {
   DatabaseOutlined,
   FileTextOutlined,
   LineChartOutlined,
-  SettingOutlined,
-  EyeOutlined,
-  EyeInvisibleOutlined
+  SettingOutlined
 } from '@ant-design/icons-vue'
 import {
   getAiModelConfigs,
@@ -147,11 +133,6 @@ const notificationCount = ref(0)
 const newsCount = ref(0)
 const stockCount = ref(0)
 const recentAnalysis = ref([])
-const masked = ref(true)
-
-const toggleMask = () => {
-  masked.value = !masked.value
-}
 
 const columns = computed(() => [
   { title: t('home.stockCode'), dataIndex: 'stockCode', key: 'stockCode', width: 120 },
@@ -310,21 +291,5 @@ onMounted(() => {
 
 .action-btn span {
   font-size: 14px;
-}
-
-.masked-table .cell-stock-code,
-.masked-table .cell-stock-name {
-  filter: blur(6px);
-  user-select: none;
-  transition: filter 0.3s ease;
-}
-
-.mask-toggle-btn {
-  color: #8c8c8c;
-  font-size: 16px;
-}
-
-.mask-toggle-btn:hover {
-  color: #1890ff !important;
 }
 </style>
