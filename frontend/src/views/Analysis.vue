@@ -2591,6 +2591,7 @@ onUnmounted(() => {
 }
 
 @media (max-width: 1100px) {
+}
 </style>
 
 <style>
