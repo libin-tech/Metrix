@@ -7,11 +7,32 @@ import com.bintech.metrix.dto.response.StockAnalysisDetailResponse;
 import com.bintech.metrix.dto.response.StockAnalysisResponse;
 import com.bintech.metrix.repository.entity.StockAnalysisRecord;
 
+/**
+ * 股票分析服务接口
+ *
+ * <p>提供股票分析的核心业务，包括发起分析、查询记录、导出分析内容等。
+ */
 public interface StockAnalysisService {
+
+    /**
+     * 执行股票分析
+     *
+     * @param request 分析请求（股票代码、分析维度等）
+     * @param record  待保存的分析记录
+     * @return 分析结果响应
+     */
     StockAnalysisResponse analyzeStock(StockAnalysisRequest request, StockAnalysisRecord record);
+
+    /** 根据ID获取分析记录 */
     StockAnalysisRecord getAnalysisById(Long id);
+
+    /** 获取所有分析记录（按时间倒序） */
     List<StockAnalysisRecord> getAllAnalysisRecords();
+
+    /** 删除指定分析记录 */
     void deleteAnalysisRecord(Long id);
+
+    /** 清理超出上限（默认50条）的旧分析记录 */
     void cleanupExcessRecords();
     
     /**

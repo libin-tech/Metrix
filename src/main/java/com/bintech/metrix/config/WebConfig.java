@@ -1,5 +1,6 @@
 package com.bintech.metrix.config;
 
+import com.bintech.metrix.constants.SystemConstants;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -13,6 +14,6 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowedOrigins("*")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
-                .maxAge(3600);
+                .maxAge(SystemConstants.CORS_MAX_AGE_SECONDS);
     }
 }

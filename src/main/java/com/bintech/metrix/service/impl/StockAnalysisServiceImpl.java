@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.bintech.metrix.constants.BusinessConstants;
+import com.bintech.metrix.constants.SystemConstants;
 import com.bintech.metrix.dto.request.StockAnalysisRequest;
 import com.bintech.metrix.dto.response.NewsItem;
 import com.bintech.metrix.dto.response.StockAnalysisDetailResponse;
@@ -81,7 +83,7 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
         // 获取原始数据：实时行情、五档深度、K线、新闻舆情、筹码分布
         Map<String, Object> marketData = marketDataService.fetchRealTimeData(stockBasic);
         Map<String, Object> depthData = marketDataService.fetchDepthData(stockBasic);
-        Map<String, Object> klinesData = marketDataService.fetchKlinesData(stockBasic, 60);
+        Map<String, Object> klinesData = marketDataService.fetchKlinesData(stockBasic, BusinessConstants.DEFAULT_KLINE_LIMIT);
         Map<String, Object> newsSummary = newsCollector.collect(stockBasic, modelType);
         Map<String, Object> chipData = marketDataService.fetchChipData(stockBasic);
 
@@ -150,12 +152,12 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
     @Transactional
     public void cleanupExcessRecords() {
         long total = recordMapper.selectCount(new LambdaQueryWrapper<>());
-        if (total <= 50) return;
+        if (total <= BusinessConstants.MAX_RECORD_KEEP_COUNT) return;
 
         List<StockAnalysisRecord> latestRecords = recordMapper.selectList(
                 new LambdaQueryWrapper<StockAnalysisRecord>()
                         .orderByDesc(StockAnalysisRecord::getCreateTime)
-                        .last("LIMIT 50"));
+                        .last("LIMIT " + BusinessConstants.MAX_RECORD_KEEP_COUNT));
         List<Long> keepIds = latestRecords.stream()
                 .map(StockAnalysisRecord::getId)
                 .collect(Collectors.toList());
@@ -166,7 +168,7 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
     @Scheduled(cron = "0 0 3 * * ?")
     @Transactional
     public void scheduledCleanup() {
-        log.info("开始定时清理股票分析记录，仅保留最近200条");
+        log.info("开始定时清理股票分析记录，仅保留最近{}条", BusinessConstants.SCHEDULED_CLEANUP_KEEP_COUNT);
         cleanupExcessRecords();
         log.info("定时清理完成");
     }
@@ -247,7 +249,7 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
         }
 
         String analysisTime = record.getCreateTime() != null
-                ? record.getCreateTime().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                ? record.getCreateTime().format(java.time.format.DateTimeFormatter.ofPattern(BusinessConstants.DATE_TIME_FORMAT))
                 : "";
 
         boolean success = notificationService.sendFeishuCardMessage(

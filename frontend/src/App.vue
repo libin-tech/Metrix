@@ -20,6 +20,10 @@
             <LineChartOutlined />
             <span>{{ $t('menu.analysis') }}</span>
           </a-menu-item>
+          <a-menu-item key="/portfolio" @click="navigate('/portfolio')">
+            <WalletOutlined />
+            <span>{{ $t('menu.portfolio') }}</span>
+          </a-menu-item>
           <a-sub-menu key="settings">
             <template #title>
               <SettingOutlined />
@@ -128,7 +132,8 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   SettingOutlined,
-  UserOutlined
+  UserOutlined,
+  WalletOutlined
 } from '@ant-design/icons-vue'
 
 const {locale, t} = useI18n()
@@ -145,11 +150,13 @@ const pageTitleMap = {
   '/': () => t('menu.home'),
   '/home': () => t('menu.home'),
   '/analysis': () => t('menu.analysis'),
+  '/portfolio': () => t('menu.portfolio'),
   '/settings/ai-model': () => t('menu.aiModel'),
   '/settings/notification': () => t('menu.notification'),
   '/settings/news-source': () => t('menu.newsSource'),
   '/settings/market-data': () => t('menu.marketData'),
-  '/settings/stock-basic': () => t('menu.stockBasic')
+  '/settings/stock-basic': () => t('menu.stockBasic'),
+  '/settings/account-management': () => t('menu.accountManagement')
 }
 
 const pageTitle = computed(() => {

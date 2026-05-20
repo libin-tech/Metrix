@@ -1,5 +1,6 @@
 package com.bintech.metrix.core.queue;
 
+import com.bintech.metrix.constants.SystemConstants;
 import com.bintech.metrix.enums.StockAnalysisStatus;
 import com.bintech.metrix.repository.entity.StockAnalysisRecord;
 import com.bintech.metrix.repository.mapper.StockAnalysisRecordMapper;
@@ -20,7 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * 分析任务队列 — 自研轻量级消息队列
  *
- * <p>基于 {@link BlockingQueue} 实现，启动固定数量的 daemon worker 线程消费任务。
+ * <p>基于 {@link BlockingQueue} 实现，启动固定数量的虚拟线程消费任务。
  * 支持并发控制（最多3个任务同时执行）、队列饱和拒绝、失败状态自动回写。
  */
 @Slf4j
@@ -43,15 +44,15 @@ public class AnalysisTaskQueue {
     private volatile boolean running = true;
 
     /**
-     * 初始化 worker 线程池，启动队列消费
+     * 初始化 worker 虚拟线程，启动队列消费
      */
     @PostConstruct
     public void init() {
-        // 启动固定数量的daemon worker线程，应用退出时自动终止
+        // 启动固定数量的虚拟线程作为worker，应用退出时自动终止
         for (int i = 0; i < MAX_CONCURRENT; i++) {
-            Thread worker = new Thread(this::loop, "analysis-worker-" + i);
-            worker.setDaemon(true);
-            worker.start();
+            Thread worker = Thread.ofVirtual()
+                    .name("analysis-worker-" + i)
+                    .start(this::loop);
             workers.add(worker);
         }
         log.info("分析任务队列已启动，worker线程数={}，队列容量={}", MAX_CONCURRENT, QUEUE_CAPACITY);
@@ -91,7 +92,7 @@ public class AnalysisTaskQueue {
         // 不断从阻塞队列中拉取任务，空等3秒后继续轮询
         while (running) {
             try {
-                AnalysisTask task = queue.poll(3, TimeUnit.SECONDS);
+                AnalysisTask task = queue.poll(SystemConstants.POLL_TIMEOUT_SECONDS, TimeUnit.SECONDS);
                 if (task == null) continue;
 
                 // 取出任务后立即增加运行计数，防止超发

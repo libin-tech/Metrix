@@ -1,5 +1,6 @@
 package com.bintech.metrix.service.impl;
 
+import com.bintech.metrix.constants.SystemConstants;
 import com.bintech.metrix.service.PdfExportService;
 import com.bintech.metrix.repository.entity.StockAnalysisRecord;
 import com.bintech.metrix.repository.entity.StockBasic;
@@ -56,7 +57,7 @@ public class PdfExportServiceImpl implements PdfExportService {
             pb.redirectErrorStream(true);
 
             Process process = pb.start();
-            boolean finished = process.waitFor(60, TimeUnit.SECONDS);
+            boolean finished = process.waitFor(SystemConstants.CHROME_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             if (!finished) {
                 process.destroyForcibly();
                 throw new RuntimeException("Chrome 渲染超时");
@@ -73,8 +74,8 @@ public class PdfExportServiceImpl implements PdfExportService {
             log.error("PDF生成失败", e);
             throw new RuntimeException("PDF生成失败: " + e.getMessage());
         } finally {
-            try { if (tempHtml != null) Files.deleteIfExists(tempHtml); } catch (Exception ignored) {}
-            try { if (tempPdf != null) Files.deleteIfExists(tempPdf); } catch (Exception ignored) {}
+            try { if (tempHtml != null) Files.deleteIfExists(tempHtml); } catch (Exception e) { log.warn("删除临时HTML文件失败", e); }
+            try { if (tempPdf != null) Files.deleteIfExists(tempPdf); } catch (Exception e) { log.warn("删除临时PDF文件失败", e); }
         }
     }
 

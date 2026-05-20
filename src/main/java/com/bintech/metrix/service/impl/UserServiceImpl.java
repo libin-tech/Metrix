@@ -3,6 +3,7 @@ package com.bintech.metrix.service.impl;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.crypto.digest.DigestUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.bintech.metrix.constants.BusinessConstants;
 import com.bintech.metrix.dto.request.UserLoginRequest;
 import com.bintech.metrix.dto.response.UserLoginResponse;
 import com.bintech.metrix.repository.entity.User;
@@ -26,13 +27,13 @@ public class UserServiceImpl implements UserService {
     @PostConstruct
     public void init() {
         LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(User::getUsername, "admin");
+        queryWrapper.eq(User::getUsername, BusinessConstants.DEFAULT_ADMIN_USERNAME);
         if (userMapper.selectCount(queryWrapper) == 0) {
             User admin = new User();
-            admin.setUsername("admin");
-            admin.setPassword(DigestUtil.md5Hex("admin123"));
-            admin.setEmail("admin@example.com");
-            admin.setRole("ADMIN");
+            admin.setUsername(BusinessConstants.DEFAULT_ADMIN_USERNAME);
+            admin.setPassword(DigestUtil.md5Hex(BusinessConstants.DEFAULT_ADMIN_PASSWORD));
+            admin.setEmail(BusinessConstants.DEFAULT_ADMIN_EMAIL);
+            admin.setRole(BusinessConstants.DEFAULT_ADMIN_ROLE);
             admin.setIsActive(true);
             admin.setCreateTime(LocalDateTime.now());
             admin.setUpdateTime(LocalDateTime.now());

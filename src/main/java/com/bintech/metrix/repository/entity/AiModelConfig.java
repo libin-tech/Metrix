@@ -18,7 +18,7 @@ import lombok.NoArgsConstructor;
 public class AiModelConfig extends BaseEntity {
 
     /**
-     * 模型类型（OPENAI/OLLAMA）
+     * 模型类型（OPENAI/OLLAMA/GEMINI）
      */
     @TableField(value = "model_type")
     private String modelType;

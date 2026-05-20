@@ -53,6 +53,18 @@ const routes = [
     name: 'StockBasic',
     component: () => import('../views/StockBasic.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/settings/account-management',
+    name: 'AccountManagement',
+    component: () => import('../views/AccountManagement.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/portfolio',
+    name: 'Portfolio',
+    component: () => import('../views/Portfolio.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 

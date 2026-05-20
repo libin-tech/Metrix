@@ -9,6 +9,8 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 
+import com.bintech.metrix.constants.ApiConstants;
+import com.bintech.metrix.constants.SystemConstants;
 import com.bintech.metrix.repository.entity.StockBasic;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -43,20 +45,6 @@ public class MarketDataServiceImpl implements MarketDataService {
     private String akshareScriptPath;
 
     /**
-     * 常量定义接口
-     */
-    private interface Constants {
-
-
-        String RESPONSE_STATUS = "status";
-        String RESPONSE_DATA = "data";
-        String RESPONSE_MESSAGE = "message";
-        String STATUS_SUCCESS = "success";
-        String STATUS_ERROR = "error";
-    }
-
-
-    /**
      * 获取TickFlow数据源配置
      */
     private MarketDataConfig getTickFlowConfig() {
@@ -83,7 +71,7 @@ public class MarketDataServiceImpl implements MarketDataService {
      */
     private Map<String, Object> runPythonScript(String subcommand, String... scriptArgs) {
         MarketDataConfig config = getTickFlowConfig();
-        int timeoutSeconds = config.getTimeout() != null ? config.getTimeout() : 60;
+        int timeoutSeconds = config.getTimeout() != null ? config.getTimeout() : SystemConstants.DEFAULT_TIMEOUT_SECONDS;
 
         List<String> command = new ArrayList<>();
         command.add(pythonExecutable);
@@ -231,7 +219,7 @@ public class MarketDataServiceImpl implements MarketDataService {
 
         log.info("执行AKShare脚本: {}", String.join(" ", command));
 
-        int defaultTimeout = 60;
+        int defaultTimeout = SystemConstants.DEFAULT_TIMEOUT_SECONDS;
         return runScript(command, "AKShare", defaultTimeout);
     }
 
@@ -257,21 +245,21 @@ public class MarketDataServiceImpl implements MarketDataService {
 
             // 在后台线程中持续读取输出，避免管道缓冲区写满导致子进程阻塞
             StringBuilder outputBuilder = new StringBuilder();
-            Thread reader = new Thread(() -> {
-                try (BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-                    String line;
-                    while ((line = br.readLine()) != null) {
-                        outputBuilder.append(line).append('\n');
-                    }
-                } catch (IOException e) {
-                    log.warn("读取{}脚本输出流异常: {}", sourceName, e.getMessage());
-                }
-            });
-            reader.setDaemon(true);
-            reader.start();
+            Thread reader = Thread.ofVirtual()
+                    .name("market-data-reader")
+                    .start(() -> {
+                        try (BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                            String line;
+                            while ((line = br.readLine()) != null) {
+                                outputBuilder.append(line).append('\n');
+                            }
+                        } catch (IOException e) {
+                            log.warn("读取{}脚本输出流异常: {}", sourceName, e.getMessage());
+                        }
+                    });
 
             boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
-            reader.join(5000);
+            reader.join(SystemConstants.READER_JOIN_TIMEOUT_MILLIS);
 
             if (!finished) {
                 process.destroyForcibly();
@@ -287,8 +275,8 @@ public class MarketDataServiceImpl implements MarketDataService {
 
             JSONObject json = JSONUtil.parseObj(output);
 
-            if (!Constants.STATUS_SUCCESS.equals(json.getStr(Constants.RESPONSE_STATUS))) {
-                String msg = json.getStr(Constants.RESPONSE_MESSAGE, sourceName + "脚本执行失败");
+            if (!ApiConstants.STATUS_SUCCESS.equals(json.getStr(ApiConstants.KEY_STATUS))) {
+                String msg = json.getStr(ApiConstants.KEY_MESSAGE, sourceName + "脚本执行失败");
                 log.error("{}脚本返回错误: {}", sourceName, msg);
                 throw new RuntimeException(sourceName + "数据获取失败: " + msg);
             }
@@ -313,6 +301,6 @@ public class MarketDataServiceImpl implements MarketDataService {
     @Override
     public Map<String, Object> fetchKlinesData(StockBasic stockBasic, int limit) {
         log.info("开始查询K线数据: stockCode={}, limit={}", stockBasic.getTsCode(), limit);
-        return runPythonScript("klines", "--symbol", stockBasic.getTsCode(), "--count", String.valueOf(limit), "--period", "1d");
+        return runPythonScript("klines", "--symbol", stockBasic.getTsCode(), "--count", String.valueOf(limit), "--period", SystemConstants.KLINE_PERIOD_DAY);
     }
 }

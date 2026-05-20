@@ -1,5 +1,6 @@
 package com.bintech.metrix.config;
 
+import com.bintech.metrix.constants.BusinessConstants;
 import cn.dev33.satoken.interceptor.SaInterceptor;
 import cn.dev33.satoken.stp.StpUtil;
 import org.springframework.context.annotation.Configuration;
@@ -15,6 +16,6 @@ public class SaTokenConfig implements WebMvcConfigurer {
             StpUtil.checkLogin();
         }))
         .addPathPatterns("/api/**")
-        .excludePathPatterns("/api/auth/login", "/api/auth/check");
+        .excludePathPatterns(BusinessConstants.EXCLUDED_AUTH_PATHS);
     }
 }

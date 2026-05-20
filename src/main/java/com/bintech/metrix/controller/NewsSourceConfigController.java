@@ -11,6 +11,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * 新闻源配置控制器
+ *
+ * <p>提供新闻数据源的CRUD管理，支持多种新闻源切换。
+ */
 @RestController
 @RequestMapping("/api/news-source")
 @RequiredArgsConstructor

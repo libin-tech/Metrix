@@ -69,3 +69,14 @@ export const testAiModelConfig = data => service.post('/ai-model/test', data)
 
 export const getStockBasicPage = (keyword, page, size) => service.get('/stock-basic/page', { params: { keyword, page, size } })
 export const importStockBasic = formData => service.post('/stock-basic/import', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+
+export const getBrokerAccounts = () => service.get('/portfolio/accounts')
+export const createBrokerAccount = data => service.post('/portfolio/accounts', data)
+export const updateBrokerAccount = (id, data) => service.put(`/portfolio/accounts/${id}`, data)
+export const deleteBrokerAccount = id => service.delete(`/portfolio/accounts/${id}`)
+
+export const getPortfolioHoldings = (keyword, accountId) => service.get('/portfolio/holdings', { params: { keyword, accountId } })
+export const createPortfolioHolding = data => service.post('/portfolio/holdings', data)
+export const deletePortfolioHolding = id => service.delete(`/portfolio/holdings/${id}`)
+export const refreshPortfolioPrices = () => service.post('/portfolio/holdings/refresh-prices')
+export const pollRefreshedPrices = (ids) => service.post('/portfolio/holdings/poll-refreshed', ids)

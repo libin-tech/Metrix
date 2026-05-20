@@ -11,6 +11,11 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * 认证控制器
+ *
+ * <p>提供用户登录、登出、会话状态管理等功能，基于Sa-Token实现。
+ */
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor

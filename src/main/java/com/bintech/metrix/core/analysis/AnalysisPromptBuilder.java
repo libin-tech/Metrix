@@ -1,5 +1,7 @@
 package com.bintech.metrix.core.analysis;
 
+import com.bintech.metrix.constants.ApiConstants;
+import com.bintech.metrix.constants.SystemConstants;
 import com.bintech.metrix.repository.entity.StockBasic;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.json.JSONArray;
@@ -69,7 +71,7 @@ public class AnalysisPromptBuilder {
         log.info("市场数据: {}", JSONUtil.toJsonStr(marketDataJson));
 
         try {
-            if (!"success".equals(marketDataJson.get("status"))) return;
+            if (!ApiConstants.STATUS_SUCCESS.equals(marketDataJson.get(ApiConstants.KEY_STATUS))) return;
             JSONArray data = marketDataJson.getJSONArray("data");
             if (data == null || data.isEmpty()) return;
 
@@ -94,7 +96,7 @@ public class AnalysisPromptBuilder {
         log.info("深度数据: {}", JSONUtil.toJsonStr(depthDataJson));
 
         try {
-            if (!"success".equals(depthDataJson.get("status"))) return;
+            if (!ApiConstants.STATUS_SUCCESS.equals(depthDataJson.get(ApiConstants.KEY_STATUS))) return;
             Object dataObj = depthDataJson.get("data");
             if (!(dataObj instanceof JSONObject data)) return;
 
@@ -103,7 +105,7 @@ public class AnalysisPromptBuilder {
             JSONArray askVolumes = data.getJSONArray("ask_volumes");
             if (askPrices != null && askVolumes != null && !askPrices.isEmpty()) {
                 prompt.append("卖盘（按价格从高到低）：\n");
-                int count = Math.min(askPrices.size(), 5);
+                int count = Math.min(askPrices.size(), SystemConstants.DEPTH_MAX_LEVELS);
                 for (int i = 0; i < count; i++) {
                     prompt.append(String.format("  档%d: 价格=%.2f, 数量=%d\n",
                             i + 1, askPrices.getDouble(i, 0.0), askVolumes.getLong(i, 0L)));
@@ -116,7 +118,7 @@ public class AnalysisPromptBuilder {
             JSONArray bidVolumes = data.getJSONArray("bid_volumes");
             if (bidPrices != null && bidVolumes != null && !bidPrices.isEmpty()) {
                 prompt.append("买盘（按价格从高到低）：\n");
-                int count = Math.min(bidPrices.size(), 5);
+                int count = Math.min(bidPrices.size(), SystemConstants.DEPTH_MAX_LEVELS);
                 for (int i = 0; i < count; i++) {
                     prompt.append(String.format("  档%d: 价格=%.2f, 数量=%d\n",
                             i + 1, bidPrices.getDouble(i, 0.0), bidVolumes.getLong(i, 0L)));
@@ -137,7 +139,7 @@ public class AnalysisPromptBuilder {
             return;
         }
         prompt.append(String.format("%s（按价格从高到低）：\n", label));
-        int count = Math.min(items.size(), 5);
+        int count = Math.min(items.size(), SystemConstants.DEPTH_MAX_LEVELS);
         for (int i = 0; i < count; i++) {
             JSONObject item = items.getJSONObject(i);
             prompt.append(String.format("  档%d: 价格=%.2f, 数量=%d\n",
@@ -152,7 +154,7 @@ public class AnalysisPromptBuilder {
         log.info("K线数据: {}", JSONUtil.toJsonStr(klinesDataJson));
 
         try {
-            if (!"success".equals(klinesDataJson.get("status"))) return;
+            if (!ApiConstants.STATUS_SUCCESS.equals(klinesDataJson.get(ApiConstants.KEY_STATUS))) return;
             Object dataObj = klinesDataJson.get("data");
             if (!(dataObj instanceof JSONObject klines)) return;
 
@@ -167,7 +169,7 @@ public class AnalysisPromptBuilder {
             prompt.append("【K线数据（日线，最近").append(timestampData.size()).append("条）】\n");
             prompt.append("格式：日期 | 开盘价 | 最高价 | 最低价 | 收盘价 | 成交量 | 成交额\n");
 
-            int startIndex = Math.max(0, timestampData.size() - 30);
+            int startIndex = Math.max(0, timestampData.size() - SystemConstants.KLINE_DISPLAY_COUNT);
             for (int i = timestampData.size() - 1; i >= startIndex; i--) {
                 prompt.append(String.format("  %s | %.2f | %.2f | %.2f | %.2f | %d | %d\n",
                         DateUtil.format(new Date(timestampData.getLong(i)), "yyyy-MM-dd"),
@@ -184,7 +186,7 @@ public class AnalysisPromptBuilder {
         if (chipData == null) return;
         try {
             JSONObject cd = new JSONObject(chipData);
-            if (!"success".equals(cd.get("status"))) return;
+            if (!ApiConstants.STATUS_SUCCESS.equals(cd.get(ApiConstants.KEY_STATUS))) return;
             JSONObject data = cd.getJSONObject("data");
             if (data == null) return;
 

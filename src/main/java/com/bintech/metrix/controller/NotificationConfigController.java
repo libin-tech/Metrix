@@ -11,6 +11,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * 通知配置控制器
+ *
+ * <p>提供飞书等通知渠道的配置管理功能。
+ */
 @RestController
 @RequestMapping("/api/notification")
 @RequiredArgsConstructor

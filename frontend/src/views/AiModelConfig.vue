@@ -27,10 +27,11 @@
           <a-select v-model:value="form.modelType">
             <a-select-option value="OPENAI">OpenAI</a-select-option>
             <a-select-option value="OLLAMA">{{ $t('aiModel.ollama') }}</a-select-option>
+            <a-select-option value="GEMINI">{{ $t('aiModel.gemini') }}</a-select-option>
           </a-select>
         </a-form-item>
 
-        <a-form-item label="Base URL">
+        <a-form-item label="Base URL" v-if="form.modelType !== 'GEMINI'">
           <a-input v-model:value="form.apiBaseUrl" />
         </a-form-item>
         <a-form-item :label="$t('aiModel.apiKey')">
@@ -176,13 +177,15 @@ const deleteConfig = (id) => {
 
 const testing = ref(false)
 const isOllama = ref(false)
+const isGemini = ref(false)
 
 watch(() => form.modelType, (val) => {
   isOllama.value = val === 'OLLAMA'
+  isGemini.value = val === 'GEMINI'
 })
 
 const handleTestConnection = async () => {
-  if (!form.apiBaseUrl || !form.modelName) {
+  if ((form.modelType !== 'GEMINI' && !form.apiBaseUrl) || !form.modelName) {
     message.warning(t('aiModel.fillRequired'))
     return
   }
@@ -191,7 +194,7 @@ const handleTestConnection = async () => {
     const response = await testAiModelConfig({
       modelType: form.modelType,
       modelName: form.modelName,
-      apiBaseUrl: form.apiBaseUrl,
+      apiBaseUrl: form.modelType === 'GEMINI' ? '' : form.apiBaseUrl,
       apiKey: form.apiKey,
       temperature: form.temperature,
       timeout: form.timeout

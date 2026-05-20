@@ -239,7 +239,7 @@ create table "ai_model_config"
 	id  	bigint default nextval('ai_model_config_id_seq'::regclass) not null,
 	model_type  	varchar(50) not null,
 	model_name  	varchar(100) not null,
-	api_base_url  	varchar(500) not null,
+	api_base_url  	varchar(500),
 	api_key  	varchar(500),
 	temperature  	double precision default 0.7,
 	is_active  	boolean default true not null,
@@ -256,7 +256,7 @@ CREATE INDEX idx_ai_model_type ON public.ai_model_config USING btree (model_type
 
 comment on table ai_model_config is 'AI模型配置表';
 comment on column ai_model_config.id is '主键ID';
-comment on column ai_model_config.model_type is '模型类型（OPENAI/OLLAMA）';
+comment on column ai_model_config.model_type is '模型类型（OPENAI/OLLAMA/GEMINI';
 comment on column ai_model_config.model_name is '模型名称';
 comment on column ai_model_config.api_base_url is 'API基础URL';
 comment on column ai_model_config.api_key is 'API密钥';
@@ -357,5 +357,94 @@ comment on column stock_basic.creator is '创建人';
 comment on column stock_basic.modifier is '修改人';
 
 alter table "stock_basic" owner to postgres;
+
+
+-- ----------------------------
+-- 我的持仓 - 券商账户表
+-- ----------------------------
+DROP SEQUENCE IF EXISTS "broker_account_id_seq";
+CREATE SEQUENCE "broker_account_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    MAXVALUE 9223372036854775807
+    MINVALUE 1
+    CACHE 1
+    NO CYCLE;
+
+DROP TABLE IF EXISTS "broker_account";
+CREATE TABLE "broker_account"
+(
+    id             BIGINT DEFAULT NEXTVAL('broker_account_id_seq'::REGCLASS) NOT NULL,
+    broker_name    VARCHAR(10)  NOT NULL,
+    account_number VARCHAR(30),
+    remark         VARCHAR(50),
+    create_time    TIMESTAMP    DEFAULT NOW()                               NOT NULL,
+    update_time    TIMESTAMP,
+    version        INTEGER      DEFAULT 0                                   NOT NULL,
+    creator        VARCHAR(50),
+    modifier       VARCHAR(50),
+    CONSTRAINT broker_account_pkey PRIMARY KEY (id)
+) TABLESPACE pg_default;
+
+COMMENT ON TABLE broker_account IS '券商账户';
+COMMENT ON COLUMN broker_account.id IS '主键ID';
+COMMENT ON COLUMN broker_account.broker_name IS '券商名称';
+COMMENT ON COLUMN broker_account.account_number IS '券商账号';
+COMMENT ON COLUMN broker_account.remark IS '备注';
+COMMENT ON COLUMN broker_account.create_time IS '创建时间';
+COMMENT ON COLUMN broker_account.update_time IS '更新时间';
+COMMENT ON COLUMN broker_account.version IS '版本号（乐观锁）';
+COMMENT ON COLUMN broker_account.creator IS '创建人';
+COMMENT ON COLUMN broker_account.modifier IS '修改人';
+
+ALTER TABLE "broker_account" OWNER TO postgres;
+
+-- ----------------------------
+-- 我的持仓 - 持仓表
+-- ----------------------------
+DROP SEQUENCE IF EXISTS "portfolio_holding_id_seq";
+CREATE SEQUENCE "portfolio_holding_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    MAXVALUE 9223372036854775807
+    MINVALUE 1
+    CACHE 1
+    NO CYCLE;
+
+DROP TABLE IF EXISTS "portfolio_holding";
+CREATE TABLE "portfolio_holding"
+(
+    id              BIGINT DEFAULT NEXTVAL('portfolio_holding_id_seq'::REGCLASS) NOT NULL,
+    account_id      BIGINT       NOT NULL,
+    stock_code      VARCHAR(50)  NOT NULL,
+    stock_name      VARCHAR(100) NOT NULL,
+    cost            DECIMAL(20, 4),
+    quantity        DECIMAL(20, 2),
+    create_time     TIMESTAMP    DEFAULT NOW()                                   NOT NULL,
+    update_time     TIMESTAMP,
+    version         INTEGER      DEFAULT 0                                       NOT NULL,
+    creator         VARCHAR(50),
+    modifier        VARCHAR(50),
+    CONSTRAINT portfolio_holding_pkey PRIMARY KEY (id)
+) TABLESPACE pg_default;
+
+CREATE INDEX idx_holding_account_id ON public.portfolio_holding USING btree (account_id);
+CREATE INDEX idx_holding_stock_code ON public.portfolio_holding USING btree (stock_code);
+
+COMMENT ON TABLE portfolio_holding IS '我的持仓表';
+COMMENT ON COLUMN portfolio_holding.id IS '主键ID';
+COMMENT ON COLUMN portfolio_holding.account_id IS '券商账户ID';
+COMMENT ON COLUMN portfolio_holding.stock_code IS '标的代码';
+COMMENT ON COLUMN portfolio_holding.stock_name IS '标的名称';
+COMMENT ON COLUMN portfolio_holding.cost IS '成本';
+COMMENT ON COLUMN portfolio_holding.quantity IS '数量';
+COMMENT ON COLUMN portfolio_holding.create_time IS '创建时间';
+COMMENT ON COLUMN portfolio_holding.update_time IS '更新时间';
+COMMENT ON COLUMN portfolio_holding.version IS '版本号（乐观锁）';
+COMMENT ON COLUMN portfolio_holding.creator IS '创建人';
+COMMENT ON COLUMN portfolio_holding.modifier IS '修改人';
+
+ALTER TABLE "portfolio_holding" OWNER TO postgres;
+
 
 

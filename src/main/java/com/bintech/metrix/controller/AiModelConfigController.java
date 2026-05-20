@@ -13,6 +13,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * AI模型配置控制器
+ *
+ * <p>提供AI模型的CRUD管理、连接测试、激活切换等功能。
+ */
 @RestController
 @RequestMapping("/api/ai-model")
 @RequiredArgsConstructor

@@ -11,6 +11,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * 行情源配置控制器
+ *
+ * <p>提供行情数据源的CRUD管理，支持多种数据源配置。
+ */
 @RestController
 @RequestMapping("/api/market-data")
 @RequiredArgsConstructor

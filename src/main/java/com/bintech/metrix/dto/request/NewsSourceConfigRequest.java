@@ -1,5 +1,6 @@
 package com.bintech.metrix.dto.request;
 
+import com.bintech.metrix.constants.SystemConstants;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -23,8 +24,8 @@ public class NewsSourceConfigRequest {
 
     private Boolean isActive = true;
 
-    private Integer timeout = 60;
+    private Integer timeout = SystemConstants.DEFAULT_TIMEOUT_SECONDS;
 
-    @Size(max = 100, message = "备注不能超过100字")
+    @Size(max = SystemConstants.MAX_REMARK_LENGTH_100, message = "备注不能超过100字")
     private String remark;
 }

@@ -7,6 +7,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bintech.metrix.enums.StockAnalysisStatus;
@@ -33,6 +34,7 @@ import com.bintech.metrix.repository.entity.StockBasic;
 import com.bintech.metrix.repository.mapper.StockAnalysisRecordMapper;
 import com.bintech.metrix.service.NotificationService;
 import com.bintech.metrix.service.PdfExportService;
+import com.bintech.metrix.service.PortfolioHoldingService;
 import com.bintech.metrix.service.StockAnalysisService;
 import com.bintech.metrix.service.StockBasicService;
 
@@ -67,6 +69,7 @@ public class StockAnalysisController {
     private final AnalysisTaskQueue analysisTaskQueue;
     private final NotificationService notificationService;
     private final PdfExportService pdfExportService;
+    private final PortfolioHoldingService portfolioHoldingService;
 
     /**
      * 异步执行股票分析
@@ -157,6 +160,10 @@ public class StockAnalysisController {
     @GetMapping
     public ApiResponse<List<StockAnalysisRecord>> getAllAnalysisRecords() {
         List<StockAnalysisRecord> records = stockAnalysisService.getAllAnalysisRecords();
+        Set<String> holdingStockCodes = portfolioHoldingService.getHoldingStockCodes();
+        for (StockAnalysisRecord record : records) {
+            record.setIsHolding(holdingStockCodes.contains(record.getStockCode()));
+        }
         return ApiResponse.success(records);
     }
 

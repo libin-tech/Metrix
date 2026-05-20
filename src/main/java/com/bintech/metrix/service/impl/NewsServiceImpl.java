@@ -2,10 +2,14 @@ package com.bintech.metrix.service.impl;
 
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
+import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.bintech.metrix.constants.ApiConstants;
+import com.bintech.metrix.constants.BusinessConstants;
+import com.bintech.metrix.constants.SystemConstants;
 import com.bintech.metrix.dto.request.NewsSourceConfigRequest;
 import com.bintech.metrix.repository.entity.NewsSourceConfig;
 import com.bintech.metrix.repository.entity.StockBasic;
@@ -111,7 +115,7 @@ public class NewsServiceImpl implements NewsService {
         log.info("开始获取股票新闻: stockCode={}", stockBasic.getTsCode());
         
         LambdaQueryWrapper<NewsSourceConfig> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(NewsSourceConfig::getSourceName, "BOCHA");
+        queryWrapper.eq(NewsSourceConfig::getSourceName, BusinessConstants.SOURCE_NAME_BOCHA);
         NewsSourceConfig config = configMapper.selectOne(queryWrapper);
         if (config == null) {
             String errorMsg = "Bocha新闻源配置不存在";
@@ -124,26 +128,26 @@ public class NewsServiceImpl implements NewsService {
         try {
             // 构建请求URL，处理末尾斜杠
             String apiUrl = config.getApiUrl();
-            if (apiUrl.endsWith("/")) {
+            if (apiUrl.endsWith(SystemConstants.URL_TRAILING_SLASH)) {
                 apiUrl = apiUrl.substring(0, apiUrl.length() - 1);
             }
-            String url = apiUrl + "/v1/web-search";
+            String url = apiUrl + BusinessConstants.BOCHA_API_PATH;
             
             log.info("调用博查搜索API: {}", url);
             
             // 构建请求体（JSON格式）
             JSONObject requestBody = new JSONObject();
-            requestBody.set("query",  "搜索 " + stockBasic.getTsCode() + " " +  stockBasic.getName() +"  股票的当前时间近一周内最相关的重要新闻、公告、舆情信息");
-            requestBody.set("count", 10);
-            requestBody.set("freshness", "oneWeek");
-            requestBody.set("summary", true);
+            requestBody.set(ApiConstants.KEY_MESSAGE, String.format(BusinessConstants.BOCHA_SEARCH_QUERY, stockBasic.getTsCode(), stockBasic.getName()));
+            requestBody.set(ApiConstants.KEY_COUNT, BusinessConstants.DEFAULT_NEWS_COUNT);
+            requestBody.set("freshness", BusinessConstants.NEWS_FRESHNESS);
+            requestBody.set(BusinessConstants.KEY_SUMMARY, true);
             
-            int timeoutMs = (config.getTimeout() != null ? config.getTimeout() : 60) * 1000;
+            int timeoutMs = (config.getTimeout() != null ? config.getTimeout() : SystemConstants.DEFAULT_TIMEOUT_SECONDS) * SystemConstants.MILLIS_PER_SECOND;
 
             HttpResponse response = HttpRequest.post(url)
                     .charset(StandardCharsets.UTF_8)
-                    .header("Authorization", "Bearer " + config.getApiKey())
-                    .header("Content-Type", "application/json")
+                    .header(ApiConstants.HEADER_AUTHORIZATION, ApiConstants.AUTH_BEARER_PREFIX + config.getApiKey())
+                    .header(ApiConstants.HEADER_CONTENT_TYPE, ApiConstants.CONTENT_TYPE_JSON)
                     .body(requestBody.toString())
                     .timeout(timeoutMs)
                     .execute();
@@ -151,73 +155,75 @@ public class NewsServiceImpl implements NewsService {
             int statusCode = response.getStatus();
             log.info("博查API响应状态码: {}", statusCode);
             
-            if (statusCode >= 400) {
-                result.put("status", "error");
-                result.put("message", String.format("请求失败(HTTP %d)", statusCode));
+            if (statusCode >= ApiConstants.HTTP_STATUS_BAD_REQUEST) {
+                result.put(ApiConstants.KEY_STATUS, ApiConstants.STATUS_ERROR);
+                result.put(ApiConstants.KEY_MESSAGE, String.format("请求失败(HTTP %d)", statusCode));
                 log.error("博查API请求失败: HTTP {}", statusCode);
                 return result;
             }
-            
+
             String responseBody = response.body();
-            
+
             if (responseBody == null || responseBody.isEmpty()) {
-                result.put("status", "error");
-                result.put("message", "从博查服务器接收到空响应");
+                result.put(ApiConstants.KEY_STATUS, ApiConstants.STATUS_ERROR);
+                result.put(ApiConstants.KEY_MESSAGE, "从博查服务器接收到空响应");
                 log.error("博查API返回空响应");
                 return result;
             }
-            
+
             JSONObject jsonResult = JSONUtil.parseObj(responseBody);
             log.debug("博查API响应: {}", responseBody);
-            
-            // 解析博查API响应格式
-            int code = jsonResult.getInt("code", -1);
-            if (code == 200) {
-                JSONObject data = jsonResult.getJSONObject("data");
-                if (data != null) {
-                    JSONObject webPages = data.getJSONObject("webPages");
-                    if (webPages != null) {
-                        result.put("status", "success");
-                        result.put("data", webPages.getJSONArray("value"));
-                        result.put("count", webPages.getInt("totalEstimatedMatches", 0));
-                        int resultCount = webPages.getJSONArray("value") != null 
-                                ? webPages.getJSONArray("value").size() : 0;
-                        log.info("博查新闻搜索成功，返回{}条结果", resultCount);
-                    } else {
-                        result.put("status", "error");
-                        result.put("message", "响应数据中缺少webPages字段");
-                        log.error("博查API响应缺少webPages字段");
-                    }
-                } else {
-                    result.put("status", "error");
-                    result.put("message", "响应数据为空");
-                    log.error("博查API响应data字段为空");
-                }
+
+            int code = jsonResult.getInt(ApiConstants.KEY_CODE, -1);
+            if (code == ApiConstants.HTTP_STATUS_OK) {
+                parseBochaResult(jsonResult, result);
             } else {
-                String errorMsg = jsonResult.getStr("msg", "未知错误");
-                result.put("status", "error");
-                result.put("message", String.format("请求失败(代码: %d): %s", code, errorMsg));
-                log.error("博查API返回错误: code={}, msg={}", code, errorMsg);
+                result.put(ApiConstants.KEY_STATUS, ApiConstants.STATUS_ERROR);
+                result.put(ApiConstants.KEY_MESSAGE, "博查API返回错误码: " + code);
+                log.warn("博查新闻搜索API返回非200状态码: {}", code);
             }
         } catch (Exception e) {
-            log.error("获取新闻失败", e);
-            result.put("status", "error");
-            result.put("message", "获取新闻失败: " + e.getMessage());
+            log.error("搜索新闻失败: stockCode={}", stockBasic.getTsCode(), e);
+            result.put(ApiConstants.KEY_STATUS, ApiConstants.STATUS_ERROR);
+            result.put(ApiConstants.KEY_MESSAGE, "新闻接口调用失败");
         }
-
         return result;
+    }
+
+    private void parseBochaResult(JSONObject jsonResult, Map<String, Object> result) {
+        JSONObject data = jsonResult.getJSONObject(ApiConstants.KEY_DATA);
+        if (data == null) {
+            result.put(ApiConstants.KEY_STATUS, ApiConstants.STATUS_SUCCESS);
+            result.put(ApiConstants.KEY_DATA, new JSONArray());
+            result.put(ApiConstants.KEY_COUNT, 0);
+            log.info("博查新闻搜索成功，但无数据返回");
+            return;
+        }
+        JSONObject webPages = data.getJSONObject(BusinessConstants.KEY_WEB_PAGES);
+        if (webPages == null) {
+            result.put(ApiConstants.KEY_STATUS, ApiConstants.STATUS_ERROR);
+            result.put(ApiConstants.KEY_MESSAGE, "响应数据中缺少webPages字段");
+            log.error("博查API响应缺少webPages字段");
+            return;
+        }
+        result.put(ApiConstants.KEY_STATUS, ApiConstants.STATUS_SUCCESS);
+        result.put(ApiConstants.KEY_DATA, webPages.getJSONArray(ApiConstants.KEY_VALUE));
+        result.put(ApiConstants.KEY_COUNT, webPages.getInt(BusinessConstants.KEY_TOTAL_ESTIMATED_MATCHES, 0));
+        int resultCount = webPages.getJSONArray(ApiConstants.KEY_VALUE) != null 
+                ? webPages.getJSONArray(ApiConstants.KEY_VALUE).size() : 0;
+        log.info("博查新闻搜索成功，返回{}条结果", resultCount);
     }
 
     @Override
     public String summarizeNews(List<Map<String, Object>> newsList, String modelType) {
         StringBuilder newsText = new StringBuilder();
         for (Map<String, Object> news : newsList) {
-            newsText.append("标题: ").append(news.get("title")).append("\n");
-            newsText.append("摘要: ").append(news.get("summary")).append("\n");
-            newsText.append("来源: ").append(news.get("source")).append("\n\n");
+            newsText.append("标题: ").append(news.get(ApiConstants.KEY_TITLE)).append("\n");
+            newsText.append("摘要: ").append(news.get(BusinessConstants.KEY_SUMMARY)).append("\n");
+            newsText.append("来源: ").append(news.get(ApiConstants.KEY_SOURCE)).append("\n\n");
         }
 
-        String prompt = "请对以下股票相关新闻进行总结分析：\n\n" + newsText + "\n\n请提供简洁的总结，包括主要事件、市场影响和投资建议。";
+        String prompt = String.format(BusinessConstants.SUMMARIZE_PROMPT, newsText);
         
         try {
             return aiModelService.generateAnalysis(prompt, modelType);

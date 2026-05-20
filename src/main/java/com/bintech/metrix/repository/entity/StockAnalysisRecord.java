@@ -78,4 +78,10 @@ public class StockAnalysisRecord extends BaseEntity {
     @TableField(value = "analysis_overview")
     private String analysisOverview;
 
+    /**
+     * 是否属于持仓（非数据库字段）
+     */
+    @TableField(exist = false)
+    private Boolean isHolding;
+
 }

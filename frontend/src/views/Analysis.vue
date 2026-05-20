@@ -29,6 +29,7 @@
                       <span v-else :class="['status-dot', item.status.toLowerCase()]"></span>
                       <span class="stock-code">{{ item.stockCode }}</span>
                       <span class="stock-name">{{ item.stockName }}</span>
+                      <a-tag v-if="item.isHolding" color="blue" size="small" class="holding-tag">{{ $t('analysis.holdingTag') }}</a-tag>
                     </template>
                     <template #description>
                       <span class="time-info">
@@ -429,7 +430,7 @@
 
 <script setup>
 import { onMounted, onUnmounted, reactive, ref, computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { marked } from 'marked';
 import { useI18n } from 'vue-i18n';
 import {
@@ -498,6 +499,7 @@ const renderMarkdown = (content) => {
 };
 
 const router = useRouter();
+const route = useRoute();
 const { t } = useI18n();
 const form = reactive({
   stockCode: '',
@@ -967,7 +969,14 @@ const stopPolling = () => {
 onMounted(() => {
   loadAnalysisRecords();
   loadQueueStatus();
-  
+
+  // 从 query 参数中读取标的代码（来自持仓页面跳转）
+  const stockCode = route.query.stockCode;
+  if (stockCode) {
+    form.stockCode = stockCode;
+    handleStockSearch(stockCode);
+  }
+
   // 页面加载完成后自动启动定时轮询
   setTimeout(() => {
     checkPollingStatus();
@@ -1120,6 +1129,13 @@ onUnmounted(() => {
 .stock-name {
   color: #666;
   font-size: 14px;
+}
+
+.holding-tag {
+  margin-left: 6px;
+  font-size: 11px;
+  line-height: 18px;
+  vertical-align: middle;
 }
 
 .time-info {

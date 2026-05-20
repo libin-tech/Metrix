@@ -12,6 +12,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+/**
+ * 股票搜索控制器
+ *
+ * <p>提供股票关键字搜索能力，支持代码和名称的模糊匹配，用于前端自动补全。
+ */
 @RestController
 @RequestMapping("/api/stocks")
 @RequiredArgsConstructor

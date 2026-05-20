@@ -6,6 +6,8 @@ import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.bintech.metrix.constants.ApiConstants;
+import com.bintech.metrix.constants.BusinessConstants;
 import com.bintech.metrix.dto.request.NotificationConfigRequest;
 import com.bintech.metrix.repository.entity.NotificationConfig;
 import com.bintech.metrix.repository.mapper.NotificationConfigMapper;
@@ -104,7 +106,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public boolean sendFeishuNotification(String title, String content, Map<String, Object> attachments) {
         LambdaQueryWrapper<NotificationConfig> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(NotificationConfig::getChannelType, "FEISHU")
+        queryWrapper.eq(NotificationConfig::getChannelType, BusinessConstants.CHANNEL_TYPE_FEISHU)
                 .eq(NotificationConfig::getIsActive, true);
         NotificationConfig config = configMapper.selectOne(queryWrapper);
         if (config == null) {
@@ -132,7 +134,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public boolean sendFeishuCardMessage(String stockName, String stockCode, String coreInsight, String overviewJson, String analysisTime) {
         LambdaQueryWrapper<NotificationConfig> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(NotificationConfig::getChannelType, "FEISHU")
+        queryWrapper.eq(NotificationConfig::getChannelType, BusinessConstants.CHANNEL_TYPE_FEISHU)
                 .eq(NotificationConfig::getIsActive, true);
         NotificationConfig config = configMapper.selectOne(queryWrapper);
         if (config == null) {
@@ -293,7 +295,7 @@ public class NotificationServiceImpl implements NotificationService {
                 .execute()) {
             String responseBody = response.body();
             JSONObject result = JSONUtil.parseObj(responseBody);
-            boolean success = "ok".equals(result.getStr("status"));
+            boolean success = BusinessConstants.FEISHU_SUCCESS_STATUS.equals(result.getStr(ApiConstants.KEY_STATUS));
             if (!success) {
                 log.warn("飞书消息发送失败: {}", responseBody);
             }

@@ -1,13 +1,16 @@
 package com.bintech.metrix.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.bintech.metrix.constants.BusinessConstants;
+import com.bintech.metrix.constants.SystemConstants;
 import com.bintech.metrix.dto.request.AiModelConfigRequest;
 import com.bintech.metrix.dto.request.AiModelTestRequest;
 import com.bintech.metrix.dto.response.AiModelTestResponse;
 import com.bintech.metrix.repository.entity.AiModelConfig;
 import com.bintech.metrix.repository.mapper.AiModelConfigMapper;
 import com.bintech.metrix.service.AiModelService;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import lombok.RequiredArgsConstructor;
@@ -121,12 +124,12 @@ public class AiModelServiceImpl implements AiModelService {
                 log.info("从数据库获取到激活的模型类型: {}", config.getModelType());
                 return config.getModelType();
             }
-            log.warn("未找到激活的模型配置，使用默认值: OPENAI");
-            return "OPENAI";
+            log.warn("未找到激活的模型配置，使用默认值: {}", BusinessConstants.MODEL_TYPE_OPENAI);
+            return BusinessConstants.MODEL_TYPE_OPENAI;
         } catch (Exception e) {
             log.error("获取激活模型类型时发生异常: {}", e.getMessage());
-            log.warn("异常情况下使用默认模型类型: OPENAI");
-            return "OPENAI";
+            log.warn("异常情况下使用默认模型类型: {}", BusinessConstants.MODEL_TYPE_OPENAI);
+            return BusinessConstants.MODEL_TYPE_OPENAI;
         }
     }
 
@@ -153,19 +156,19 @@ public class AiModelServiceImpl implements AiModelService {
         AiModelConfig config = getActiveConfigByType(modelType);
         String modelName = config.getModelName();
         int promptLength = prompt != null ? prompt.length() : 0;
-        String promptPreview = prompt != null && prompt.length() > 50 ? prompt.substring(0, 50) + "..." : prompt;
+        String promptPreview = prompt != null && prompt.length() > SystemConstants.PROMPT_PREVIEW_MAX_LENGTH ? prompt.substring(0, SystemConstants.PROMPT_PREVIEW_MAX_LENGTH) + "..." : prompt;
         log.info("===== AI分析开始 =====");
         log.info("模型类型: {}, 模型名称: {}, 提示词长度: {}字符", modelType, modelName, promptLength);
         log.info("提示词预览: {}", promptPreview);
 
         long startTime = System.currentTimeMillis();
-        ChatLanguageModel model = buildModel(config, modelType);
-        String content = model.generate(prompt);
+        ChatModel model = buildModel(config, modelType);
+        String content = model.chat(prompt);
         long duration = System.currentTimeMillis() - startTime;
 
         int contentLength = content != null ? content.length() : 0;
         log.info("===== AI分析完成 =====");
-        log.info("耗时: {}秒, 生成内容长度: {}字符", duration / 1000.0, contentLength);
+        log.info("耗时: {}秒, 生成内容长度: {}字符", duration / (double) SystemConstants.MILLIS_PER_SECOND, contentLength);
         return content;
     }
 
@@ -176,52 +179,174 @@ public class AiModelServiceImpl implements AiModelService {
      * @param modelType 模型类型
      * @return ChatLanguageModel实例
      */
-    private ChatLanguageModel buildModel(AiModelConfig config, String modelType) {
-        if ("OLLAMA".equalsIgnoreCase(modelType)) {
+    private ChatModel buildModel(AiModelConfig config, String modelType) {
+        if (BusinessConstants.MODEL_TYPE_OLLAMA.equalsIgnoreCase(modelType)) {
             return OllamaChatModel.builder()
                     .baseUrl(config.getApiBaseUrl())
                     .modelName(config.getModelName())
                     .temperature(config.getTemperature())
                     .build();
-        } else {
-            OpenAiChatModel.OpenAiChatModelBuilder builder = OpenAiChatModel.builder()
-                    .baseUrl(config.getApiBaseUrl())
+        }
+        if (BusinessConstants.MODEL_TYPE_GEMINI.equalsIgnoreCase(modelType)) {
+            GoogleAiGeminiChatModel.GoogleAiGeminiChatModelBuilder geminiBuilder = GoogleAiGeminiChatModel.builder()
                     .apiKey(config.getApiKey())
                     .modelName(config.getModelName())
                     .temperature(config.getTemperature());
             if (config.getTimeout() != null) {
-                builder.timeout(Duration.ofSeconds(config.getTimeout()));
+                geminiBuilder.timeout(Duration.ofSeconds(config.getTimeout()));
             }
-            return builder.build();
+            return geminiBuilder.build();
         }
+        OpenAiChatModel.OpenAiChatModelBuilder builder = OpenAiChatModel.builder()
+                .baseUrl(config.getApiBaseUrl())
+                .apiKey(config.getApiKey())
+                .modelName(config.getModelName())
+                .temperature(config.getTemperature());
+        if (config.getTimeout() != null) {
+            builder.timeout(Duration.ofSeconds(config.getTimeout()));
+        }
+        return builder.build();
     }
 
     @Override
     public AiModelTestResponse testConnection(AiModelTestRequest request) {
-        ChatLanguageModel model;
+        log.info("===== AI模型连接测试开始 =====");
+        log.info("模型类型: {}", request.getModelType());
+        log.info("模型名称: {}", request.getModelName());
 
-        if ("OLLAMA".equalsIgnoreCase(request.getModelType())) {
+        ChatModel model;
+
+        if (BusinessConstants.MODEL_TYPE_OLLAMA.equalsIgnoreCase(request.getModelType())) {
+            log.info("使用 Ollama 模型配置");
+            log.info("API Base URL: {}", request.getApiBaseUrl());
+            log.info("温度参数: {}", request.getTemperature());
+
             model = OllamaChatModel.builder()
                     .baseUrl(request.getApiBaseUrl())
                     .modelName(request.getModelName())
                     .temperature(request.getTemperature())
                     .build();
+        } else if (BusinessConstants.MODEL_TYPE_GEMINI.equalsIgnoreCase(request.getModelType())) {
+            log.info("使用 Gemini 模型配置");
+            log.info("API Key: {}", maskApiKey(request.getApiKey()));
+            log.info("模型名称: {}", request.getModelName());
+            log.info("温度参数: {}", request.getTemperature());
+
+            if (request.getApiKey() == null || request.getApiKey().trim().isEmpty()) {
+                log.error("Gemini API Key 为空");
+                throw new RuntimeException("Gemini API Key 不能为空");
+            }
+
+            GoogleAiGeminiChatModel.GoogleAiGeminiChatModelBuilder geminiBuilder = GoogleAiGeminiChatModel.builder()
+                    .apiKey(request.getApiKey())
+                    .modelName(request.getModelName())
+                    .temperature(request.getTemperature());
+
+            Integer timeout = request.getTimeout();
+            if (timeout == null || timeout <= 0) {
+                timeout = 60;
+                log.info("未设置超时或超时值无效，使用默认超时: {}秒", timeout);
+            } else {
+                log.info("超时设置: {}秒", timeout);
+            }
+            geminiBuilder.timeout(Duration.ofSeconds(timeout));
+
+            model = geminiBuilder.build();
+            log.info("Gemini 模型实例创建完成");
         } else {
+            log.info("使用 OpenAI 兼容模型配置");
+            log.info("API Base URL: {}", request.getApiBaseUrl());
+            log.info("API Key: {}", maskApiKey(request.getApiKey()));
+            log.info("模型名称: {}", request.getModelName());
+            log.info("温度参数: {}", request.getTemperature());
+
             OpenAiChatModel.OpenAiChatModelBuilder builder = OpenAiChatModel.builder()
                     .baseUrl(request.getApiBaseUrl())
                     .apiKey(request.getApiKey())
                     .modelName(request.getModelName())
                     .temperature(request.getTemperature());
             if (request.getTimeout() != null) {
+                log.info("超时设置: {}秒", request.getTimeout());
                 builder.timeout(Duration.ofSeconds(request.getTimeout()));
             }
             model = builder.build();
+            log.info("OpenAI 兼容模型实例创建完成");
         }
 
         long start = System.currentTimeMillis();
-        model.generate("Say just 'ok'");
-        long elapsed = System.currentTimeMillis() - start;
+        try {
+            log.info("开始执行测试连接请求...");
+            log.info("测试提示词: {}", BusinessConstants.TEST_CONNECTION_PROMPT);
 
-        return new AiModelTestResponse(request.getModelName(), elapsed);
+            String result = model.chat(BusinessConstants.TEST_CONNECTION_PROMPT);
+
+            long elapsed = System.currentTimeMillis() - start;
+            log.info("测试连接成功");
+            log.info("响应结果: {}", result);
+            log.info("总耗时: {}ms ({}秒)", elapsed, elapsed / 1000.0);
+            log.info("===== AI模型连接测试完成 =====");
+
+            return new AiModelTestResponse(request.getModelName(), elapsed);
+        } catch (Exception e) {
+            long elapsed = System.currentTimeMillis() - start;
+            log.error("测试连接失败");
+            log.error("耗时: {}ms", elapsed);
+            log.error("异常类型: {}", e.getClass().getName());
+            log.error("异常消息: {}", e.getMessage());
+
+            if (e.getCause() != null) {
+                log.error("根本原因: {}", e.getCause().getClass().getName());
+                log.error("根本原因消息: {}", e.getCause().getMessage());
+            }
+
+            String errorMsg = "AI模型连接测试失败: ";
+            if (e.getMessage() != null && (e.getMessage().contains("ConnectException") || e.getMessage().contains("ClosedChannelException"))) {
+                if (BusinessConstants.MODEL_TYPE_GEMINI.equalsIgnoreCase(request.getModelType())) {
+                    log.error("检测到 Gemini API 连接异常");
+                    errorMsg += "无法连接到 Gemini API 服务器。可能原因：\n" +
+                            "1. 网络连接问题，请检查是否可以访问 Google API (generativelanguage.googleapis.com)\n" +
+                            "2. 需要配置网络代理才能访问 Google 服务\n" +
+                            "3. API Key 可能无效或已过期\n" +
+                            "4. 防火墙阻止了连接\n" +
+                            "5. 当前网络环境不支持访问 Google 服务";
+                } else if (BusinessConstants.MODEL_TYPE_OLLAMA.equalsIgnoreCase(request.getModelType())) {
+                    log.error("检测到 Ollama 连接异常");
+                    errorMsg += "无法连接到 Ollama 服务器。请检查：\n" +
+                            "1. Ollama 服务是否正在运行\n" +
+                            "2. API Base URL 是否正确: " + request.getApiBaseUrl() + "\n" +
+                            "3. 网络连接是否正常\n" +
+                            "4. 端口是否正确开放";
+                } else {
+                    log.error("检测到 OpenAI 兼容 API 连接异常");
+                    errorMsg += "无法连接到 API 服务器。请检查：\n" +
+                            "1. API Base URL 是否正确: " + request.getApiBaseUrl() + "\n" +
+                            "2. 网络连接是否正常\n" +
+                            "3. 服务是否正在运行\n" +
+                            "4. API Key 是否有效";
+                }
+            } else {
+                errorMsg += e.getMessage();
+            }
+
+            log.error("错误详情: {}", errorMsg);
+            log.error("===== AI模型连接测试失败 =====");
+
+            throw new RuntimeException(errorMsg, e);
+        }
+    }
+
+    /**
+     * 隐藏 API Key 用于日志输出
+     * @param apiKey 原始 API Key
+     * @return 隐藏后的字符串
+     */
+    private String maskApiKey(String apiKey) {
+        if (apiKey == null || apiKey.isEmpty()) {
+            return "(空)";
+        }
+        if (apiKey.length() <= 8) {
+            return "***";
+        }
+        return apiKey.substring(0, 4) + "..." + apiKey.substring(apiKey.length() - 4);
     }
 }

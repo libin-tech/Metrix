@@ -1,5 +1,8 @@
 package com.bintech.metrix.core.analysis;
 
+import com.bintech.metrix.constants.ApiConstants;
+import com.bintech.metrix.constants.BusinessConstants;
+import com.bintech.metrix.constants.SystemConstants;
 import com.bintech.metrix.repository.entity.StockBasic;
 import com.bintech.metrix.service.AiModelService;
 import com.bintech.metrix.service.NewsService;
@@ -34,7 +37,7 @@ public class NewsCollector {
         Map<String, Object> newsResult = newsService.fetchStockNews(stockBasic);
 
         // 校验接口状态
-        if (!"success".equals(newsResult.get("status"))) {
+        if (!ApiConstants.STATUS_SUCCESS.equals(newsResult.get(ApiConstants.KEY_STATUS))) {
             String errorMsg = (String) newsResult.get("message");
             log.warn("获取新闻失败: {}", errorMsg);
             return null;
@@ -53,11 +56,11 @@ public class NewsCollector {
             try {
                 JSONObject jsonObj = newsArray.getJSONObject(i);
                 Map<String, Object> newsItem = new HashMap<>();
-                newsItem.put("title", jsonObj.getStr("name", "未知标题"));
-                newsItem.put("summary", jsonObj.getStr("summary", jsonObj.getStr("snippet", "无摘要")));
-                newsItem.put("source", jsonObj.getStr("siteName", "未知来源"));
-                newsItem.put("publishTime", jsonObj.getStr("datePublished", "未知时间"));
-                newsItem.put("url", jsonObj.getStr("url", ""));
+                newsItem.put("title", jsonObj.getStr(ApiConstants.KEY_NAME, "未知标题"));
+                newsItem.put("summary", jsonObj.getStr(BusinessConstants.KEY_SUMMARY, jsonObj.getStr(BusinessConstants.KEY_SNIPPET, "无摘要")));
+                newsItem.put("source", jsonObj.getStr(BusinessConstants.KEY_SITE_NAME, "未知来源"));
+                newsItem.put("publishTime", jsonObj.getStr(BusinessConstants.KEY_DATE_PUBLISHED, "未知时间"));
+                newsItem.put("url", jsonObj.getStr(ApiConstants.KEY_URL, ""));
                 newsList.add(newsItem);
             } catch (Exception e) {
                 log.warn("解析第{}条新闻数据失败: {}", i + 1, e.getMessage());
@@ -82,10 +85,10 @@ public class NewsCollector {
     }
 
     private String buildSummarizePrompt(List<Map<String, Object>> newsList) {
-        StringBuilder sb = new StringBuilder("请对以下关于该股票的新闻进行简要总结（100字以内）：\n");
+        StringBuilder sb = new StringBuilder();
         for (Map<String, Object> item : newsList) {
             sb.append("- ").append(item.get("title")).append(": ").append(item.get("summary")).append("\n");
         }
-        return sb.toString();
+        return String.format(BusinessConstants.SUMMARIZE_PROMPT, sb.toString());
     }
 }

@@ -1,5 +1,6 @@
 package com.bintech.metrix.util;
 
+import com.bintech.metrix.constants.SystemConstants;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
@@ -28,14 +29,14 @@ public class MarkdownRenderer {
         StringBuilder result = new StringBuilder();
         
         // 确保内容以标题开头
-        if (!content.startsWith("#")) {
+        if (!content.startsWith(SystemConstants.MARKDOWN_H1_PREFIX)) {
             result.append("# 股票分析报告\n\n");
         }
         
         result.append(content);
         
         // 清理多余的换行
-        result = new StringBuilder(result.toString().replace("\n\n\n", "\n\n"));
+        result = new StringBuilder(result.toString().replace(SystemConstants.TRIPLE_NEWLINE, "\n\n"));
         
         return result.toString();
     }
@@ -200,7 +201,7 @@ public class MarkdownRenderer {
             JSONArray askVolumes = data.getJSONArray("ask_volumes");
             
             if (askPrices != null && askVolumes != null) {
-                for (int i = 0; i < Math.min(askPrices.size(), 5); i++) {
+                for (int i = 0; i < Math.min(askPrices.size(), SystemConstants.DEPTH_MAX_LEVELS); i++) {
                     double price = askPrices.getDouble(i, 0.0);
                     long volume = askVolumes.getLong(i, 0L);
                     result.append("| ").append(i + 1).append(" | ").append(String.format("%.2f", price))
@@ -217,7 +218,7 @@ public class MarkdownRenderer {
             JSONArray bidVolumes = data.getJSONArray("bid_volumes");
             
             if (bidPrices != null && bidVolumes != null) {
-                for (int i = 0; i < Math.min(bidPrices.size(), 5); i++) {
+                for (int i = 0; i < Math.min(bidPrices.size(), SystemConstants.DEPTH_MAX_LEVELS); i++) {
                     double price = bidPrices.getDouble(i, 0.0);
                     long volume = bidVolumes.getLong(i, 0L);
                     result.append("| ").append(i + 1).append(" | ").append(String.format("%.2f", price))
@@ -283,8 +284,8 @@ public class MarkdownRenderer {
      * @return Markdown标题
      */
     public static String heading(String title, int level) {
-        if (level < 1) level = 1;
-        if (level > 6) level = 6;
+        if (level < SystemConstants.HEADING_MIN_LEVEL) level = SystemConstants.HEADING_MIN_LEVEL;
+        if (level > SystemConstants.HEADING_MAX_LEVEL) level = SystemConstants.HEADING_MAX_LEVEL;
         
         StringBuilder result = new StringBuilder();
         for (int i = 0; i < level; i++) {

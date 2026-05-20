@@ -1,5 +1,7 @@
 package com.bintech.metrix.core.analysis;
 
+import com.bintech.metrix.constants.ApiConstants;
+import com.bintech.metrix.constants.BusinessConstants;
 import com.bintech.metrix.model.AnalysisOverview;
 import com.bintech.metrix.model.BattlePlan;
 import com.bintech.metrix.model.DataPivot;
@@ -62,12 +64,14 @@ public class AnalysisOverviewBuilder {
             String section = response.substring(idx);
             for (String line : section.split("\n")) {
                 line = line.trim();
-                if (line.startsWith("-") || line.startsWith("*")) {
-                    String name = line.replaceAll("^[-*]\\s*", "").replaceAll("\\*\\*", "").trim();
-                    if (!name.isEmpty()) {
-                        sectors.add(name);
-                    }
+                if (!line.startsWith("-") && !line.startsWith("*")) {
+                    continue;
                 }
+                String name = line.replaceAll("^[-*]\\s*", "").replaceAll("\\*\\*", "").trim();
+                if (name.isEmpty()) {
+                    continue;
+                }
+                sectors.add(name);
             }
         } catch (Exception e) {
             log.warn("解析关联板块失败: {}", e.getMessage());
@@ -104,7 +108,7 @@ public class AnalysisOverviewBuilder {
         if (marketData == null) return null;
         try {
             JSONObject marketDataJson = new JSONObject(marketData);
-            JSONArray data = marketDataJson.getJSONArray("data");
+            JSONArray data = marketDataJson.getJSONArray(ApiConstants.KEY_DATA);
             if (data == null || data.isEmpty()) return null;
 
             JSONObject quote = data.getJSONObject(0);
@@ -114,8 +118,8 @@ public class AnalysisOverviewBuilder {
 
             // 涨跌幅优先从 ext 获取（change_pct 为小数，需转为百分比值）
             BigDecimal changePercent = ext.getBigDecimal("change_pct", BigDecimal.ZERO);
-            if (changePercent.compareTo(BigDecimal.valueOf(1)) < 0) {
-                changePercent = changePercent.multiply(BigDecimal.valueOf(100));
+            if (changePercent.compareTo(BusinessConstants.CHANGE_PCT_THRESHOLD) < 0) {
+                changePercent = changePercent.multiply(BusinessConstants.PCT_MULTIPLIER);
             }
 
 
@@ -123,8 +127,8 @@ public class AnalysisOverviewBuilder {
 
 
             BigDecimal turnoverRate = ext.getBigDecimal("turnover_rate", BigDecimal.ZERO);
-            if (turnoverRate.compareTo(BigDecimal.valueOf(1)) < 0) {
-                turnoverRate = turnoverRate.multiply(BigDecimal.valueOf(100));
+            if (turnoverRate.compareTo(BusinessConstants.TURNOVER_RATE_THRESHOLD) < 0) {
+                turnoverRate = turnoverRate.multiply(BusinessConstants.PCT_MULTIPLIER);
             }
 
             return RealTimeMarket.builder()
@@ -151,46 +155,58 @@ public class AnalysisOverviewBuilder {
         DataPivot.DataPivotBuilder builder = DataPivot.builder();
 
         if (marketData != null) {
-            try {
-                JSONObject md = new JSONObject(marketData);
-                if ("success".equals(md.get("status"))) {
-                    JSONArray data = md.getJSONArray("data");
-                    if (data != null && !data.isEmpty()) {
-                        JSONObject quote = data.getJSONObject(0);
-                        builder.currentPrice(quote.getBigDecimal("last_price", BigDecimal.ZERO))
-                               .volume(quote.getLong("volume", 0L));
-                    }
-                }
-            } catch (Exception e) {
-                log.warn("从市场数据解析当前价失败: {}", e.getMessage());
-            }
+            parseMarketDataForPivot(builder, marketData);
         }
 
         if (klinesData != null) {
-            try {
-                JSONObject kd = new JSONObject(klinesData);
-                if ("success".equals(kd.get("status"))) {
-                    JSONObject data = kd.getJSONObject("data");
-                    if (data != null) {
-                        JSONArray closeData = data.getJSONArray("close");
-                        JSONArray highData = data.getJSONArray("high");
-                        JSONArray lowData = data.getJSONArray("low");
-
-                        if (closeData != null && !closeData.isEmpty()) {
-                            builder.ma5(calcMA(closeData, 5));
-                            builder.ma20(calcMA(closeData, 20));
-                            builder.ma60(calcMA(closeData, 60));
-                            builder.supportLevel(calcSupport(lowData));
-                            builder.resistanceLevel(calcResistance(highData));
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                log.warn("从K线数据计算均线失败: {}", e.getMessage());
-            }
+            parseKlinesForPivot(builder, klinesData);
         }
         applyChipData(builder, chipData);
         return builder.build();
+    }
+
+    private void parseMarketDataForPivot(DataPivot.DataPivotBuilder builder, Map<String, Object> marketData) {
+        try {
+            JSONObject md = new JSONObject(marketData);
+            if (!ApiConstants.STATUS_SUCCESS.equals(md.get(ApiConstants.KEY_STATUS))) {
+                return;
+            }
+            JSONArray data = md.getJSONArray(ApiConstants.KEY_DATA);
+            if (data == null || data.isEmpty()) {
+                return;
+            }
+            JSONObject quote = data.getJSONObject(0);
+            builder.currentPrice(quote.getBigDecimal("last_price", BigDecimal.ZERO))
+                   .volume(quote.getLong("volume", 0L));
+        } catch (Exception e) {
+            log.warn("从市场数据解析当前价失败: {}", e.getMessage());
+        }
+    }
+
+    private void parseKlinesForPivot(DataPivot.DataPivotBuilder builder, Map<String, Object> klinesData) {
+        try {
+            JSONObject kd = new JSONObject(klinesData);
+            if (!ApiConstants.STATUS_SUCCESS.equals(kd.get(ApiConstants.KEY_STATUS))) {
+                return;
+            }
+            JSONObject data = kd.getJSONObject(ApiConstants.KEY_DATA);
+            if (data == null) {
+                return;
+            }
+            JSONArray closeData = data.getJSONArray("close");
+            JSONArray highData = data.getJSONArray("high");
+            JSONArray lowData = data.getJSONArray("low");
+            if (closeData == null || closeData.isEmpty()) {
+                return;
+            }
+            builder.ma5(calcMA(closeData, BusinessConstants.MA_PERIOD_5));
+            builder.ma20(calcMA(closeData, BusinessConstants.MA_PERIOD_20));
+            builder.ma60(calcMA(closeData, BusinessConstants.MA_PERIOD_60));
+            builder.supportLevel(calcSupport(lowData));
+            builder.resistanceLevel(calcResistance(highData));
+        } catch (Exception e) {
+            log.warn("从K线数据计算均线失败: {}", e.getMessage());
+        }
     }
 
     private void applyChipData(DataPivot.DataPivotBuilder builder, Map<String, Object> chipData) {
@@ -203,7 +219,7 @@ public class AnalysisOverviewBuilder {
         }
         try {
             JSONObject cd = new JSONObject(chipData);
-            if (!"success".equals(cd.get("status"))) {
+            if (!ApiConstants.STATUS_SUCCESS.equals(cd.get(ApiConstants.KEY_STATUS))) {
                 log.warn("筹码分布数据状态异常: {}", cd.get("message"));
                 builder.chipConcentration(BigDecimal.valueOf(0))
                         .chipDistribution("筹码数据获取失败")
@@ -211,7 +227,7 @@ public class AnalysisOverviewBuilder {
                         .lossRatio(BigDecimal.valueOf(0));
                 return;
             }
-            JSONObject data = cd.getJSONObject("data");
+            JSONObject data = cd.getJSONObject(ApiConstants.KEY_DATA);
             if (data == null) return;
 
             BigDecimal profitRatio = data.getBigDecimal("profit_ratio");
@@ -225,14 +241,14 @@ public class AnalysisOverviewBuilder {
             BigDecimal concentration70 = data.getBigDecimal("concentration_70");
 
             // 筹码集中度：获利比例越偏离50%，筹码越集中
-            BigDecimal deviation = profitRatio.subtract(BigDecimal.valueOf(50)).abs();
-            BigDecimal concentration = BigDecimal.valueOf(50).subtract(deviation.multiply(BigDecimal.valueOf(0.8)))
+            BigDecimal deviation = profitRatio.subtract(BusinessConstants.CHIP_BALANCE_PERCENT).abs();
+            BigDecimal concentration = BusinessConstants.CHIP_BASE_SCORE.subtract(deviation.multiply(BusinessConstants.CHIP_CONCENTRATION_FACTOR))
                     .setScale(1, java.math.RoundingMode.HALF_UP);
 
             String distributionDesc;
-            if (profitRatio.compareTo(BigDecimal.valueOf(70)) > 0) {
+            if (profitRatio.compareTo(BusinessConstants.PROFIT_HIGH_THRESHOLD) > 0) {
                 distributionDesc = "获利盘占比高，筹码集中在低位区域，上方抛压较轻";
-            } else if (profitRatio.compareTo(BigDecimal.valueOf(40)) > 0) {
+            } else if (profitRatio.compareTo(BusinessConstants.PROFIT_MID_THRESHOLD) > 0) {
                 distributionDesc = "获利盘与套牢盘分布均衡，筹码博弈激烈";
             } else {
                 distributionDesc = "套牢盘占比高，上方存在较大压力位";
@@ -259,10 +275,10 @@ public class AnalysisOverviewBuilder {
                     concentration, profitRatio, lossRatio, avgCost, cost90Low, cost90High, cost70Low, cost70High);
         } catch (Exception e) {
             log.warn("解析筹码分布数据失败: {}", e.getMessage());
-            builder.chipConcentration(BigDecimal.valueOf(55.5))
+            builder.chipConcentration(BusinessConstants.DEFAULT_CHIP_CONCENTRATION)
                     .chipDistribution("筹码数据解析失败")
-                    .profitRatio(BigDecimal.valueOf(50))
-                    .lossRatio(BigDecimal.valueOf(50));
+                    .profitRatio(BusinessConstants.DEFAULT_PROFIT_RATIO)
+                    .lossRatio(BusinessConstants.DEFAULT_LOSS_RATIO);
         }
     }
 
@@ -272,9 +288,9 @@ public class AnalysisOverviewBuilder {
         StringBuilder sb = new StringBuilder();
         sb.append("平均成本").append(avgCost).append("元；");
         sb.append("90%筹码分布在").append(cost90Low).append("-").append(cost90High)
-                .append("元区间（集中度").append(concentration90.multiply(BigDecimal.valueOf(100)).setScale(1, java.math.RoundingMode.HALF_UP)).append("%）；");
+                .append("元区间（集中度").append(concentration90.multiply(BusinessConstants.PCT_MULTIPLIER).setScale(1, java.math.RoundingMode.HALF_UP)).append("%）；");
         sb.append("70%筹码分布在").append(cost70Low).append("-").append(cost70High)
-                .append("元区间（集中度").append(concentration70.multiply(BigDecimal.valueOf(100)).setScale(1, java.math.RoundingMode.HALF_UP)).append("%）；");
+                .append("元区间（集中度").append(concentration70.multiply(BusinessConstants.PCT_MULTIPLIER).setScale(1, java.math.RoundingMode.HALF_UP)).append("%）；");
         sb.append("获利盘占比").append(profitRatio).append("%，");
         sb.append("套牢盘占比").append(lossRatio).append("%");
         return sb.toString();
@@ -287,62 +303,82 @@ public class AnalysisOverviewBuilder {
         BigDecimal resistance = BigDecimal.ZERO;
 
         if (marketData != null) {
-            try {
-                JSONObject md = new JSONObject(marketData);
-                if ("success".equals(md.get("status"))) {
-                    JSONArray data = md.getJSONArray("data");
-                    if (data != null && !data.isEmpty()) {
-                        currentPrice = data.getJSONObject(0).getBigDecimal("close", BigDecimal.ZERO);
-                    }
-                }
-            } catch (Exception e) {
-                log.warn("获取当前价失败: {}", e.getMessage());
-            }
+            currentPrice = parseBattleCurrentPrice(marketData);
         }
 
         if (klinesData != null) {
-            try {
-                JSONObject kd = new JSONObject(klinesData);
-                if ("success".equals(kd.get("status"))) {
-                    JSONObject data = kd.getJSONObject("data");
-                    if (data != null) {
-                        JSONArray closeData = data.getJSONArray("close");
-                        JSONArray highData = data.getJSONArray("high");
-                        if (closeData != null && !closeData.isEmpty()) {
-                            ma5 = calcMA(closeData, 5);
-                            ma20 = calcMA(closeData, 20);
-                            resistance = calcResistance(highData);
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                log.warn("获取均线数据失败: {}", e.getMessage());
-            }
+            JSONObject kd = new JSONObject(klinesData);
+            ma5 = parseBattleMa(kd, BusinessConstants.MA_PERIOD_5);
+            ma20 = parseBattleMa(kd, BusinessConstants.MA_PERIOD_20);
+            resistance = parseBattleResistance(kd);
         }
 
-        BigDecimal idealEntry = ma5.multiply(BigDecimal.valueOf(0.99));
-        BigDecimal suboptimalEntry = ma20.multiply(BigDecimal.valueOf(0.98));
-        BigDecimal stopLoss = ma20.multiply(BigDecimal.valueOf(0.97));
+        BigDecimal idealEntry = ma5.multiply(BusinessConstants.IDEAL_ENTRY_FACTOR);
+        BigDecimal suboptimalEntry = ma20.multiply(BusinessConstants.SUBOPTIMAL_ENTRY_FACTOR);
+        BigDecimal stopLoss = ma20.multiply(BusinessConstants.STOP_LOSS_FACTOR);
         BigDecimal target = resistance.compareTo(BigDecimal.ZERO) > 0
-                ? resistance : currentPrice.multiply(BigDecimal.valueOf(1.10));
+                ? resistance : currentPrice.multiply(BusinessConstants.TARGET_PRICE_FACTOR);
 
         BigDecimal risk = currentPrice.subtract(stopLoss).abs();
         BigDecimal reward = target.subtract(currentPrice);
         BigDecimal riskRewardRatio = risk.compareTo(BigDecimal.ZERO) > 0
                 ? reward.divide(risk, 2, java.math.RoundingMode.HALF_UP)
-                : BigDecimal.valueOf(1.2);
+                : BusinessConstants.DEFAULT_RISK_REWARD_RATIO;
 
         return BattlePlan.builder()
                 .idealEntryPrice(idealEntry.setScale(2, java.math.RoundingMode.HALF_UP))
-                .idealEntryDesc("回踩MA5支撑且乖离率修复至安全区")
+                .idealEntryDesc(BusinessConstants.IDEAL_ENTRY_DESC)
                 .suboptimalEntryPrice(suboptimalEntry.setScale(2, java.math.RoundingMode.HALF_UP))
-                .suboptimalEntryDesc("回踩MA20强支撑，技术修复更充分")
+                .suboptimalEntryDesc(BusinessConstants.SUBOPTIMAL_ENTRY_DESC)
                 .stopLossPrice(stopLoss.setScale(2, java.math.RoundingMode.HALF_UP))
-                .stopLossDesc("跌破MA20下方3%，技术形态破位")
+                .stopLossDesc(BusinessConstants.STOP_LOSS_DESC)
                 .targetPrice(target.setScale(2, java.math.RoundingMode.HALF_UP))
-                .targetDesc("前高压力位，风险回报比约1:1.2")
+                .targetDesc(BusinessConstants.TARGET_DESC)
                 .riskRewardRatio(riskRewardRatio)
                 .build();
+    }
+
+    private BigDecimal parseBattleCurrentPrice(Map<String, Object> marketData) {
+        try {
+            JSONObject md = new JSONObject(marketData);
+            if (!ApiConstants.STATUS_SUCCESS.equals(md.get(ApiConstants.KEY_STATUS))) {
+                return BigDecimal.ZERO;
+            }
+            JSONArray data = md.getJSONArray(ApiConstants.KEY_DATA);
+            if (data == null || data.isEmpty()) {
+                return BigDecimal.ZERO;
+            }
+            return data.getJSONObject(0).getBigDecimal("close", BigDecimal.ZERO);
+        } catch (Exception e) {
+            log.warn("获取当前价失败: {}", e.getMessage());
+            return BigDecimal.ZERO;
+        }
+    }
+
+    private BigDecimal parseBattleMa(JSONObject kd, int period) {
+        try {
+            JSONObject data = kd.getJSONObject(ApiConstants.KEY_DATA);
+            if (data == null) return BigDecimal.ZERO;
+            JSONArray closeData = data.getJSONArray("close");
+            if (closeData == null || closeData.isEmpty()) return BigDecimal.ZERO;
+            return calcMA(closeData, period);
+        } catch (Exception e) {
+            log.warn("获取MA{}失败: {}", period, e.getMessage());
+            return BigDecimal.ZERO;
+        }
+    }
+
+    private BigDecimal parseBattleResistance(JSONObject kd) {
+        try {
+            JSONObject data = kd.getJSONObject(ApiConstants.KEY_DATA);
+            if (data == null) return BigDecimal.ZERO;
+            JSONArray highData = data.getJSONArray("high");
+            if (highData == null || highData.isEmpty()) return BigDecimal.ZERO;
+            return calcResistance(highData);
+        } catch (Exception e) {
+            log.warn("获取阻力位失败: {}", e.getMessage());
+            return BigDecimal.ZERO;
+        }
     }
 
     private BigDecimal calcMA(JSONArray closeData, int period) {
@@ -355,9 +391,9 @@ public class AnalysisOverviewBuilder {
     }
 
     private BigDecimal calcSupport(JSONArray lowData) {
-        if (lowData == null || lowData.size() < 20) return BigDecimal.ZERO;
+        if (lowData == null || lowData.size() < BusinessConstants.SUPPORT_LOOKBACK) return BigDecimal.ZERO;
         BigDecimal support = lowData.getBigDecimal(lowData.size() - 1);
-        for (int i = lowData.size() - 20; i < lowData.size(); i++) {
+        for (int i = lowData.size() - BusinessConstants.SUPPORT_LOOKBACK; i < lowData.size(); i++) {
             BigDecimal val = lowData.getBigDecimal(i);
             if (val.compareTo(support) < 0) support = val;
         }
@@ -365,9 +401,9 @@ public class AnalysisOverviewBuilder {
     }
 
     private BigDecimal calcResistance(JSONArray highData) {
-        if (highData == null || highData.size() < 20) return BigDecimal.ZERO;
+        if (highData == null || highData.size() < BusinessConstants.SUPPORT_LOOKBACK) return BigDecimal.ZERO;
         BigDecimal resistance = highData.getBigDecimal(highData.size() - 1);
-        for (int i = highData.size() - 20; i < highData.size(); i++) {
+        for (int i = highData.size() - BusinessConstants.SUPPORT_LOOKBACK; i < highData.size(); i++) {
             BigDecimal val = highData.getBigDecimal(i);
             if (val.compareTo(resistance) > 0) resistance = val;
         }
