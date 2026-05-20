@@ -54,7 +54,7 @@ cp .env.example .env
 # Edit .env with your PostgreSQL connection info
 
 # 2. Initialize database
-psql -h 127.0.0.1 -U postgres -d stock_analysis -f .doc/db/V1.0.0_init.sql
+psql -h 127.0.0.1 -U postgres -d stock_analysis -f .doc/db/init.sql
 
 # 3. Start backend
 mvn clean package -DskipTests
@@ -75,7 +75,7 @@ Frontend runs at `http://localhost:5173`, backend API at `http://localhost:8080`
 docker compose up -d --build
 
 # Initialize database (first deployment only)
-docker compose exec -T postgres psql -U postgres -d stock_analysis < .doc/db/V1.0.0_init.sql
+docker compose exec -T postgres psql -U postgres -d stock_analysis < .doc/db/init.sql
 
 # View logs
 docker compose logs -f app

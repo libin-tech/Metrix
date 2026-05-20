@@ -57,7 +57,7 @@ cp .env.example .env
 # 编辑 .env 填入 PostgreSQL 连接信息
 
 # 2. 初始化数据库
-psql -h 127.0.0.1 -U postgres -d stock_analysis -f .doc/db/V1.0.0_init.sql
+psql -h 127.0.0.1 -U postgres -d stock_analysis -f .doc/db/init.sql
 
 # 3. 启动后端
 mvn clean package -DskipTests
@@ -78,7 +78,7 @@ npm run dev
 docker compose up -d --build
 
 # 初始化数据库（首次部署）
-docker compose exec -T postgres psql -U postgres -d stock_analysis < .doc/db/V1.0.0_init.sql
+docker compose exec -T postgres psql -U postgres -d stock_analysis < .doc/db/init.sql
 
 # 查看日志
 docker compose logs -f app
