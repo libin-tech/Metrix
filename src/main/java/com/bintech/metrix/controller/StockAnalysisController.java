@@ -206,20 +206,6 @@ public class StockAnalysisController {
     }
 
     /**
-     * 获取分析结果的Markdown格式内容
-     * 
-     * <p>返回纯Markdown格式的分析结果，便于前端渲染显示。
-     * 
-     * @param id 分析记录ID
-     * @return Markdown格式的分析结果
-     */
-    @GetMapping("/{id}/markdown")
-    public ApiResponse<String> getAnalysisResultAsMarkdown(@PathVariable Long id) {
-        String markdown = stockAnalysisService.getAnalysisResultAsMarkdown(id);
-        return ApiResponse.success(markdown);
-    }
-
-    /**
      * 手动推送分析概览到飞书
      *
      * @param id 分析记录ID

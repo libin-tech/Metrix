@@ -1,3 +1,5 @@
+<img src=".doc/images/Metrix.png" alt="Metrix" width="500">
+
 # Metrix
 
 > [English](./README_en.md) | 中文
@@ -7,7 +9,9 @@ Metrix = Metric（指标） + Matrix（矩阵）
 一个基于量化交易视角的资产评估工具。
 
 ## Web界面概览
-![股票概览](.doc/images/analysis_img_cn.png)
+![股票分析](.doc/images/analysis_img_cn.png)
+
+![大盘复盘](.doc/images/market_review_cn.png)
 
 ## 技术栈
 

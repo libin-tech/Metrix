@@ -102,6 +102,20 @@ public class PortfolioController {
     }
 
     /**
+     * 批量新增持仓标的（同一账户下）
+     *
+     * @param accountId 账户ID
+     * @param items     持仓请求列表
+     */
+    @PostMapping("/holdings/batch")
+    public ApiResponse<Void> batchCreateHoldings(
+            @RequestParam Long accountId,
+            @RequestBody List<PortfolioHoldingRequest> items) {
+        portfolioHoldingService.batchCreateHoldings(accountId, items);
+        return ApiResponse.success("批量添加成功", null);
+    }
+
+    /**
      * 刷新实时行情（异步）
      *
      * <p>最多处理前10只标的，行情获取在虚拟线程中异步执行，

@@ -4,10 +4,8 @@
       <div class="login-left">
         <div class="brand">
           <div class="brand-icon">
-            <BarChartOutlined />
+            <img src="/Metrix.png" alt="Metrix" class="brand-logo" />
           </div>
-          <h1 class="brand-title">{{ $t('login.title') }}</h1>
-          <p class="brand-subtitle">{{ $t('login.subtitle') }}</p>
         </div>
       </div>
       <div class="login-right">
@@ -41,6 +39,7 @@
               </a-button>
             </a-form-item>
           </a-form>
+          <p class="login-subtitle">{{ $t('login.subtitle') }}</p>
         </div>
       </div>
     </div>
@@ -63,7 +62,7 @@ import {reactive, ref, computed} from 'vue'
 import {useRouter} from 'vue-router'
 import {useI18n} from 'vue-i18n'
 import {message} from 'ant-design-vue'
-import {BarChartOutlined, LockOutlined, UserOutlined} from '@ant-design/icons-vue'
+import {LockOutlined, UserOutlined} from '@ant-design/icons-vue'
 import {login} from '../api'
 import {marked} from 'marked'
 
@@ -192,6 +191,14 @@ const handleLogin = async () => {
   overflow-y: auto;
 }
 
+.login-subtitle {
+  font-size: 13px;
+  color: #888;
+  margin: 20px 0 0;
+  line-height: 1.7;
+  text-align: center;
+}
+
 @media (min-width: 768px) {
   .login-content {
     gap: 80px;
@@ -209,32 +216,15 @@ const handleLogin = async () => {
   }
 
   .brand-icon {
-    width: 80px;
-    height: 80px;
-    margin: 0 auto 24px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 40px;
-    color: #fff;
-    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+    width: 500px;
+    height: 500px;
+    margin: 0 auto 32px;
   }
 
-  .brand-title {
-    font-size: 28px;
-    font-weight: 700;
-    color: #1a1a1a;
-    margin: 0 0 12px;
-    white-space: nowrap;
-  }
-
-  .brand-subtitle {
-    font-size: 13px;
-    color: #888;
-    margin: 0;
-    line-height: 1.7;
+  .brand-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
   }
 }
 </style>

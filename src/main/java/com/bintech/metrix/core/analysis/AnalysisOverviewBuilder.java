@@ -24,6 +24,7 @@ import java.util.Map;
 public class AnalysisOverviewBuilder {
 
     private final AiModelService aiModelService;
+    private final CoreInsightPromptBuilder coreInsightPromptBuilder;
 
     /**
      * 从完整分析报告中提取核心洞察和关联板块
@@ -39,10 +40,7 @@ public class AnalysisOverviewBuilder {
                 log.warn("分析报告为空，跳过核心洞察生成");
                 return "暂无核心洞察";
             }
-            String prompt = "请将以下股票分析报告总结为400字以内的核心洞察，包括基本面，技术面，情绪面，新闻舆情还有操作建议。帮助投资者快速了解该股票的核心要点和操作。" +
-                    "另外，请在核心洞察之后单独列出该股票最相关的3个关联板块（不受字数限制），并标记是否核心热门板块。以表格形式呈现。"+
-                    "最后以Markdown格式回复，适当增加一点符号，看起来更美观和直观一些。直接回复内容即可不需要介绍和标题。" +
-                    "\n参考完整分析报告：\n" + analysisResult;
+            String prompt = coreInsightPromptBuilder.buildCoreInsightPrompt(analysisResult);
             return aiModelService.generateAnalysis(prompt, modelType);
         } catch (Exception e) {
             log.error("生成核心洞察失败: {}", e.getMessage(), e);
@@ -142,7 +140,7 @@ public class AnalysisOverviewBuilder {
                     .volume(quote.getLong("volume", 0L))
                     .turnover(quote.getBigDecimal("amount", BigDecimal.ZERO))
                     .turnoverRate(turnoverRate)
-                    .amplitude(ext != null ? ext.getBigDecimal("amplitude", BigDecimal.ZERO) : BigDecimal.ZERO)
+                    .amplitude(ext.getBigDecimal("amplitude", BigDecimal.ZERO))
                     .updateTime(String.valueOf(quote.getLong("timestamp", 0L)))
                     .build();
         } catch (Exception e) {

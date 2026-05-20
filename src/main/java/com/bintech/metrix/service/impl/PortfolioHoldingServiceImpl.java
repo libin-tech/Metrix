@@ -303,6 +303,47 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
 
     @Override
     @Transactional
+    public void batchCreateHoldings(Long accountId, List<PortfolioHoldingRequest> items) {
+        if (items == null || items.isEmpty()) {
+            throw new RuntimeException("批量添加列表不能为空");
+        }
+
+        long currentCount = holdingMapper.selectCount(null);
+
+        Set<String> batchCodes = new HashSet<>();
+        for (PortfolioHoldingRequest item : items) {
+            if (!batchCodes.add(item.getStockCode())) {
+                throw new RuntimeException("批量列表中存在重复标的：" + item.getStockCode());
+            }
+
+            Long existing = holdingMapper.selectCount(new LambdaQueryWrapper<PortfolioHolding>()
+                    .eq(PortfolioHolding::getAccountId, accountId)
+                    .eq(PortfolioHolding::getStockCode, item.getStockCode()));
+            if (existing > 0) {
+                throw new RuntimeException("该账户下已存在标的：" + item.getStockCode());
+            }
+        }
+
+        if (currentCount + items.size() > MAX_HOLDING_COUNT) {
+            throw new RuntimeException("持仓数量已达上限（" + MAX_HOLDING_COUNT + "个），请先删除部分持仓再添加");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        for (PortfolioHoldingRequest item : items) {
+            PortfolioHolding holding = new PortfolioHolding();
+            holding.setAccountId(accountId);
+            holding.setStockCode(item.getStockCode());
+            holding.setStockName(item.getStockName());
+            holding.setCost(item.getCost() != null ? item.getCost().setScale(PRICE_SCALE, RoundingMode.HALF_UP) : null);
+            holding.setQuantity(item.getQuantity());
+            holding.setCreateTime(now);
+            holding.setUpdateTime(now);
+            holdingMapper.insert(holding);
+        }
+    }
+
+    @Override
+    @Transactional
     public void deleteHolding(Long id) {
         holdingMapper.deleteById(id);
     }

@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -165,14 +164,6 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
                 .notIn(StockAnalysisRecord::getId, keepIds));
     }
 
-    @Scheduled(cron = "0 0 3 * * ?")
-    @Transactional
-    public void scheduledCleanup() {
-        log.info("开始定时清理股票分析记录，仅保留最近{}条", BusinessConstants.SCHEDULED_CLEANUP_KEEP_COUNT);
-        cleanupExcessRecords();
-        log.info("定时清理完成");
-    }
-
     @Override
     public StockAnalysisDetailResponse getAnalysisDetail(Long id) {
         StockAnalysisRecord record = getAnalysisById(id);
@@ -191,18 +182,6 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
                 .build();
     }
 
-    @Override
-    public String getAnalysisResultAsMarkdown(Long id) {
-        StockAnalysisRecord record = getAnalysisById(id);
-        return MarkdownRenderer.renderAnalysisResult(record.getAnalysisResult());
-    }
-
-    /**
-     * 执行异步分析任务（由队列调度）
-     *
-     * @param recordId 分析记录ID
-     * @param request  分析请求
-     */
     @Override
     @Transactional
     public void executeAnalysis(Long recordId, StockAnalysisRequest request) {

@@ -161,7 +161,7 @@
       <p class="empty-hint">{{ $t('portfolio.noHoldingsHint') }}</p>
     </div>
 
-    <!-- Add Holding Modal -->
+    <!-- Batch Add Holding Modal -->
     <a-modal
       v-model:open="showAddHoldingModal"
       :title="$t('portfolio.addHolding')"
@@ -170,58 +170,53 @@
       @cancel="resetHoldingForm"
       ok-text="确定"
       cancel-text="取消"
+      width="760px"
     >
-      <a-form layout="vertical" :model="holdingForm">
+      <a-form layout="vertical">
         <a-form-item :label="$t('portfolio.selectAccount')" required>
           <a-select
-            v-model:value="holdingForm.accountId"
+            v-model:value="batchAccountId"
             :placeholder="$t('portfolio.selectAccountPlaceholder')"
             style="width: 100%"
             :options="accountOptions"
           />
         </a-form-item>
-        <a-form-item :label="$t('portfolio.selectStock')" required>
-          <a-auto-complete
-            v-model:value="holdingForm.stockCode"
-            :placeholder="$t('portfolio.selectStockPlaceholder')"
-            :options="stockOptions"
-            @search="handleStockSearch"
-            @select="handleStockSelect"
-            allow-clear
-            style="width: 100%"
-          />
-        </a-form-item>
-        <a-form-item :label="$t('portfolio.stockName')" required>
-          <a-input
-            v-model:value="holdingForm.stockName"
-            :placeholder="$t('portfolio.stockNamePlaceholder')"
-            disabled
-          />
-        </a-form-item>
-        <a-row :gutter="16">
-          <a-col :span="12">
-            <a-form-item :label="$t('portfolio.cost')">
-              <a-input-number
-                v-model:value="holdingForm.cost"
-                :placeholder="$t('portfolio.costPlaceholder')"
-                :min="0"
-                :precision="3"
+
+        <div class="batch-hint">{{ $t('portfolio.batchInputHint') }}</div>
+
+        <div v-for="(item, index) in batchItems" :key="item.key" class="batch-row">
+          <a-row :gutter="8" align="middle">
+            <a-col :span="7">
+              <a-auto-complete
+                v-model:value="item.stockCode"
+                :placeholder="$t('portfolio.selectStockPlaceholder')"
+                :options="item.stockOptions"
+                @search="(val) => handleStockSearch(val, index)"
+                @select="(val) => handleStockSelect(val, index)"
+                allow-clear
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item :label="$t('portfolio.quantity')">
-              <a-input-number
-                v-model:value="holdingForm.quantity"
-                :placeholder="$t('portfolio.quantityPlaceholder')"
-                :min="0"
-                :precision="2"
-                style="width: 100%"
-              />
-            </a-form-item>
-          </a-col>
-        </a-row>
+            </a-col>
+            <a-col :span="6">
+              <a-input v-model:value="item.stockName" disabled :placeholder="$t('portfolio.stockNamePlaceholder')" />
+            </a-col>
+            <a-col :span="5">
+              <a-input-number v-model:value="item.cost" :placeholder="$t('portfolio.costPlaceholder')" :min="0" :precision="3" style="width: 100%" />
+            </a-col>
+            <a-col :span="4">
+              <a-input-number v-model:value="item.quantity" :placeholder="$t('portfolio.quantityPlaceholder')" :min="0" :precision="2" style="width: 100%" />
+            </a-col>
+            <a-col :span="2" class="batch-row-action">
+              <a-button type="text" danger @click="removeBatchRow(index)" :disabled="batchItems.length === 1">
+                <DeleteOutlined />
+              </a-button>
+            </a-col>
+          </a-row>
+        </div>
+
+        <a-button type="dashed" block @click="addBatchRow" class="add-row-btn">
+          <PlusOutlined /> {{ $t('portfolio.addRow') }}
+        </a-button>
       </a-form>
     </a-modal>
   </div>
@@ -251,6 +246,7 @@ import {
   getBrokerAccounts,
   getPortfolioHoldings,
   createPortfolioHolding,
+  batchCreatePortfolioHolding,
   deletePortfolioHolding,
   refreshPortfolioPrices,
   pollRefreshedPrices,
@@ -273,18 +269,22 @@ const refreshingIds = ref(new Set())
 let refreshPollTimer = null
 const submittingHolding = ref(false)
 const showAddHoldingModal = ref(false)
-const stockOptions = ref([])
 const evaluating = ref(new Set())
 const batchEvaluating = ref(false)
-let searchTimer = null
 
-const holdingForm = reactive({
-  accountId: undefined,
+const batchAccountId = ref(undefined)
+const batchItems = ref([])
+
+const createEmptyBatchItem = () => ({
+  key: Date.now() + Math.random(),
   stockCode: '',
   stockName: '',
   cost: undefined,
-  quantity: undefined
+  quantity: undefined,
+  stockOptions: []
 })
+
+let batchSearchTimer = null
 
 const uniqueStockCount = computed(() => {
   return [...new Set(holdings.value.map(h => h.stockCode))].length
@@ -409,30 +409,30 @@ const getProfitClass = (val) => {
   return ''
 }
 
-const handleStockSearch = (value) => {
-  if (searchTimer) clearTimeout(searchTimer)
+const handleStockSearch = (value, index) => {
+  if (batchSearchTimer) clearTimeout(batchSearchTimer)
   if (!value.trim()) {
-    stockOptions.value = []
+    batchItems.value[index].stockOptions = []
     return
   }
-  searchTimer = setTimeout(async () => {
+  batchSearchTimer = setTimeout(async () => {
     try {
       const response = await searchStocks(value)
-      stockOptions.value = (response.data || []).map(s => ({
+      batchItems.value[index].stockOptions = (response.data || []).map(s => ({
         value: s.stockCode,
         label: `${s.stockCode} - ${s.stockName} (${s.market})`
       }))
     } catch {
-      stockOptions.value = []
+      batchItems.value[index].stockOptions = []
     }
   }, 200)
 }
 
-const handleStockSelect = (value) => {
-  const selected = stockOptions.value.find(s => s.value === value)
+const handleStockSelect = (value, index) => {
+  const selected = batchItems.value[index].stockOptions.find(s => s.value === value)
   if (selected) {
-    holdingForm.stockCode = value
-    holdingForm.stockName = selected.label.split(' - ')[1]?.split(' (')[0] || ''
+    batchItems.value[index].stockCode = value
+    batchItems.value[index].stockName = selected.label.split(' - ')[1]?.split(' (')[0] || ''
   }
 }
 
@@ -458,28 +458,49 @@ const loadHoldings = async () => {
   }
 }
 
+const addBatchRow = () => {
+  batchItems.value.push(createEmptyBatchItem())
+}
+
+const removeBatchRow = (index) => {
+  if (batchItems.value.length <= 1) return
+  batchItems.value.splice(index, 1)
+}
+
 const handleAddHolding = async () => {
-  if (!holdingForm.accountId) {
+  if (!batchAccountId.value) {
     message.warning(t('portfolio.selectAccountRequired'))
     return
   }
-  if (!holdingForm.stockCode.trim()) {
-    message.warning(t('portfolio.stockCodeRequired'))
+  const validItems = batchItems.value.filter(i => i.stockCode.trim() && i.stockName.trim())
+  if (validItems.length === 0) {
+    message.warning(t('portfolio.noValidItems'))
     return
   }
-  if (!holdingForm.stockName.trim()) {
-    message.warning(t('portfolio.stockNameRequired'))
-    return
+  for (const item of validItems) {
+    if (!item.stockCode.trim()) {
+      message.warning(t('portfolio.stockCodeRequired'))
+      return
+    }
+    if (!item.stockName.trim()) {
+      message.warning(t('portfolio.stockNameRequired'))
+      return
+    }
   }
   submittingHolding.value = true
   try {
-    await createPortfolioHolding({
-      accountId: holdingForm.accountId,
-      stockCode: holdingForm.stockCode.trim(),
-      stockName: holdingForm.stockName.trim(),
-      cost: holdingForm.cost || null,
-      quantity: holdingForm.quantity || null
-    })
+    const payload = validItems.map(item => ({
+      accountId: batchAccountId.value,
+      stockCode: item.stockCode.trim(),
+      stockName: item.stockName.trim(),
+      cost: item.cost || null,
+      quantity: item.quantity || null
+    }))
+    if (payload.length === 1) {
+      await createPortfolioHolding(payload[0])
+    } else {
+      await batchCreatePortfolioHolding(batchAccountId.value, payload)
+    }
     message.success(t('portfolio.addHoldingSuccess'))
     showAddHoldingModal.value = false
     resetHoldingForm()
@@ -628,16 +649,14 @@ const handleDelete = async (id) => {
 }
 
 const resetHoldingForm = () => {
-  holdingForm.accountId = undefined
-  holdingForm.stockCode = ''
-  holdingForm.stockName = ''
-  holdingForm.cost = undefined
-  holdingForm.quantity = undefined
+  batchAccountId.value = undefined
+  batchItems.value = [createEmptyBatchItem()]
 }
 
 onMounted(async () => {
   await loadAccounts()
   await loadHoldings()
+  batchItems.value = [createEmptyBatchItem()]
 })
 </script>
 
@@ -841,6 +860,29 @@ onMounted(async () => {
   color: #52c41a;
   font-weight: 600;
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace;
+}
+
+.batch-hint {
+  font-size: 13px;
+  color: #999;
+  margin-bottom: 12px;
+}
+
+.batch-row {
+  margin-bottom: 8px;
+  padding: 8px 4px;
+  background: #fafafa;
+  border-radius: 6px;
+}
+
+.batch-row-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.add-row-btn {
+  margin-top: 8px;
 }
 
 .empty-state {

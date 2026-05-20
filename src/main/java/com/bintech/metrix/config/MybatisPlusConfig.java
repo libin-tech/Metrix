@@ -7,9 +7,19 @@ import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerIntercept
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * MyBatis Plus 配置类
+ * 配置分页插件和乐观锁插件
+ */
 @Configuration
 public class MybatisPlusConfig {
 
+    /**
+     * 配置 MyBatis Plus 拦截器
+     * 添加分页插件和乐观锁插件
+     *
+     * @return MybatisPlusInterceptor 拦截器实例
+     */
     @Bean
     public MybatisPlusInterceptor mybatisPlusInterceptor() {
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();

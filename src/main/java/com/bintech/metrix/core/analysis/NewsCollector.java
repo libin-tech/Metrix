@@ -17,6 +17,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.bintech.metrix.constants.ApiConstants.KEY_MESSAGE;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -24,6 +26,7 @@ public class NewsCollector {
 
     private final NewsService newsService;
     private final AiModelService aiModelService;
+    private final NewsPromptBuilder newsPromptBuilder;
 
     /**
      * 获取股票相关新闻并生成AI摘要
@@ -38,7 +41,7 @@ public class NewsCollector {
 
         // 校验接口状态
         if (!ApiConstants.STATUS_SUCCESS.equals(newsResult.get(ApiConstants.KEY_STATUS))) {
-            String errorMsg = (String) newsResult.get("message");
+            String errorMsg = (String) newsResult.get(ApiConstants.KEY_MESSAGE);
             log.warn("获取新闻失败: {}", errorMsg);
             return null;
         }
@@ -73,7 +76,7 @@ public class NewsCollector {
 
         if (!newsList.isEmpty()) {
             String summary = aiModelService.generateAnalysis(
-                    buildSummarizePrompt(newsList), modelType);
+                    newsPromptBuilder.buildSummarizePrompt(newsList), modelType);
             newsSummaryMap.put("summary", summary);
         } else {
             newsSummaryMap.put("summary", "暂无相关新闻");
@@ -84,11 +87,4 @@ public class NewsCollector {
         return newsSummaryMap;
     }
 
-    private String buildSummarizePrompt(List<Map<String, Object>> newsList) {
-        StringBuilder sb = new StringBuilder();
-        for (Map<String, Object> item : newsList) {
-            sb.append("- ").append(item.get("title")).append(": ").append(item.get("summary")).append("\n");
-        }
-        return String.format(BusinessConstants.SUMMARIZE_PROMPT, sb.toString());
-    }
 }

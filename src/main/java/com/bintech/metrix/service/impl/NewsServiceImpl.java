@@ -137,7 +137,7 @@ public class NewsServiceImpl implements NewsService {
             
             // 构建请求体（JSON格式）
             JSONObject requestBody = new JSONObject();
-            requestBody.set(ApiConstants.KEY_MESSAGE, String.format(BusinessConstants.BOCHA_SEARCH_QUERY, stockBasic.getTsCode(), stockBasic.getName()));
+            requestBody.set(ApiConstants.KEY_QUERY, String.format(BusinessConstants.BOCHA_SEARCH_QUERY, stockBasic.getTsCode(), stockBasic.getName()));
             requestBody.set(ApiConstants.KEY_COUNT, BusinessConstants.DEFAULT_NEWS_COUNT);
             requestBody.set("freshness", BusinessConstants.NEWS_FRESHNESS);
             requestBody.set(BusinessConstants.KEY_SUMMARY, true);

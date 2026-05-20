@@ -25,11 +25,13 @@
                 >
                   <a-list-item-meta>
                     <template #title>
-                      <LoadingOutlined v-if="item.status === 'ANALYZING'" class="loading-spinner" />
-                      <span v-else :class="['status-dot', item.status.toLowerCase()]"></span>
-                      <span class="stock-code">{{ item.stockCode }}</span>
-                      <span class="stock-name">{{ item.stockName }}</span>
-                      <a-tag v-if="item.isHolding" color="blue" size="small" class="holding-tag">{{ $t('analysis.holdingTag') }}</a-tag>
+                      <div class="record-title">
+                        <LoadingOutlined v-if="item.status === 'ANALYZING'" class="loading-spinner" />
+                        <span v-else :class="['status-dot', item.status.toLowerCase()]"></span>
+                        <span class="stock-code">{{ item.stockCode }}</span>
+                        <span class="stock-name">{{ item.stockName }}</span>
+                        <a-tag v-if="item.isHolding" color="blue" size="small" class="holding-tag">{{ $t('analysis.holdingTag') }}</a-tag>
+                      </div>
                     </template>
                     <template #description>
                       <span class="time-info">
@@ -181,14 +183,17 @@
                       <span class="ph-vol-value">{{ formatPercent(analysisOverview.realTimeMarket.turnoverRate) }}%</span>
                     </div>
                   </div>
+                  <div class="price-hero-stock">
+                    <div class="ph-stock-code">{{ selectedRecord?.stockCode }}</div>
+                    <div class="ph-stock-name">{{ selectedRecord?.stockName }}</div>
+                  </div>
                 </div>
               </div>
 
-              <!-- ===== 双栏：核心洞察 | 技术面 + 作战计划 + 筹码分布 ===== -->
-              <div class="overview-columns">
-                <!-- 左栏：核心洞察 -->
-                <div class="overview-col overview-col-left">
-                  <div class="section core-insight" v-if="analysisOverview.coreInsight">
+              <!-- ===== 三栏布局：核心洞察 | 关联板块+技术面+作战计划 | 筹码分布+新闻 ===== -->
+              <div class="overview-cols">
+                <div class="overview-col col-left">
+                  <div class="overview-section" v-if="analysisOverview.coreInsight">
                     <div class="section-title">
                       <InboxOutlined /> {{ $t('analysis.coreInsight') }}
                     </div>
@@ -196,9 +201,17 @@
                   </div>
                 </div>
 
-                <!-- 右栏：技术面关键指标 + 作战计划 + 筹码分布 -->
-                <div class="overview-col overview-col-right">
-                  <div class="section ma-section-block" v-if="analysisOverview.dataPivot">
+                <div class="overview-col col-middle">
+                  <div class="overview-section" v-if="analysisOverview.relatedSectors?.length">
+                    <div class="section-title">
+                      <AppstoreOutlined /> {{ $t('analysis.relatedSectors') }}
+                    </div>
+                    <div class="sectors-inline">
+                      <a-tag v-for="(sector, idx) in analysisOverview.relatedSectors" :key="idx" color="blue">{{ sector }}</a-tag>
+                    </div>
+                  </div>
+
+                  <div class="overview-section" v-if="analysisOverview.dataPivot">
                     <div class="section-title">
                       <BarChartOutlined /> {{ $t('analysis.techIndicators') }}
                     </div>
@@ -243,7 +256,7 @@
                     </div>
                   </div>
 
-                  <div class="section" v-if="analysisOverview.battlePlan">
+                  <div class="overview-section" v-if="analysisOverview.battlePlan">
                     <div class="section-title">
                       <AimOutlined /> {{ $t('analysis.battlePlan') }}
                     </div>
@@ -274,8 +287,10 @@
                       <span class="bp-rr-value">1:{{ analysisOverview.battlePlan.riskRewardRatio }}</span>
                     </div>
                   </div>
+                </div>
 
-                  <div class="section" v-if="analysisOverview.dataPivot">
+                <div class="overview-col col-right">
+                  <div class="overview-section" v-if="analysisOverview.dataPivot">
                     <div class="section-title">
                       <PieChartOutlined /> {{ $t('analysis.chipDistribution') }}
                     </div>
@@ -312,43 +327,42 @@
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
 
-              <!-- ===== 全宽：相关新闻 ===== -->
-              <div class="section section-full news-section" v-if="analysisOverview.newsList?.length">
-                <div class="section-title">
-                  <MessageOutlined /> {{ $t('analysis.relatedNews') }}
-                </div>
-                <div class="news-list-compact">
-                  <div 
-                    v-for="(news, index) in analysisOverview.newsList.slice(0, 3)" 
-                    :key="index"
-                    class="news-item-compact"
-                  >
-                    <div class="news-title-compact">
-                      <span class="news-number-compact">{{ index + 1 }}.</span>
-                      <span>{{ news.title }}</span>
+                  <div class="overview-section" v-if="analysisOverview.newsList?.length">
+                    <div class="section-title">
+                      <MessageOutlined /> {{ $t('analysis.relatedNews') }}
                     </div>
-                    <div class="news-summary-compact">{{ news.summary }}</div>
-                    <div class="news-meta-compact">
-                      <span class="news-source-compact">{{ news.source }}</span>
-                      <span class="news-time-compact">{{ formatDateTime(news.publishTime) }}</span>
+                    <div class="news-list-compact">
+                      <div 
+                        v-for="(news, index) in analysisOverview.newsList.slice(0, 3)" 
+                        :key="index"
+                        class="news-item-compact"
+                      >
+                        <div class="news-title-compact">
+                          <span class="news-number-compact">{{ index + 1 }}.</span>
+                          <span>{{ news.title }}</span>
+                        </div>
+                        <div class="news-summary-compact">{{ news.summary }}</div>
+                        <div class="news-meta-compact">
+                          <span class="news-source-compact">{{ news.source }}</span>
+                          <span class="news-time-compact">{{ formatDateTime(news.publishTime) }}</span>
+                        </div>
+                        <a 
+                          v-if="news.url"
+                          :href="news.url" 
+                          target="_blank" 
+                          class="news-link"
+                        >
+                           {{ $t('analysis.viewOriginal') }} <LinkOutlined />
+                        </a>
+                      </div>
                     </div>
-                    <a 
-                      v-if="news.url"
-                      :href="news.url" 
-                      target="_blank" 
-                      class="news-link"
-                    >
-                       {{ $t('analysis.viewOriginal') }} <LinkOutlined />
-                    </a>
+                    <div class="view-more-news" v-if="analysisOverview.newsList?.length > 3">
+                      <a-button type="link" @click="showDetail = true">
+                        {{ $t('analysis.moreNews') }} <RightOutlined />
+                      </a-button>
+                    </div>
                   </div>
-                </div>
-                <div class="view-more-news" v-if="analysisOverview.newsList?.length > 3">
-                  <a-button type="link" @click="showDetail = true">
-                    {{ $t('analysis.moreNews') }} <RightOutlined />
-                  </a-button>
                 </div>
               </div>
 
@@ -462,6 +476,7 @@ import {
   MessageOutlined,
   InboxOutlined,
   AimOutlined,
+  AppstoreOutlined,
   UserOutlined,
   LinkOutlined,
   RightOutlined,
@@ -997,7 +1012,7 @@ onUnmounted(() => {
 
 .analysis-layout {
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: 350px 1fr;
   gap: 20px;
   min-height: calc(100vh - 124px);
 }
@@ -1120,6 +1135,11 @@ onUnmounted(() => {
   border-left: 3px solid #1890ff;
 }
 
+.record-title {
+  display: flex;
+  align-items: center;
+}
+
 .stock-code {
   font-weight: bold;
   color: #333;
@@ -1132,7 +1152,8 @@ onUnmounted(() => {
 }
 
 .holding-tag {
-  margin-left: 6px;
+  margin-left: auto;
+  margin-right: 3px;
   font-size: 11px;
   line-height: 18px;
   vertical-align: middle;
@@ -1312,33 +1333,83 @@ onUnmounted(() => {
 .overview-content {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
-  max-width: 1100px;
-  margin: 0 auto;
+  padding: 12px;
 }
 
-/* ===== 双栏布局容器 ===== */
-.overview-columns {
+/* ===== 三栏布局容器 ===== */
+.overview-cols {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-  margin-bottom: 16px;
+  grid-template-columns: 1.3fr 1fr 1fr;
+  gap: 12px;
+  align-items: start;
 }
 
 .overview-col {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
+}
+
+.overview-section {
+  background: #fff;
+  border-radius: 8px;
+  padding: 14px;
+  border: 1px solid #e8e8e8;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.sectors-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.overview-section {
+  flex: 1;
   min-width: 0;
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #e8e8e8;
 }
 
 /* ===== 价格概览条（Hero） ===== */
 .price-hero {
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-  border-radius: 14px;
-  padding: 20px 24px;
-  margin-bottom: 16px;
+  border-radius: 12px;
+  margin: 0 -12px 16px -12px;
+  padding: 20px 40px;
   color: #fff;
+}
+
+.price-hero-stock {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.ph-stock-code {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.ph-stock-name {
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 0.85;
+  line-height: 1.3;
 }
 
 .price-hero-main {
@@ -1748,11 +1819,7 @@ onUnmounted(() => {
 }
 
 /* 核心洞察文本 */
-.core-insight {
-  background: #fff;
-  border-radius: 12px;
-  padding: 14px;
-  border: 1px solid #e8e8e8;
+.overview-section.core-insight {
   border-left: 3px solid #faad14;
 }
 

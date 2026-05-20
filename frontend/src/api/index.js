@@ -40,7 +40,6 @@ export const deleteAnalysis = id => service.delete(`/analysis/${id}`)
 export const pushToFeishu = id => service.post(`/analysis/${id}/push-feishu`)
 export const exportPdf = id => service.get(`/analysis/${id}/pdf`, { responseType: 'blob' })
 export const getAnalysisDetail = id => service.get(`/analysis/${id}/detail`)
-export const getAnalysisMarkdown = id => service.get(`/analysis/${id}/markdown`)
 export const getQueueStatus = () => service.get('/analysis/queue/status')
 
 export const searchStocks = keyword => service.get('/stocks/search', { params: { keyword } })
@@ -68,8 +67,6 @@ export const deleteMarketDataConfig = id => service.delete(`/market-data/${id}`)
 export const testAiModelConfig = data => service.post('/ai-model/test', data)
 
 export const getStockBasicPage = (keyword, page, size) => service.get('/stock-basic/page', { params: { keyword, page, size } })
-export const importStockBasic = formData => service.post('/stock-basic/import', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
-
 export const getBrokerAccounts = () => service.get('/portfolio/accounts')
 export const createBrokerAccount = data => service.post('/portfolio/accounts', data)
 export const updateBrokerAccount = (id, data) => service.put(`/portfolio/accounts/${id}`, data)
@@ -77,6 +74,13 @@ export const deleteBrokerAccount = id => service.delete(`/portfolio/accounts/${i
 
 export const getPortfolioHoldings = (keyword, accountId) => service.get('/portfolio/holdings', { params: { keyword, accountId } })
 export const createPortfolioHolding = data => service.post('/portfolio/holdings', data)
+export const batchCreatePortfolioHolding = (accountId, items) => service.post('/portfolio/holdings/batch', items, { params: { accountId } })
 export const deletePortfolioHolding = id => service.delete(`/portfolio/holdings/${id}`)
 export const refreshPortfolioPrices = () => service.post('/portfolio/holdings/refresh-prices')
 export const pollRefreshedPrices = (ids) => service.post('/portfolio/holdings/poll-refreshed', ids)
+
+export const getMarketReviews = () => service.get('/market-review')
+export const getMarketReviewDetail = (id) => service.get(`/market-review/${id}`)
+export const deleteMarketReview = (id) => service.delete(`/market-review/${id}`)
+export const triggerMarketReview = () => service.post('/market-review/trigger')
+export const createMarketReview = (reviewDate) => service.post('/market-review/create', null, { params: { reviewDate } })

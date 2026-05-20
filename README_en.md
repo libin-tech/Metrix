@@ -1,3 +1,5 @@
+<img src=".doc/images/Metrix.png" alt="Metrix" width="500">
+
 # # Metrix
 
 > English | [中文](./README.md)
@@ -6,6 +8,8 @@ Metrix = Metric + Matrix - an asset evaluation tool based on the perspective of 
 
 ## Web preview
 ![analysis](.doc/images/analysis_img_en.png)
+
+![review](.doc/images/market_review_cn.png)
 
 ## Tech Stack
 

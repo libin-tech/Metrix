@@ -59,7 +59,7 @@ public class AnalysisPromptBuilder {
         prompt.append("11. 投资建议\n");
         prompt.append("12. 风险提示\n");
         prompt.append("13. 走势预测: 给出一周内、一月内的股票走势\n");
-        prompt.append("请使用中文回答，并使用Markdown格式输出，适当增加表格形式展示，格式上适当填充一些符号做标记，使整体内容展示的更美观和直观。");
+        prompt.append("请使用中文回答，直接输出内容即可，并使用Markdown格式输出，适当增加表格形式展示，格式上适当填充一些符号做标记，使整体内容展示的更美观和直观。");
 
         return prompt.toString();
     }

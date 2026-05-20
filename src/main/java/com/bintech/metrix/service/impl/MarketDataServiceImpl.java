@@ -241,6 +241,7 @@ public class MarketDataServiceImpl implements MarketDataService {
             ProcessBuilder pb = new ProcessBuilder(command);
             pb.redirectErrorStream(true);
 
+
             Process process = pb.start();
 
             // 在后台线程中持续读取输出，避免管道缓冲区写满导致子进程阻塞

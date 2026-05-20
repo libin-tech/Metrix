@@ -288,6 +288,81 @@ public class NotificationServiceImpl implements NotificationService {
         return doPost(config.getWebhookUrl(), message);
     }
 
+    @Override
+    public boolean sendFeishuMarketReviewCard(String reviewName, String reviewTime, String summary, double avgChangePct, String coreSummary) {
+        LambdaQueryWrapper<NotificationConfig> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(NotificationConfig::getChannelType, BusinessConstants.CHANNEL_TYPE_FEISHU)
+                .eq(NotificationConfig::getIsActive, true);
+        NotificationConfig config = configMapper.selectOne(queryWrapper);
+        if (config == null) {
+            log.warn("未找到活跃的飞书通知配置");
+            return false;
+        }
+
+        JSONObject card = new JSONObject();
+        card.put("config", new JSONObject().put("wide_screen_mode", true));
+
+        JSONObject header = new JSONObject();
+        header.put("template", "blue");
+        JSONObject title = new JSONObject();
+        title.put("tag", "plain_text");
+        title.put("content", "📊 " + reviewName);
+        header.put("title", title);
+        card.put("header", header);
+
+        cn.hutool.json.JSONArray elements = new cn.hutool.json.JSONArray();
+
+        JSONObject timeDiv = new JSONObject();
+        timeDiv.put("tag", "div");
+        JSONObject timeText = new JSONObject();
+        timeText.put("tag", "lark_md");
+        timeText.put("content", "**⏰ 复盘时间：** " + reviewTime);
+        timeDiv.put("text", timeText);
+        elements.add(timeDiv);
+
+        elements.add(new JSONObject().put("tag", "hr"));
+
+        JSONObject summaryDiv = new JSONObject();
+        summaryDiv.put("tag", "div");
+        JSONObject summaryText = new JSONObject();
+        summaryText.put("tag", "lark_md");
+        String summaryIcon = avgChangePct >= 0 ? "📈" : "📉";
+        summaryText.put("content", "**" + summaryIcon + " 市场总结**\n\n" + summary + "（" + String.format("%.2f", avgChangePct) + "%）");
+        summaryDiv.put("text", summaryText);
+        elements.add(summaryDiv);
+
+        elements.add(new JSONObject().put("tag", "hr"));
+
+        if (coreSummary != null && !coreSummary.isBlank()) {
+            JSONObject insightDiv = new JSONObject();
+            insightDiv.put("tag", "div");
+            JSONObject insightText = new JSONObject();
+            insightText.put("tag", "lark_md");
+            insightText.put("content", "**💡 核心总结**\n\n" + coreSummary);
+            insightDiv.put("text", insightText);
+            elements.add(insightDiv);
+            elements.add(new JSONObject().put("tag", "hr"));
+        }
+
+        JSONObject note = new JSONObject();
+        note.put("tag", "note");
+        cn.hutool.json.JSONArray noteElements = new cn.hutool.json.JSONArray();
+        JSONObject noteText = new JSONObject();
+        noteText.put("tag", "plain_text");
+        noteText.put("content", "💡 完整复盘报告请登录系统查看");
+        noteElements.add(noteText);
+        note.put("elements", noteElements);
+        elements.add(note);
+
+        card.put("elements", elements);
+
+        JSONObject message = new JSONObject();
+        message.put("msg_type", "interactive");
+        message.put("card", card);
+
+        return doPost(config.getWebhookUrl(), message);
+    }
+
     private boolean doPost(String webhookUrl, JSONObject message) {
         try (HttpResponse response = HttpRequest.post(webhookUrl)
                 .charset(StandardCharsets.UTF_8)

@@ -44,14 +44,6 @@ public interface StockAnalysisService {
     StockAnalysisDetailResponse getAnalysisDetail(Long id);
     
     /**
-     * 获取分析结果的Markdown格式内容
-     * 
-     * @param id 分析记录ID
-     * @return Markdown格式的分析结果
-     */
-    String getAnalysisResultAsMarkdown(Long id);
-    
-    /**
      * 执行异步分析任务
      * 
      * @param recordId 记录ID

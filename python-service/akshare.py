@@ -137,6 +137,7 @@ def with_timeout(func):
 
 @with_timeout
 def cmd_chip(args):
+    os.environ["TQDM_DISABLE"] = "1"
     try:
         import akshare as ak
     except ImportError:
@@ -174,6 +175,93 @@ def cmd_chip(args):
     print(json.dumps({"status": "success", "data": result}, ensure_ascii=False))
 
 
+@with_timeout
+def cmd_index(args):
+    os.environ["TQDM_DISABLE"] = "1"
+    try:
+        import akshare as ak
+    except ImportError:
+        print(json.dumps({"status": "error", "message": "AKShare 未安装"}, ensure_ascii=False))
+        return
+
+    target_date = args.date
+    symbols = args.symbols.split(",")
+
+    result = {}
+    for sym in symbols:
+        sym = sym.strip()
+        if not sym:
+            continue
+        try:
+            df = ak.stock_zh_index_daily(symbol=sym)
+            if df.empty:
+                result[sym] = {"error": "未获取到数据"}
+                continue
+            df = df.tail(30)
+            records = []
+            for _, row in df.iterrows():
+                records.append({
+                    "date": str(row["date"]),
+                    "open": float(row["open"]),
+                    "close": float(row["close"]),
+                    "high": float(row["high"]),
+                    "low": float(row["low"]),
+                    "volume": float(row["volume"]),
+                })
+
+            # 如果目标日期是当天，获取实时行情数据并确保当天记录存在
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            if target_date and target_date == today_str:
+                try:
+                    spot_df = ak.stock_zh_index_spot_sina()
+                    spot_match = spot_df[spot_df["代码"] == sym]
+                    if not spot_match.empty:
+                        sr = spot_match.iloc[0]
+                        today_record = {
+                            "date": today_str,
+                            "open": float(sr["今开"]),
+                            "close": float(sr["最新价"]),
+                            "high": float(sr["最高"]),
+                            "low": float(sr["最低"]),
+                            "volume": float(sr["成交量"]),
+                        }
+                        found = False
+                        for i, r in enumerate(records):
+                            if r["date"] == today_str:
+                                records[i] = today_record
+                                found = True
+                                break
+                        if not found:
+                            records.append(today_record)
+                except Exception as e:
+                    pass
+
+            if target_date:
+                matched = [r for r in records if r["date"] == target_date]
+                if matched:
+                    latest = matched[-1]
+                    idx = records.index(latest)
+                    prev = records[idx - 1] if idx > 0 else {}
+                else:
+                    latest = records[-1]
+                    prev = records[-2] if len(records) >= 2 else {}
+            else:
+                latest = records[-1] if records else {}
+                prev = records[-2] if len(records) >= 2 else {}
+            change_pct = 0.0
+            if prev.get("close") and prev["close"] != 0:
+                change_pct = round((latest["close"] - prev["close"]) / prev["close"] * 100, 2)
+            result[sym] = {
+                "records": records,
+                "latest": latest,
+                "changePct": change_pct,
+                "targetDate": target_date or str(latest.get("date", ""))
+            }
+        except Exception as e:
+            result[sym] = {"error": str(e)}
+    print(json.dumps({"status": "success", "data": result}, ensure_ascii=False))
+
+
 def main():
     parser = argparse.ArgumentParser(description="AKShare 筹码数据 CLI")
     parser.add_argument("--api-key", default=os.environ.get("TICKFLOW_API_KEY", ""),
@@ -182,6 +270,10 @@ def main():
     p = subparsers.add_parser("chip", help="筹码分布")
     p.add_argument("--symbol", required=True, help="股票代码")
     p.set_defaults(func=cmd_chip)
+    p_idx = subparsers.add_parser("index", help="大盘指数数据")
+    p_idx.add_argument("--symbols", required=True, help="指数代码，多个用逗号分隔，如 sh000001,sz399001")
+    p_idx.add_argument("--date", default=None, help="目标日期，格式 yyyy-MM-dd，用于指定复盘日期")
+    p_idx.set_defaults(func=cmd_index)
 
     args = parser.parse_args()
     try:

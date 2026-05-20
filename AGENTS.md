@@ -64,9 +64,8 @@
 - 枚举类型使用MyBatis-Plus自动映射枚举。
 - 禁止使用线程池，必须使用JDK21的虚拟线程。
 - 判空使用 `Hutool`提供的工具类。
-- JSON操作优先使用`alibaba-fastjson2`。
 - 禁止出现硬编码，使用常量代替。常量类存放路径：`com.bintech.metrix.constants`
-- 对于JSON解析，使用 `alibaba-fastjson2`并避免使用 `JSONObject`泛化表示。应使用Java对象代替映射。
+
 
 
 

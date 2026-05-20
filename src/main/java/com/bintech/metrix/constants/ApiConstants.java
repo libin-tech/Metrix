@@ -16,6 +16,7 @@ public final class ApiConstants {
     /** 响应JSON字段名 */
     public static final String KEY_STATUS = "status";
     public static final String KEY_MESSAGE = "message";
+    public static final String KEY_QUERY = "query";
     public static final String KEY_DATA = "data";
     public static final String KEY_CODE = "code";
     public static final String KEY_COUNT = "count";

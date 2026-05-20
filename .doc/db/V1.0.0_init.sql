@@ -447,4 +447,37 @@ COMMENT ON COLUMN portfolio_holding.modifier IS '修改人';
 ALTER TABLE "portfolio_holding" OWNER TO postgres;
 
 
+-- 大盘复盘记录表
+CREATE TABLE market_review (
+                               id BIGSERIAL PRIMARY KEY,
+                               review_date VARCHAR(10) NOT NULL,
+                               review_name VARCHAR(100) NOT NULL,
+                               review_time TIMESTAMP,
+                               status VARCHAR(20) DEFAULT 'REVIEWING',
+                               detail TEXT,
+                               summary VARCHAR(50),
+                               core_summary TEXT,
+                               error_message TEXT,
+                               create_time TIMESTAMP,
+                               update_time TIMESTAMP,
+                               version INTEGER DEFAULT 0,
+                               creator VARCHAR(50),
+                               modifier VARCHAR(50)
+);
+
+COMMENT ON TABLE market_review IS '大盘复盘记录表';
+COMMENT ON COLUMN market_review.review_date IS '复盘日期，格式：2026-05-19';
+COMMENT ON COLUMN market_review.review_name IS '复盘名称，格式：2026-05-19 A股复盘报告';
+COMMENT ON COLUMN market_review.review_time IS '复盘时间';
+COMMENT ON COLUMN market_review.status IS '复盘状态：REVIEWING-复盘中，COMPLETED-复盘完成，FAILED-复盘失败';
+COMMENT ON COLUMN market_review.detail IS '复盘详情（Markdown格式）';
+COMMENT ON COLUMN market_review.summary IS '总结，格式：小幅下跌/大幅上涨/小幅上涨/大幅下跌';
+COMMENT ON COLUMN market_review.core_summary IS '核心总结';
+COMMENT ON COLUMN market_review.error_message IS '错误信息';
+
+CREATE UNIQUE INDEX idx_market_review_date ON market_review(review_date);
+
+
+
+
 

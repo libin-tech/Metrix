@@ -8,7 +8,7 @@
       <!-- 侧边栏 -->
       <a-layout-sider v-model:collapsed="collapsed" :width="200" class="sider">
         <div class="logo">
-          <BarChartOutlined class="logo-icon" />
+          <img src="/Metrix.png" class="logo-icon" alt="Metrix" />
           <span v-show="!collapsed" class="logo-text">{{ $t('layout.logo') }}</span>
         </div>
         <a-menu theme="dark" mode="inline" :selected-keys="[currentPath]" class="main-menu">
@@ -23,6 +23,10 @@
           <a-menu-item key="/portfolio" @click="navigate('/portfolio')">
             <WalletOutlined />
             <span>{{ $t('menu.portfolio') }}</span>
+          </a-menu-item>
+          <a-menu-item key="/market-review" @click="navigate('/market-review')">
+            <FundOutlined />
+            <span>{{ $t('menu.marketReview') }}</span>
           </a-menu-item>
           <a-sub-menu key="settings">
             <template #title>
@@ -125,6 +129,7 @@ import {
   DatabaseOutlined,
   DownOutlined,
   FileTextOutlined,
+  FundOutlined,
   GlobalOutlined,
   HomeOutlined,
   LineChartOutlined,
@@ -151,6 +156,7 @@ const pageTitleMap = {
   '/home': () => t('menu.home'),
   '/analysis': () => t('menu.analysis'),
   '/portfolio': () => t('menu.portfolio'),
+  '/market-review': () => t('menu.marketReview'),
   '/settings/ai-model': () => t('menu.aiModel'),
   '/settings/notification': () => t('menu.notification'),
   '/settings/news-source': () => t('menu.newsSource'),
@@ -245,8 +251,9 @@ body {
 }
 
 .logo-icon {
-  font-size: 24px;
-  color: #1890ff;
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
 }
 
 .logo-text {

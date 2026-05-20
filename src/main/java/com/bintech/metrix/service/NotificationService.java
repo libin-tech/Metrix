@@ -17,7 +17,7 @@ public interface NotificationService {
     boolean sendFeishuNotification(String title, String content, Map<String, Object> attachments);
 
     /**
-     * 发送飞书卡片消息
+     * 发送飞书卡片消息（个股分析）
      *
      * @param stockName 股票名称
      * @param stockCode 股票代码
@@ -27,4 +27,16 @@ public interface NotificationService {
      * @return 是否发送成功
      */
     boolean sendFeishuCardMessage(String stockName, String stockCode, String coreInsight, String overviewJson, String analysisTime);
+
+    /**
+     * 发送飞书卡片消息（大盘复盘）
+     *
+     * @param reviewName   复盘名称
+     * @param reviewTime   复盘时间
+     * @param summary      市场总结
+     * @param avgChangePct 平均涨跌幅
+     * @param coreSummary  核心总结
+     * @return 是否发送成功
+     */
+    boolean sendFeishuMarketReviewCard(String reviewName, String reviewTime, String summary, double avgChangePct, String coreSummary);
 }

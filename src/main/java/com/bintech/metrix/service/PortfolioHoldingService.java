@@ -52,6 +52,14 @@ public interface PortfolioHoldingService {
     void createHolding(PortfolioHoldingRequest request);
 
     /**
+     * 批量新增持仓标的（同一账户下）
+     *
+     * @param accountId 账户ID
+     * @param items     持仓请求列表
+     */
+    void batchCreateHoldings(Long accountId, List<PortfolioHoldingRequest> items);
+
+    /**
      * 删除持仓标的
      *
      * @param id 持仓ID
