@@ -1,4 +1,4 @@
-<img src=".doc/images/Metrix.png" alt="Metrix" width="500">
+<img src=".doc/images/Metrix.png" alt="Metrix" width="300">
 
 # Metrix
 
@@ -31,6 +31,9 @@ Metrix = Metric（指标） + Matrix（矩阵）
 - **实时行情** — 通过 TickFlow 获取实时报价、深度数据、K 线数据
 - **新闻聚合** — 通过博查 API 获取相关股票新闻并自动摘要
 - **筹码分析** — Python 脚本计算筹码分布与成本集中度
+- **PDF 导出** — 将分析报告导出为 PDF 文件
+- **大盘复盘** — 对每日 A 股主要指数进行 AI 复盘分析，生成市场总结与趋势研判
+- **持仓管理** — 多账户持仓管理，支持批量录入、一键评估、实时盈亏监控
 - **PDF 导出** — 将分析报告导出为 PDF 文件
 - **飞书通知** — 分析完成后通过飞书 Webhook 推送结果
 - **多模型支持** — 支持 OpenAI 兼容接口和 Ollama 本地模型
@@ -108,8 +111,8 @@ npm run preview
 ## 项目结构
 
 ```
-stock-analysis/
-├── src/main/java/com/bin/stockanalysis/
+Metrix/
+├── src/main/java/com/bintech/metrix/
 │   ├── controller/        # REST 控制器
 │   ├── service/           # 业务逻辑层
 │   ├── repository/        # 持久层（Entity + Mapper）
@@ -117,8 +120,7 @@ stock-analysis/
 │   ├── dto/               # 数据传输对象
 │   ├── enums/             # 枚举
 │   ├── config/            # 配置类
-│   ├── exception/         # 全局异常处理
-│   └── util/              # 工具类
+│   └── exception/         # 全局异常处理
 ├── frontend/              # Vue 3 前端
 │   └── src/
 │       ├── views/         # 页面组件
@@ -130,6 +132,7 @@ stock-analysis/
 │   └── akshare.py         # 筹码分布计算
 └── .doc/
     ├── db/                # 数据库迁移脚本
+    ├── images/            # 图片资源
     └── basic/             # 基础数据文件
 ```
 
@@ -155,6 +158,8 @@ stock-analysis/
 - **博查**：新闻数据，需配置 API Key
 - **Tushare**：股票基础数据，导入 CSV 文件
 
+> **注意**：Windows 下使用 AKShare 时如遇网络代理错误，系统会自动清除子进程的 `HTTP_PROXY`/`HTTPS_PROXY` 环境变量，确保直连外网。
+
 ## API 概览
 
 所有 API 以 `/api` 为前缀，部分接口需要登录认证（Sa-Token JWT）。
@@ -169,6 +174,12 @@ stock-analysis/
 | `GET  /api/stock/analysis/detail` | 分析详情 |
 | `GET  /api/stock/analysis/export/pdf` | 导出 PDF |
 | `GET  /api/stock/analysis/queue/status` | 队列状态 |
+| `POST /api/portfolio/holding` | 新增持仓 |
+| `POST /api/portfolio/holding/batch` | 批量新增持仓 |
+| `GET  /api/portfolio/holding/list` | 持仓列表 |
+| `POST /api/market-review/trigger` | 发起大盘复盘 |
+| `GET  /api/market-review/list` | 复盘记录列表 |
+| `GET  /api/market-review/detail` | 复盘详情 |
 | `PUT  /api/config/ai-model` | 更新 AI 模型配置 |
 | `PUT  /api/config/market-data` | 更新行情源配置 |
 | `PUT  /api/config/news-source` | 更新新闻源配置 |

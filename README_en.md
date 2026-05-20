@@ -1,6 +1,6 @@
-<img src=".doc/images/Metrix.png" alt="Metrix" width="500">
+<img src=".doc/images/Metrix.png" alt="Metrix" width="300">
 
-# # Metrix
+# Metrix
 
 > English | [中文](./README.md)
 
@@ -9,7 +9,7 @@ Metrix = Metric + Matrix - an asset evaluation tool based on the perspective of 
 ## Web preview
 ![analysis](.doc/images/analysis_img_en.png)
 
-![review](.doc/images/market_review_cn.png)
+![review](.doc/images/market_review_en.png)
 
 ## Tech Stack
 
@@ -30,6 +30,8 @@ Metrix = Metric + Matrix - an asset evaluation tool based on the perspective of 
 - **News Aggregation** — Stock-related news via Bocha API with auto-summarization
 - **Chip Distribution** — Python-based shareholding cost distribution analysis
 - **PDF Export** — Export analysis reports as PDF
+- **Market Review** — AI-powered daily review of major A-share indices with market summary and trend analysis
+- **Portfolio Management** — Multi-account holding management with batch entry, one-click evaluation, and real-time P&L monitoring
 - **Feishu Notifications** — Push analysis results via Feishu Webhook
 - **Multi-Model Support** — OpenAI-compatible APIs and local Ollama models
 - **i18n** — Chinese and English UI
@@ -106,8 +108,8 @@ Frontend runs at `http://localhost:4173` (preview) or your nginx-configured port
 ## Project Structure
 
 ```
-stock-analysis/
-├── src/main/java/com/bin/stockanalysis/
+Metrix/
+├── src/main/java/com/bintech/metrix/
 │   ├── controller/        # REST controllers
 │   ├── service/           # Business logic layer
 │   ├── repository/        # Persistence layer (Entity + Mapper)
@@ -115,8 +117,7 @@ stock-analysis/
 │   ├── dto/               # Data transfer objects
 │   ├── enums/             # Enumerations
 │   ├── config/            # Configuration classes
-│   ├── exception/         # Global exception handler
-│   └── util/              # Utility classes
+│   └── exception/         # Global exception handler
 ├── frontend/              # Vue 3 frontend
 │   └── src/
 │       ├── views/         # Page components
@@ -128,6 +129,7 @@ stock-analysis/
 │   └── akshare.py         # Chip distribution calculator
 └── .doc/
     ├── db/                # Database migration scripts
+    ├── images/            # Image assets
     └── basic/             # Fundamental data files
 ```
 
@@ -153,6 +155,8 @@ Manage AI models through the frontend config page:
 - **Bocha**: News data, requires API Key
 - **Tushare**: Stock fundamentals, import via CSV
 
+> **Note**: When using AKShare on Windows, if you encounter network proxy errors, the system will automatically clear proxy environment variables (`HTTP_PROXY`/`HTTPS_PROXY`) before launching the Python subprocess to ensure direct internet access.
+
 ## API Overview
 
 All APIs are prefixed with `/api`. Some endpoints require authentication (Sa-Token JWT).
@@ -167,6 +171,12 @@ All APIs are prefixed with `/api`. Some endpoints require authentication (Sa-Tok
 | `GET  /api/stock/analysis/detail` | Analysis detail |
 | `GET  /api/stock/analysis/export/pdf` | Export PDF |
 | `GET  /api/stock/analysis/queue/status` | Queue status |
+| `POST /api/portfolio/holding` | Add holding |
+| `POST /api/portfolio/holding/batch` | Batch add holdings |
+| `GET  /api/portfolio/holding/list` | List holdings |
+| `POST /api/market-review/trigger` | Trigger market review |
+| `GET  /api/market-review/list` | List market reviews |
+| `GET  /api/market-review/detail` | Market review detail |
 | `PUT  /api/config/ai-model` | Update AI model config |
 | `PUT  /api/config/market-data` | Update market data source config |
 | `PUT  /api/config/news-source` | Update news source config |
