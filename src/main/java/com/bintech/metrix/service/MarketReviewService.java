@@ -1,5 +1,6 @@
 package com.bintech.metrix.service;
 
+import com.bintech.metrix.dto.response.CursorPageResult;
 import com.bintech.metrix.repository.entity.MarketReview;
 
 import java.util.List;
@@ -11,6 +12,8 @@ import java.util.Map;
 public interface MarketReviewService {
 
     List<MarketReview> getAllReviews();
+
+    CursorPageResult<MarketReview> cursorQuery(Long cursor, int limit);
 
     MarketReview getReviewById(Long id);
 

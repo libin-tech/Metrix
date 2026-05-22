@@ -2,6 +2,7 @@ package com.bintech.metrix.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import com.bintech.metrix.dto.response.ApiResponse;
+import com.bintech.metrix.dto.response.CursorPageResult;
 import com.bintech.metrix.repository.entity.MarketReview;
 import com.bintech.metrix.service.MarketReviewService;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,14 @@ public class MarketReviewController {
     public ApiResponse<List<MarketReview>> getAllReviews() {
         List<MarketReview> reviews = marketReviewService.getAllReviews();
         return ApiResponse.success(reviews);
+    }
+
+    @GetMapping("/cursor")
+    public ApiResponse<CursorPageResult<MarketReview>> cursorQuery(
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(defaultValue = "10") int limit) {
+        CursorPageResult<MarketReview> result = marketReviewService.cursorQuery(cursor, limit);
+        return ApiResponse.success(result);
     }
 
     @GetMapping("/{id}")

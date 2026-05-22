@@ -477,6 +477,101 @@ COMMENT ON COLUMN market_review.error_message IS '错误信息';
 
 CREATE UNIQUE INDEX idx_market_review_date ON market_review(review_date);
 
+-- ----------------------------
+-- 问一问功能：对话会话表
+-- ----------------------------
+DROP SEQUENCE IF EXISTS "chat_session_id_seq";
+CREATE SEQUENCE "chat_session_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    MAXVALUE 9223372036854775807
+    MINVALUE 1
+    CACHE 1
+    NO CYCLE;
+
+DROP TABLE IF EXISTS "chat_session";
+CREATE TABLE "chat_session"
+(
+    id            BIGINT DEFAULT NEXTVAL('chat_session_id_seq'::REGCLASS) NOT NULL,
+    session_name  VARCHAR(200)                                             NOT NULL,
+    user_id       BIGINT                                                   NOT NULL,
+    total_tokens  INTEGER      DEFAULT 0                                   NOT NULL,
+    message_count INTEGER      DEFAULT 0                                   NOT NULL,
+    create_time   TIMESTAMP    DEFAULT NOW()                               NOT NULL,
+    update_time   TIMESTAMP,
+    version       INTEGER      DEFAULT 0                                   NOT NULL,
+    creator       VARCHAR(50),
+    modifier      VARCHAR(50),
+    CONSTRAINT chat_session_pkey PRIMARY KEY (id)
+) TABLESPACE pg_default;
+
+CREATE INDEX idx_chat_session_user_id ON public.chat_session USING btree (user_id);
+CREATE INDEX idx_chat_session_update_time ON public.chat_session USING btree (update_time);
+
+COMMENT ON TABLE chat_session IS '对话会话表';
+COMMENT ON COLUMN chat_session.id IS '主键ID';
+COMMENT ON COLUMN chat_session.session_name IS '会话名称';
+COMMENT ON COLUMN chat_session.user_id IS '用户ID';
+COMMENT ON COLUMN chat_session.total_tokens IS '累计消耗Token数';
+COMMENT ON COLUMN chat_session.message_count IS '问答数量';
+COMMENT ON COLUMN chat_session.create_time IS '创建时间';
+COMMENT ON COLUMN chat_session.update_time IS '更新时间';
+COMMENT ON COLUMN chat_session.version IS '版本号（乐观锁）';
+COMMENT ON COLUMN chat_session.creator IS '创建人';
+COMMENT ON COLUMN chat_session.modifier IS '修改人';
+
+ALTER TABLE "chat_session" OWNER TO postgres;
+
+-- ----------------------------
+-- 问一问功能：对话消息表
+-- ----------------------------
+DROP SEQUENCE IF EXISTS "chat_message_id_seq";
+CREATE SEQUENCE "chat_message_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    MAXVALUE 9223372036854775807
+    MINVALUE 1
+    CACHE 1
+    NO CYCLE;
+
+DROP TABLE IF EXISTS "chat_message";
+CREATE TABLE "chat_message"
+(
+    id            BIGINT DEFAULT NEXTVAL('chat_message_id_seq'::REGCLASS) NOT NULL,
+    session_id    BIGINT                                                   NOT NULL,
+    role          VARCHAR(20)                                              NOT NULL,
+    content       TEXT                                                     NOT NULL,
+    tokens        INTEGER      DEFAULT 0                                   NOT NULL,
+    stock_code    VARCHAR(20),
+    stock_name    VARCHAR(100),
+    create_time   TIMESTAMP    DEFAULT NOW()                               NOT NULL,
+    update_time   TIMESTAMP,
+    version       INTEGER      DEFAULT 0                                   NOT NULL,
+    creator       VARCHAR(50),
+    modifier      VARCHAR(50),
+    CONSTRAINT chat_message_pkey PRIMARY KEY (id)
+) TABLESPACE pg_default;
+
+CREATE INDEX idx_chat_message_session_id ON public.chat_message USING btree (session_id);
+CREATE INDEX idx_chat_message_create_time ON public.chat_message USING btree (create_time);
+
+COMMENT ON TABLE chat_message IS '对话消息表';
+COMMENT ON COLUMN chat_message.id IS '主键ID';
+COMMENT ON COLUMN chat_message.session_id IS '会话ID';
+COMMENT ON COLUMN chat_message.role IS '角色：user-用户，assistant-AI助手';
+COMMENT ON COLUMN chat_message.content IS '消息内容';
+COMMENT ON COLUMN chat_message.tokens IS '消耗Token数';
+COMMENT ON COLUMN chat_message.stock_code IS '关联股票代码';
+COMMENT ON COLUMN chat_message.stock_name IS '关联股票名称';
+COMMENT ON COLUMN chat_message.create_time IS '创建时间';
+COMMENT ON COLUMN chat_message.update_time IS '更新时间';
+COMMENT ON COLUMN chat_message.version IS '版本号（乐观锁）';
+COMMENT ON COLUMN chat_message.creator IS '创建人';
+COMMENT ON COLUMN chat_message.modifier IS '修改人';
+
+ALTER TABLE "chat_message" OWNER TO postgres;
+
+
 
 
 

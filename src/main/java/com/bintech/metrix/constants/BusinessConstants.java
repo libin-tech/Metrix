@@ -16,6 +16,12 @@ public final class BusinessConstants {
     public static final int SUPPORT_LOOKBACK = 20;
     public static final int RESISTANCE_LOOKBACK = 20;
 
+    /* ==================== MACD 参数 ==================== */
+    public static final int MACD_FAST_PERIOD = 12;
+    public static final int MACD_SLOW_PERIOD = 26;
+    public static final int MACD_SIGNAL_PERIOD = 9;
+    public static final int MACD_SCALE = 4;
+
     /* ==================== 筹码分布阈值 ==================== */
     public static final BigDecimal CHIP_BALANCE_PERCENT = BigDecimal.valueOf(50);
     public static final BigDecimal CHIP_CONCENTRATION_FACTOR = BigDecimal.valueOf(0.8);
@@ -81,6 +87,10 @@ public final class BusinessConstants {
 
     /* ==================== 认证排除路径 ==================== */
     public static final String[] EXCLUDED_AUTH_PATHS = {"/api/auth/login", "/api/auth/check"};
+
+    /* ==================== 问一问对话限制 ==================== */
+    public static final int MAX_CHAT_SESSIONS_PER_USER = 100;
+    public static final int MAX_MESSAGES_PER_SESSION = 20;
 
     /* ==================== 默认用户 ==================== */
     public static final String DEFAULT_ADMIN_USERNAME = "admin";

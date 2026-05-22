@@ -75,4 +75,12 @@ public interface MarketDataService {
      * @return K线数据映射
      */
     Map<String, Object> fetchKlinesData(StockBasic stockBasic, int limit);
+
+    /**
+     * 获取十大流通股东数据
+     *
+     * @param stockBasic 股票基础信息
+     * @return 十大流通股东数据映射
+     */
+    Map<String, Object> fetchTopFreeShareholdersData(StockBasic stockBasic);
 }

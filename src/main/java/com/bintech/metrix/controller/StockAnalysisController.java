@@ -22,12 +22,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.bintech.metrix.dto.request.StockAnalysisRequest;
 import com.bintech.metrix.core.queue.AnalysisTask;
 import com.bintech.metrix.core.queue.AnalysisTaskQueue;
 import com.bintech.metrix.dto.response.ApiResponse;
+import com.bintech.metrix.dto.response.CursorPageResult;
 import com.bintech.metrix.dto.response.StockAnalysisDetailResponse;
 import com.bintech.metrix.repository.entity.StockAnalysisRecord;
 import com.bintech.metrix.repository.entity.StockBasic;
@@ -165,6 +167,25 @@ public class StockAnalysisController {
             record.setIsHolding(holdingStockCodes.contains(record.getStockCode()));
         }
         return ApiResponse.success(records);
+    }
+
+    /**
+     * 游标分页查询分析记录
+     *
+     * @param cursor 上一页最后一条的ID，缺省为第一页
+     * @param limit  每页条数，缺省10
+     * @return 游标分页结果
+     */
+    @GetMapping("/cursor")
+    public ApiResponse<CursorPageResult<StockAnalysisRecord>> cursorQuery(
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(defaultValue = "10") int limit) {
+        CursorPageResult<StockAnalysisRecord> result = stockAnalysisService.cursorQuery(cursor, limit);
+        Set<String> holdingStockCodes = portfolioHoldingService.getHoldingStockCodes();
+        for (StockAnalysisRecord record : result.getItems()) {
+            record.setIsHolding(holdingStockCodes.contains(record.getStockCode()));
+        }
+        return ApiResponse.success(result);
     }
 
     /**

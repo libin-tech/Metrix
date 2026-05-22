@@ -110,4 +110,24 @@ public class DataPivot {
      * 筹码综合总结
      */
     private String chipSummary;
+
+    /**
+     * MACD DIF 值（快线）
+     */
+    private BigDecimal macdDif;
+
+    /**
+     * MACD DEA 值（慢线/信号线）
+     */
+    private BigDecimal macdDea;
+
+    /**
+     * MACD 柱状图值（BAR）
+     */
+    private BigDecimal macdBar;
+
+    /**
+     * MACD 信号描述
+     */
+    private String macdSignal;
 }

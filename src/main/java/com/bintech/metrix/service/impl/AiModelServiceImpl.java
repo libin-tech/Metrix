@@ -9,10 +9,15 @@ import com.bintech.metrix.dto.response.AiModelTestResponse;
 import com.bintech.metrix.repository.entity.AiModelConfig;
 import com.bintech.metrix.repository.mapper.AiModelConfigMapper;
 import com.bintech.metrix.service.AiModelService;
+import com.bintech.metrix.dto.response.AnalysisResult;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
+import dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
+import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -170,6 +175,91 @@ public class AiModelServiceImpl implements AiModelService {
         log.info("===== AI分析完成 =====");
         log.info("耗时: {}秒, 生成内容长度: {}字符", duration / (double) SystemConstants.MILLIS_PER_SECOND, contentLength);
         return content;
+    }
+
+    @Override
+    public void generateAnalysisStreaming(String prompt, String modelType,
+                                          java.util.function.Consumer<String> onNext,
+                                          java.util.function.Consumer<AnalysisResult> onComplete,
+                                          java.util.function.Consumer<Throwable> onError) {
+        AiModelConfig config = getActiveConfigByType(modelType);
+        String modelName = config.getModelName();
+        log.info("===== AI流式分析开始 =====");
+        log.info("模型类型: {}, 模型名称: {}", modelType, modelName);
+
+        long startTime = System.currentTimeMillis();
+        StringBuilder fullContent = new StringBuilder();
+        StreamingChatModel model = buildStreamingModel(config, modelType);
+
+        model.chat(prompt, new dev.langchain4j.model.chat.response.StreamingChatResponseHandler() {
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                fullContent.append(partialResponse);
+                onNext.accept(partialResponse);
+            }
+
+            @Override
+            public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse completeResponse) {
+                long duration = System.currentTimeMillis() - startTime;
+                String content = fullContent.toString();
+                int totalTokens = 0;
+                try {
+                    if (completeResponse != null
+                            && completeResponse.metadata() != null
+                            && completeResponse.metadata().tokenUsage() != null) {
+                        Integer tc = completeResponse.metadata().tokenUsage().totalTokenCount();
+                        totalTokens = tc != null ? tc : content.length() / 2;
+                    } else {
+                        totalTokens = content.length() / 2;
+                    }
+                } catch (Exception e) {
+                    totalTokens = content.length() / 2;
+                }
+                log.info("===== AI流式分析完成 =====");
+                log.info("耗时: {}秒, 生成内容长度: {}字符, Token数: {}",
+                        duration / (double) SystemConstants.MILLIS_PER_SECOND, content.length(), totalTokens);
+                onComplete.accept(new AnalysisResult(content, totalTokens));
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                log.error("AI流式分析出错: {}", error.getMessage(), error);
+                onError.accept(error);
+            }
+        });
+    }
+
+    /**
+     * 构建StreamingChatModel实例
+     */
+    private StreamingChatModel buildStreamingModel(AiModelConfig config, String modelType) {
+        if (BusinessConstants.MODEL_TYPE_OLLAMA.equalsIgnoreCase(modelType)) {
+            return OllamaStreamingChatModel.builder()
+                    .baseUrl(config.getApiBaseUrl())
+                    .modelName(config.getModelName())
+                    .temperature(config.getTemperature())
+                    .build();
+        }
+        if (BusinessConstants.MODEL_TYPE_GEMINI.equalsIgnoreCase(modelType)) {
+            GoogleAiGeminiStreamingChatModel.GoogleAiGeminiStreamingChatModelBuilder geminiBuilder =
+                    GoogleAiGeminiStreamingChatModel.builder()
+                            .apiKey(config.getApiKey())
+                            .modelName(config.getModelName())
+                            .temperature(config.getTemperature());
+            if (config.getTimeout() != null) {
+                geminiBuilder.timeout(java.time.Duration.ofSeconds(config.getTimeout()));
+            }
+            return geminiBuilder.build();
+        }
+        OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder builder = OpenAiStreamingChatModel.builder()
+                .baseUrl(config.getApiBaseUrl())
+                .apiKey(config.getApiKey())
+                .modelName(config.getModelName())
+                .temperature(config.getTemperature());
+        if (config.getTimeout() != null) {
+            builder.timeout(java.time.Duration.ofSeconds(config.getTimeout()));
+        }
+        return builder.build();
     }
 
     /**

@@ -5,6 +5,7 @@ import com.bintech.metrix.core.analysis.MarketReviewDataFetcher;
 import com.bintech.metrix.core.analysis.MarketReviewPromptBuilder;
 import com.bintech.metrix.core.queue.MarketReviewTask;
 import com.bintech.metrix.core.queue.MarketReviewTaskQueue;
+import com.bintech.metrix.dto.response.CursorPageResult;
 import com.bintech.metrix.enums.MarketReviewStatus;
 import com.bintech.metrix.repository.entity.MarketReview;
 import com.bintech.metrix.repository.mapper.MarketReviewMapper;
@@ -33,11 +34,17 @@ import java.util.Map;
 public class MarketReviewServiceImpl implements MarketReviewService {
 
     private static final int MAX_RECORD_KEEP_COUNT = 100;
-    private static final String SUMMARY_SLIGHT_UP = "小幅上涨";
-    private static final String SUMMARY_BIG_UP = "大幅上涨";
-    private static final String SUMMARY_SLIGHT_DOWN = "小幅下跌";
-    private static final String SUMMARY_BIG_DOWN = "大幅下跌";
-    private static final double SUMMARY_THRESHOLD = 3.0;
+    private static final String SUMMARY_MICRO_UP = "微涨";
+    private static final String SUMMARY_MICRO_DOWN = "微跌";
+    private static final String SUMMARY_SMALL_UP = "小涨";
+    private static final String SUMMARY_SMALL_DOWN = "小跌";
+    private static final String SUMMARY_LARGE_UP = "大涨";
+    private static final String SUMMARY_LARGE_DOWN = "大跌";
+    private static final String SUMMARY_SURGE_UP = "暴涨";
+    private static final String SUMMARY_SURGE_DOWN = "暴跌";
+    private static final double THRESHOLD_MICRO = 0.5;
+    private static final double THRESHOLD_SMALL = 1.5;
+    private static final double THRESHOLD_LARGE = 3.5;
     private static final String CORE_SUMMARY_PREFIX = "【核心总结】";
     private static final int CORE_SUMMARY_MAX_LENGTH = 500;
 
@@ -56,6 +63,27 @@ public class MarketReviewServiceImpl implements MarketReviewService {
         LambdaQueryWrapper<MarketReview> wrapper = new LambdaQueryWrapper<>();
         wrapper.orderByDesc(MarketReview::getReviewDate);
         return marketReviewMapper.selectList(wrapper);
+    }
+
+    @Override
+    public CursorPageResult<MarketReview> cursorQuery(Long cursor, int limit) {
+        LambdaQueryWrapper<MarketReview> wrapper = new LambdaQueryWrapper<>();
+        if (cursor != null && cursor > 0) {
+            wrapper.lt(MarketReview::getId, cursor);
+        }
+        wrapper.orderByDesc(MarketReview::getId);
+        wrapper.last("LIMIT " + (limit + 1));
+        List<MarketReview> records = marketReviewMapper.selectList(wrapper);
+        boolean hasMore = records.size() > limit;
+        if (hasMore) {
+            records = records.subList(0, limit);
+        }
+        Long nextCursor = records.isEmpty() ? null : records.getLast().getId();
+        return CursorPageResult.<MarketReview>builder()
+                .items(records)
+                .hasMore(hasMore)
+                .nextCursor(nextCursor)
+                .build();
     }
 
     @Override
@@ -237,11 +265,29 @@ public class MarketReviewServiceImpl implements MarketReviewService {
         return count > 0 ? sum / count : 0.0;
     }
 
+    /**
+     * 根据平均涨跌幅计算市场走势总结描述
+     * <p>
+     * 根据预设的阈值（微幅0.5%、小幅1.5%、大幅3.5%）判断市场涨跌程度，
+     * 返回对应的中文描述，包括：微涨/微跌、小涨/小跌、大涨/大跌、暴涨/暴跌
+     * </p>
+     *
+     * @param avgChangePct 平均涨跌幅百分比值，正数表示上涨，负数表示下跌
+     * @return 市场走势总结描述字符串，如"微涨"、"大涨"、"暴跌"等
+     */
     private String calcSummary(double avgChangePct) {
-        if (avgChangePct >= SUMMARY_THRESHOLD) return SUMMARY_BIG_UP;
-        if (avgChangePct > 0) return SUMMARY_SLIGHT_UP;
-        if (avgChangePct > -SUMMARY_THRESHOLD) return SUMMARY_SLIGHT_DOWN;
-        return SUMMARY_BIG_DOWN;
+        double abs = Math.abs(avgChangePct);
+        if (avgChangePct >= 0) {
+            if (abs >= THRESHOLD_LARGE) return SUMMARY_SURGE_UP;
+            if (abs >= THRESHOLD_SMALL) return SUMMARY_LARGE_UP;
+            if (abs >= THRESHOLD_MICRO) return SUMMARY_SMALL_UP;
+            return SUMMARY_MICRO_UP;
+        } else {
+            if (abs >= THRESHOLD_LARGE) return SUMMARY_SURGE_DOWN;
+            if (abs >= THRESHOLD_SMALL) return SUMMARY_LARGE_DOWN;
+            if (abs >= THRESHOLD_MICRO) return SUMMARY_SMALL_DOWN;
+            return SUMMARY_MICRO_DOWN;
+        }
     }
 
     private void cleanupExcessRecords() {

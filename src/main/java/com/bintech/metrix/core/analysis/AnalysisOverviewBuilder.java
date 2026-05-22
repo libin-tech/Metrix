@@ -9,6 +9,7 @@ import com.bintech.metrix.model.RealTimeMarket;
 import com.bintech.metrix.service.AiModelService;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -78,23 +79,19 @@ public class AnalysisOverviewBuilder {
     }
 
     /**
-     * 构建分析概览，封装实时行情、数据透视、作战计划
-     *
-     * @param marketData   实时行情数据
-     * @param klinesData   K线数据
-     * @param analysisResult AI分析报告
-     * @param coreInsight  核心洞察
-     * @param chipData     筹码分布数据（AKShare）
-     * @return 分析概览对象
+     * 构建分析概览，封装实时行情、数据透视、作战计划、股东数据
      */
     public AnalysisOverview build(Map<String, Object> marketData, Map<String, Object> klinesData,
-                                   String analysisResult, String coreInsight, Map<String, Object> chipData) {
+                                   String analysisResult, String coreInsight, Map<String, Object> chipData,
+                                   Map<String, Object> topFreeShareholdersData) {
         try {
             AnalysisOverview overview = new AnalysisOverview();
             overview.setCoreInsight(coreInsight);
             overview.setRealTimeMarket(buildRealTimeMarket(marketData));
             overview.setDataPivot(buildDataPivot(marketData, klinesData, chipData));
             overview.setBattlePlan(buildBattlePlan(marketData, klinesData));
+            overview.setTopFreeShareholdersData(topFreeShareholdersData != null ? JSONUtil.toJsonStr(topFreeShareholdersData) : null);
+            overview.setTopFreeShareholdersAnalysis(buildTopFreeShareholdersAnalysis(topFreeShareholdersData));
             return overview;
         } catch (Exception e) {
             log.error("构建分析概览数据失败: {}", e.getMessage(), e);
@@ -202,8 +199,16 @@ public class AnalysisOverviewBuilder {
             builder.ma60(calcMA(closeData, BusinessConstants.MA_PERIOD_60));
             builder.supportLevel(calcSupport(lowData));
             builder.resistanceLevel(calcResistance(highData));
+
+            JSONObject macdData = data.getJSONObject("macd");
+            if (macdData != null) {
+                builder.macdDif(macdData.getBigDecimal("dif", BigDecimal.ZERO));
+                builder.macdDea(macdData.getBigDecimal("dea", BigDecimal.ZERO));
+                builder.macdBar(macdData.getBigDecimal("bar", BigDecimal.ZERO));
+                builder.macdSignal(macdData.getStr("signal", ""));
+            }
         } catch (Exception e) {
-            log.warn("从K线数据计算均线失败: {}", e.getMessage());
+            log.warn("从K线数据计算均线/MACD失败: {}", e.getMessage());
         }
     }
 
@@ -406,5 +411,70 @@ public class AnalysisOverviewBuilder {
             if (val.compareTo(resistance) > 0) resistance = val;
         }
         return resistance.setScale(2, java.math.RoundingMode.HALF_UP);
+    }
+
+    private String buildTopFreeShareholdersAnalysis(Map<String, Object> topFreeShareholdersData) {
+        if (topFreeShareholdersData == null) return "暂无十大流通股东数据";
+        try {
+            JSONObject cd = new JSONObject(topFreeShareholdersData);
+            if (!ApiConstants.STATUS_SUCCESS.equals(cd.get(ApiConstants.KEY_STATUS))) return "十大流通股东数据获取失败";
+            JSONArray data = cd.getJSONArray(ApiConstants.KEY_DATA);
+            if (data == null || data.isEmpty()) return "暂无十大流通股东数据";
+
+            double totalInstitutionalRatio = 0;
+            int institutionalCount = 0;
+            int personalCount = 0;
+            boolean hasSshefund = false;
+            boolean hasCentralHuijin = false;
+            boolean hasMorgan = false;
+            boolean hasGoldman = false;
+
+            for (int i = 0; i < data.size(); i++) {
+                JSONObject item = data.getJSONObject(i);
+                String holderType = item.getStr("holder_type", "");
+                String holderName = item.getStr("holder_name", "");
+                double ratio = item.getDouble("free_holdnum_ratio", 0.0);
+
+                if ("个人".equals(holderType)) {
+                    personalCount++;
+                } else {
+                    institutionalCount++;
+                    totalInstitutionalRatio += ratio;
+                }
+
+                String name = holderName.toLowerCase();
+                if (name.contains("社保")) hasSshefund = true;
+                if (name.contains("中央汇金") || name.contains("汇金")) hasCentralHuijin = true;
+                if (name.contains("摩根")) hasMorgan = true;
+                if (name.contains("高盛")) hasGoldman = true;
+            }
+
+            double institutionalRatio = data.size() > 0 ? (double) institutionalCount / data.size() * 100 : 0;
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("十大流通股东中，机构股东").append(institutionalCount).append("家，个人股东").append(personalCount).append("家；");
+
+            if (hasSshefund || hasCentralHuijin || hasMorgan || hasGoldman) {
+                sb.append("包含知名机构（");
+                if (hasSshefund) sb.append("社保基金、");
+                if (hasCentralHuijin) sb.append("中央汇金、");
+                if (hasMorgan) sb.append("摩根、");
+                if (hasGoldman) sb.append("高盛、");
+                sb.deleteCharAt(sb.length() - 1);
+                sb.append("），机构持股占比高；");
+            }
+
+            if (institutionalRatio >= 50) {
+                sb.append("评分：优秀（机构持股占比超50%）");
+            } else if (institutionalRatio >= 30) {
+                sb.append("评分：及格（机构持股占比30%左右）");
+            } else {
+                sb.append("评分：注意风险（机构持股占比不足30%）");
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            log.warn("解析十大流通股东分析失败: {}", e.getMessage());
+            return "十大流通股东数据解析失败";
+        }
     }
 }

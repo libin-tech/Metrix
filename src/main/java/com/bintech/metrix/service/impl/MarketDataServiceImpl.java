@@ -64,21 +64,25 @@ public class MarketDataServiceImpl implements MarketDataService {
 
     /**
      * 执行TickFlow Python脚本获取市场数据
+     * <p>
+     * 根据子命令名自动映射到独立的脚本文件，命名规约：
+     * <code>tickflow_{subcommand}.py</code>，例如 klines → tickflow_klines.py。
      *
-     * @param subcommand 子命令（quotes/depth/klines）
+     * @param scriptName 脚本标识（quotes/depth/klines）
      * @param scriptArgs 脚本参数
      * @return 解析后的JSON结果Map
      */
-    private Map<String, Object> runPythonScript(String subcommand, String... scriptArgs) {
+    private Map<String, Object> runPythonScript(String scriptName, String... scriptArgs) {
         MarketDataConfig config = getTickFlowConfig();
         int timeoutSeconds = config.getTimeout() != null ? config.getTimeout() : SystemConstants.DEFAULT_TIMEOUT_SECONDS;
 
+        String scriptPath = tickflowScriptPath.replace("tickflow.py", "tickflow_" + scriptName + ".py");
+
         List<String> command = new ArrayList<>();
         command.add(pythonExecutable);
-        command.add(tickflowScriptPath);
+        command.add(scriptPath);
         command.add("--api-key");
         command.add(config.getApiKey());
-        command.add(subcommand);
         command.addAll(Arrays.asList(scriptArgs));
 
         log.info("执行TickFlow脚本: {}", String.join(" ", command));
@@ -207,14 +211,15 @@ public class MarketDataServiceImpl implements MarketDataService {
     @Override
     public Map<String, Object> fetchChipData(StockBasic stockBasic) {
         log.info("开始查询筹码分布: stockCode={}", stockBasic.getTsCode());
-        return runAkShareScript("chip", "--symbol", stockBasic.getSymbol());
+        return runPythonScript("chip", "--symbols", stockBasic.getTsCode());
     }
 
-    private Map<String, Object> runAkShareScript(String subcommand, String... scriptArgs) {
+    private Map<String, Object> runAkShareScript(String scriptName, String... scriptArgs) {
+        String scriptPath = akshareScriptPath.replace("akshare.py", "akshare_" + scriptName + ".py");
+
         List<String> command = new ArrayList<>();
         command.add(pythonExecutable);
-        command.add(akshareScriptPath);
-        command.add(subcommand);
+        command.add(scriptPath);
         command.addAll(Arrays.asList(scriptArgs));
 
         log.info("执行AKShare脚本: {}", String.join(" ", command));
@@ -303,5 +308,11 @@ public class MarketDataServiceImpl implements MarketDataService {
     public Map<String, Object> fetchKlinesData(StockBasic stockBasic, int limit) {
         log.info("开始查询K线数据: stockCode={}, limit={}", stockBasic.getTsCode(), limit);
         return runPythonScript("klines", "--symbol", stockBasic.getTsCode(), "--count", String.valueOf(limit), "--period", SystemConstants.KLINE_PERIOD_DAY);
+    }
+
+    @Override
+    public Map<String, Object> fetchTopFreeShareholdersData(StockBasic stockBasic) {
+        log.info("开始查询十大流通股东: stockCode={}", stockBasic.getTsCode());
+        return runAkShareScript("gdfx", "--symbol", stockBasic.getSymbol());
     }
 }

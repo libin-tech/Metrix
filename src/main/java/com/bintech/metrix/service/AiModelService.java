@@ -3,9 +3,11 @@ package com.bintech.metrix.service;
 import com.bintech.metrix.dto.request.AiModelConfigRequest;
 import com.bintech.metrix.dto.request.AiModelTestRequest;
 import com.bintech.metrix.dto.response.AiModelTestResponse;
+import com.bintech.metrix.dto.response.AnalysisResult;
 import com.bintech.metrix.repository.entity.AiModelConfig;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * AI模型配置服务接口
@@ -80,6 +82,20 @@ public interface AiModelService {
      * @return 模型返回的分析文本
      */
     String generateAnalysis(String prompt, String modelType);
+
+    /**
+     * 流式生成分析内容
+     *
+     * @param prompt    提示词
+     * @param modelType 模型类型
+     * @param onNext    每个token的回调
+     * @param onComplete 完成时的回调，参数为完整内容和总token数
+     * @param onError   错误回调
+     */
+    void generateAnalysisStreaming(String prompt, String modelType,
+                                   Consumer<String> onNext,
+                                   Consumer<AnalysisResult> onComplete,
+                                   Consumer<Throwable> onError);
 
     /**
      * 测试模型连接

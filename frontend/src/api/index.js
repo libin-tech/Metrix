@@ -35,6 +35,7 @@ export const login = data => service.post('/auth/login', data)
 
 export const getAnalysisById = id => service.get(`/analysis/${id}`)
 export const getAllAnalysis = () => service.get('/analysis')
+export const getAnalysisCursor = (cursor, limit = 10) => service.get('/analysis/cursor', { params: { cursor, limit } })
 export const createAnalysis = data => service.post('/analysis', data)
 export const deleteAnalysis = id => service.delete(`/analysis/${id}`)
 export const pushToFeishu = id => service.post(`/analysis/${id}/push-feishu`)
@@ -79,7 +80,73 @@ export const deletePortfolioHolding = id => service.delete(`/portfolio/holdings/
 export const refreshPortfolioPrices = () => service.post('/portfolio/holdings/refresh-prices')
 export const pollRefreshedPrices = (ids) => service.post('/portfolio/holdings/poll-refreshed', ids)
 
+export const createChatSession = data => service.post('/chat/session', data)
+export const listChatSessions = () => service.get('/chat/sessions')
+export const deleteChatSession = id => service.delete(`/chat/session/${id}`)
+export const getChatSessionMessages = id => service.get(`/chat/session/${id}/messages`)
+
+export const sendChatMessage = async (sessionId, content, callbacks) => {
+  const token = localStorage.getItem('token')
+  const { onThinking, onReport, onDone, onError, onStep } = callbacks
+  try {
+    const response = await fetch('/api/chat/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ sessionId, content })
+    })
+    if (!response.ok) {
+      const err = await response.text()
+      onError && onError(err)
+      return
+    }
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+
+      const parts = buffer.split('\n\n')
+      buffer = parts.pop() || ''
+
+      for (const part of parts) {
+        const lines = part.split('\n')
+        let eventType = 'report'
+        let data = ''
+        for (const line of lines) {
+          if (line.startsWith('id:')) {
+            // ignore id field
+          } else if (line.startsWith('event:')) {
+            eventType = line.slice(6).trim()
+          } else if (line.startsWith('data:')) {
+            data = line.slice(5).trim()
+          }
+        }
+        if (eventType === 'done') {
+          onDone && onDone(data ? JSON.parse(data) : {})
+        } else if (eventType === 'error') {
+          onError && onError(data)
+        } else if (eventType === 'step') {
+          onStep && onStep(data)
+        } else if (eventType === 'thinking') {
+          onThinking && onThinking(data)
+        } else if (eventType === 'report' || eventType === 'message' || eventType === '') {
+          onReport && onReport(data)
+        }
+      }
+    }
+  } catch (err) {
+    onError && onError(err.message || '连接失败')
+  }
+}
+
 export const getMarketReviews = () => service.get('/market-review')
+export const getMarketReviewCursor = (cursor, limit = 10) => service.get('/market-review/cursor', { params: { cursor, limit } })
 export const getMarketReviewDetail = (id) => service.get(`/market-review/${id}`)
 export const deleteMarketReview = (id) => service.delete(`/market-review/${id}`)
 export const triggerMarketReview = () => service.post('/market-review/trigger')

@@ -33,11 +33,11 @@ public class MarketReviewDataFetcher {
 
     public Map<String, Object> fetchIndexData(String reviewDate) {
         String symbols = String.join(",", INDEX_SYMBOLS);
+        String scriptPath = akshareScriptPath.replace("akshare.py", "akshare_index.py");
 
         List<String> command = new ArrayList<>();
         command.add(pythonExecutable);
-        command.add(akshareScriptPath);
-        command.add("index");
+        command.add(scriptPath);
         command.add("--symbols");
         command.add(symbols);
 

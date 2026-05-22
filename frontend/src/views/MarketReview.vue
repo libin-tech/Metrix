@@ -3,7 +3,7 @@
     <div class="market-review-layout">
       <!-- 左侧：复盘记录列表 -->
       <div class="left-panel">
-        <a-card :bordered="false" class="records-card">
+        <a-card :bordered="false" class="records-card" :body-style="{ flex: '1', overflow: 'hidden', display: 'flex', flexDirection: 'column' }">
           <template #title>
             <div class="records-header">
               <span>{{ $t('marketReview.title') }}</span>
@@ -13,7 +13,7 @@
             </div>
           </template>
 
-          <div class="records-list" v-if="reviews.length > 0">
+          <div class="records-list" v-if="reviews.length > 0" @scroll="handleScroll">
             <a-list :data-source="reviews">
               <template #renderItem="{ item }">
                 <a-list-item
@@ -22,15 +22,17 @@
                 >
                   <a-list-item-meta>
                     <template #title>
-                      <a-tag :color="statusColor(item.status)" size="small">{{ statusText(item.status) }}</a-tag>
-                      <span class="review-name">{{ item.reviewName }}</span>
+                      <div class="title-row">
+                        <span class="status-dot" :style="{ backgroundColor: statusDotColor(item.status) }"></span>
+                        <span class="review-name">{{ item.reviewName }}</span>
+                        <span class="summary-tag" v-if="item.summary">
+                          <a-tag :color="summaryColor(item.summary)" size="small">{{ item.summary }}</a-tag>
+                        </span>
+                      </div>
                     </template>
                     <template #description>
                       <span class="time-info">
                         <ClockCircleOutlined /> {{ item.reviewDate }}
-                      </span>
-                      <span class="summary-tag" v-if="item.summary">
-                        <a-tag :color="summaryColor(item.summary)" size="small">{{ item.summary }}</a-tag>
                       </span>
                     </template>
                   </a-list-item-meta>
@@ -46,6 +48,9 @@
                 </a-list-item>
               </template>
             </a-list>
+            <div v-if="allLoaded" class="end-hint end-loaded">—— 已经到底了 ——</div>
+            <div v-else-if="loadingMore" class="end-hint"><ReloadOutlined /> 加载中...</div>
+            <div v-else class="end-hint end-more" @click="loadMore(false)">↓ 点击加载更多</div>
           </div>
 
           <div v-if="reviews.length === 0" class="empty-tip">
@@ -70,7 +75,8 @@
 
           <div class="review-meta">
             <span><b>{{ $t('marketReview.status') }}：</b>
-              <a-tag :color="statusColor(selectedRecord.status)">{{ statusText(selectedRecord.status) }}</a-tag>
+              <span class="status-dot" :style="{ backgroundColor: statusDotColor(selectedRecord.status) }"></span>
+              {{ statusText(selectedRecord.status) }}
             </span>
             <span style="margin-left: 24px"><b>{{ $t('marketReview.reviewDate') }}：</b>{{ selectedRecord.reviewDate }}</span>
             <span style="margin-left: 24px" v-if="selectedRecord.summary"><b>{{ $t('marketReview.summary') }}：</b>
@@ -107,12 +113,13 @@
 
 <script setup>
 import {computed, onMounted, onUnmounted, ref} from 'vue'
+import {useRoute} from 'vue-router'
 import {useI18n} from 'vue-i18n'
 import {message, Modal} from 'ant-design-vue'
 import {ClockCircleOutlined, DeleteOutlined, FundOutlined, ReloadOutlined} from '@ant-design/icons-vue'
 import {marked} from 'marked'
 import {
-  getMarketReviews,
+  getMarketReviewCursor,
   getMarketReviewDetail,
   deleteMarketReview,
   triggerMarketReview,
@@ -120,19 +127,24 @@ import {
 } from '../api'
 
 const {t} = useI18n()
+const route = useRoute()
 
 const reviews = ref([])
 const loading = ref(false)
 const triggerLoading = ref(false)
 const selectedRecord = ref(null)
 const refreshTimer = ref(null)
+const cursor = ref(null)
+const hasMore = ref(true)
+const loadingMore = ref(false)
+const allLoaded = ref(false)
 
-const statusColor = (status) => {
-  if (!status) return 'default'
-  if (status === 'REVIEWING') return 'processing'
-  if (status === 'COMPLETED') return 'success'
-  if (status === 'FAILED') return 'error'
-  return 'default'
+const statusDotColor = (status) => {
+  if (!status) return '#d9d9d9'
+  if (status === 'REVIEWING') return '#fadb14'
+  if (status === 'COMPLETED') return '#52c41a'
+  if (status === 'FAILED') return '#ff4d4f'
+  return '#d9d9d9'
 }
 
 const statusText = (status) => {
@@ -145,10 +157,14 @@ const statusText = (status) => {
 
 const summaryColor = (summary) => {
   if (!summary) return 'default'
-  if (summary.includes('大幅上涨')) return 'red'
-  if (summary.includes('小幅上涨')) return 'orange'
-  if (summary.includes('大幅下跌')) return 'green'
-  if (summary.includes('小幅下跌')) return 'blue'
+  if (summary === '暴涨') return '#722ed1'
+  if (summary === '暴跌') return '#8c8c8c'
+  if (summary === '大涨') return '#f5222d'
+  if (summary === '大跌') return '#006d2c'
+  if (summary === '小涨') return '#ff4d4f'
+  if (summary === '小跌') return '#52c41a'
+  if (summary === '微涨') return '#ffa39e'
+  if (summary === '微跌') return '#95de64'
   return 'default'
 }
 
@@ -162,15 +178,39 @@ const renderedCoreSummary = computed(() => {
   return marked(selectedRecord.value.coreSummary)
 })
 
-const loadReviews = async () => {
-  loading.value = true
+const loadMore = async (reset = false) => {
+  if (!reset && (!hasMore.value || loadingMore.value)) return
+  if (reset) {
+    cursor.value = null
+    hasMore.value = true
+    allLoaded.value = false
+  }
+  loadingMore.value = true
   try {
-    const res = await getMarketReviews()
-    reviews.value = res.data || []
+    const res = await getMarketReviewCursor(cursor.value)
+    const result = res.data
+    const items = result.items || []
+    if (reset) {
+      reviews.value = items
+    } else {
+      reviews.value = reviews.value.concat(items)
+    }
+    hasMore.value = result.hasMore
+    cursor.value = result.nextCursor
+    if (!hasMore.value) {
+      allLoaded.value = true
+    }
   } catch {
     message.error(t('marketReview.loadFailed'))
   } finally {
-    loading.value = false
+    loadingMore.value = false
+  }
+}
+
+const handleScroll = (e) => {
+  const el = e.target
+  if (el.scrollHeight - el.scrollTop - el.clientHeight < 50) {
+    loadMore(false)
   }
 }
 
@@ -178,6 +218,9 @@ const selectRecord = async (record) => {
   try {
     const res = await getMarketReviewDetail(record.id)
     selectedRecord.value = res.data
+    if (selectedRecord.value.status === 'REVIEWING') {
+      startPolling()
+    }
   } catch {
     message.error(t('marketReview.loadFailed'))
   }
@@ -232,7 +275,7 @@ const doExecute = async (reviewDate) => {
   try {
     const res = await createMarketReview(reviewDate)
     message.success(t('marketReview.executeSuccess'))
-    await loadReviews()
+    await loadMore(true)
     selectedRecord.value = res.data
     startPolling()
   } catch (e) {
@@ -250,7 +293,7 @@ const startPolling = () => {
     await refreshCurrentRecord()
     if (selectedRecord.value.status !== 'REVIEWING') {
       stopPolling()
-      await loadReviews()
+      await loadMore(true)
     }
   }, 3000)
 }
@@ -273,7 +316,7 @@ const handleDelete = (id) => {
         if (selectedRecord.value?.id === id) {
           selectedRecord.value = null
         }
-        await loadReviews()
+        await loadMore(true)
       } catch {
         message.error(t('config.deleteFailed'))
       }
@@ -281,8 +324,22 @@ const handleDelete = (id) => {
   })
 }
 
-onMounted(() => {
-  loadReviews()
+onMounted(async () => {
+  await loadMore(true)
+  const reviewId = route.query.id
+  if (reviewId) {
+    const found = reviews.value.find(r => r.id === Number(reviewId))
+    if (found) {
+      await selectRecord(found)
+    } else {
+      try {
+        const res = await getMarketReviewDetail(Number(reviewId))
+        selectedRecord.value = res.data
+      } catch {
+        // ignore, user can select manually
+      }
+    }
+  }
 })
 
 onUnmounted(() => {
@@ -293,7 +350,8 @@ onUnmounted(() => {
 <style scoped>
 .market-review-page {
   padding: 20px;
-  min-height: calc(100vh - 84px);
+  height: calc(100vh - 84px);
+  overflow: hidden;
   background: #f5f7fa;
 }
 
@@ -301,18 +359,27 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: 360px 1fr;
   gap: 20px;
-  min-height: calc(100vh - 124px);
+  height: 100%;
+  overflow: hidden;
 }
 
 .left-panel {
-  height: calc(100vh - 124px);
-  overflow-y: auto;
+  height: 100%;
+  overflow: hidden;
 }
 
 .records-card {
   height: 100%;
   display: flex;
   flex-direction: column;
+}
+
+.records-card :deep(.ant-card-body) {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .records-header {
@@ -324,15 +391,36 @@ onUnmounted(() => {
 .records-list {
   flex: 1;
   overflow-y: auto;
+  min-height: 0;
 }
 
 .records-list .active {
   background: #e6f7ff;
 }
 
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.summary-tag {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
 .review-name {
-  margin-left: 6px;
   font-size: 13px;
+  vertical-align: middle;
 }
 
 .time-info {
@@ -369,13 +457,37 @@ onUnmounted(() => {
   color: #d9d9d9;
 }
 
+.end-hint {
+  text-align: center;
+  padding: 16px;
+  color: #bbb;
+  font-size: 13px;
+}
+
+.end-more {
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.end-more:hover {
+  color: #1890ff;
+}
+
 .right-panel {
-  height: calc(100vh - 124px);
-  overflow-y: auto;
+  height: 100%;
+  overflow: hidden;
 }
 
 .detail-card {
-  min-height: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-card :deep(.ant-card-body) {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .detail-header {

@@ -3,7 +3,7 @@
     <div class="analysis-layout">
       <!-- 左侧：分析记录列表 -->
       <div class="left-panel">
-        <a-card :title="$t('analysis.records')" :bordered="false" class="records-card">
+        <a-card :title="$t('analysis.records')" :bordered="false" class="records-card" :body-style="{ flex: '1', overflow: 'hidden', display: 'flex', flexDirection: 'column' }">
           <div class="records-header">
             <a-space>
               <a-button type="primary" size="small" @click="refreshRecords">
@@ -13,7 +13,7 @@
           </div>
 
           <!-- 分析记录列表 -->
-          <div class="records-list" v-if="analysisRecords.length > 0">
+          <div class="records-list" v-if="analysisRecords.length > 0" @scroll="handleScroll">
             <a-list :data-source="analysisRecords">
               <template #renderItem="{ item }">
                 <a-list-item
@@ -54,6 +54,9 @@
                 </a-list-item>
               </template>
             </a-list>
+            <div v-if="allLoaded" class="end-hint end-loaded">—— 已经到底了 ——</div>
+            <div v-else-if="loadingMore" class="end-hint"><LoadingOutlined /> 加载中...</div>
+            <div v-else class="end-hint end-more" @click="loadMore(false)">↓ 点击加载更多</div>
           </div>
 
           <div v-if="analysisRecords.length === 0" class="empty-tip">
@@ -190,18 +193,15 @@
                 </div>
               </div>
 
-              <!-- ===== 三栏布局：核心洞察 | 关联板块+技术面+作战计划 | 筹码分布+新闻 ===== -->
+              <!-- ===== 三栏：核心洞察/板块 | 技术面/筹码/作战 | 十大股东/新闻 ===== -->
               <div class="overview-cols">
-                <div class="overview-col col-left">
+                <div class="overview-col">
                   <div class="overview-section" v-if="analysisOverview.coreInsight">
                     <div class="section-title">
                       <InboxOutlined /> {{ $t('analysis.coreInsight') }}
                     </div>
                     <div class="core-insight-text markdown-content" v-html="renderMarkdown(analysisOverview.coreInsight)"></div>
                   </div>
-                </div>
-
-                <div class="overview-col col-middle">
                   <div class="overview-section" v-if="analysisOverview.relatedSectors?.length">
                     <div class="section-title">
                       <AppstoreOutlined /> {{ $t('analysis.relatedSectors') }}
@@ -210,7 +210,9 @@
                       <a-tag v-for="(sector, idx) in analysisOverview.relatedSectors" :key="idx" color="blue">{{ sector }}</a-tag>
                     </div>
                   </div>
+                </div>
 
+                <div class="overview-col">
                   <div class="overview-section" v-if="analysisOverview.dataPivot">
                     <div class="section-title">
                       <BarChartOutlined /> {{ $t('analysis.techIndicators') }}
@@ -254,6 +256,24 @@
                         </div>
                       </div>
                     </div>
+                    <div class="macd-section" v-if="analysisOverview.dataPivot.macdSignal">
+                      <div class="macd-header">{{ $t('analysis.macdSignal') }}</div>
+                      <div class="macd-grid">
+                        <div class="macd-item">
+                          <span class="macd-label">{{ $t('analysis.macdDif') }}</span>
+                          <span class="macd-value" :class="(analysisOverview.dataPivot.macdDif ?? 0) >= 0 ? 'macd-up' : 'macd-down'">{{ formatPrice(analysisOverview.dataPivot.macdDif) }}</span>
+                        </div>
+                        <div class="macd-item">
+                          <span class="macd-label">{{ $t('analysis.macdDea') }}</span>
+                          <span class="macd-value" :class="(analysisOverview.dataPivot.macdDea ?? 0) >= 0 ? 'macd-up' : 'macd-down'">{{ formatPrice(analysisOverview.dataPivot.macdDea) }}</span>
+                        </div>
+                        <div class="macd-item">
+                          <span class="macd-label">{{ $t('analysis.macdBar') }}</span>
+                          <span class="macd-value" :class="(analysisOverview.dataPivot.macdBar ?? 0) >= 0 ? 'macd-up' : 'macd-down'">{{ formatPrice(analysisOverview.dataPivot.macdBar) }}</span>
+                        </div>
+                      </div>
+                      <div class="macd-signal-text">{{ analysisOverview.dataPivot.macdSignal }}</div>
+                    </div>
                   </div>
 
                   <div class="overview-section" v-if="analysisOverview.battlePlan">
@@ -287,44 +307,77 @@
                       <span class="bp-rr-value">1:{{ analysisOverview.battlePlan.riskRewardRatio }}</span>
                     </div>
                   </div>
-                </div>
 
-                <div class="overview-col col-right">
                   <div class="overview-section" v-if="analysisOverview.dataPivot">
                     <div class="section-title">
                       <PieChartOutlined /> {{ $t('analysis.chipDistribution') }}
                     </div>
-                    <div class="chip-profit-loss">
-                      <div class="cpl-card profit">
-                        <div class="cpl-label">{{ $t('analysis.profitChips') }}</div>
-                        <div class="cpl-value">{{ formatPercent(analysisOverview.dataPivot.profitRatio) }}%</div>
+                    <div class="chip-compact">
+                      <div class="cc-pl">
+                        <span class="cc-pl-item cc-profit">{{ $t('analysis.profitChips') }} +{{ formatPercent(analysisOverview.dataPivot.profitRatio) }}%</span>
+                        <span class="cc-pl-divider">|</span>
+                        <span class="cc-pl-item cc-loss">{{ $t('analysis.lossChips') }} -{{ formatPercent(analysisOverview.dataPivot.lossRatio) }}%</span>
                       </div>
-                      <div class="cpl-card loss">
-                        <div class="cpl-label">{{ $t('analysis.lossChips') }}</div>
-                        <div class="cpl-value">{{ formatPercent(analysisOverview.dataPivot.lossRatio) }}%</div>
+                      <div class="cc-grid">
+                        <div class="cc-cell" v-if="analysisOverview.dataPivot.avgCostPrice">
+                          <span class="cc-label">{{ $t('analysis.avgCost') }}</span>
+                          <span class="cc-value">¥{{ formatPrice(analysisOverview.dataPivot.avgCostPrice) }}</span>
+                        </div>
+                        <div class="cc-cell">
+                          <span class="cc-label">{{ $t('analysis.chipConcentration') }}</span>
+                          <span class="cc-value">{{ formatPercent(analysisOverview.dataPivot.chipConcentration) }}%</span>
+                        </div>
+                        <div class="cc-cell" v-if="analysisOverview.dataPivot.cost90Low">
+                          <span class="cc-label">{{ $t('analysis.cost90Range') }}</span>
+                          <span class="cc-value">{{ formatPrice(analysisOverview.dataPivot.cost90Low) }}~{{ formatPrice(analysisOverview.dataPivot.cost90High) }}</span>
+                        </div>
+                        <div class="cc-cell" v-if="analysisOverview.dataPivot.cost70Low">
+                          <span class="cc-label">{{ $t('analysis.cost70Range') }}</span>
+                          <span class="cc-value">{{ formatPrice(analysisOverview.dataPivot.cost70Low) }}~{{ formatPrice(analysisOverview.dataPivot.cost70High) }}</span>
+                        </div>
+                      </div>
+                      <div class="cc-summary" v-if="analysisOverview.dataPivot.chipSummary">
+                        {{ analysisOverview.dataPivot.chipSummary }}
                       </div>
                     </div>
-                    <div class="chip-metrics">
-                      <div class="cm-item" v-if="analysisOverview.dataPivot.avgCostPrice">
-                        <span class="cm-label">{{ $t('analysis.avgCost') }}</span>
-                        <span class="cm-value">¥{{ formatPrice(analysisOverview.dataPivot.avgCostPrice) }}</span>
+                  </div>
+                </div>
+
+                <div class="overview-col">
+                  <div class="overview-section" v-if="analysisOverview.topFreeShareholdersData">
+                    <div class="section-title">
+                      <TeamOutlined /> {{ $t('analysis.topFreeShareholders') }}
+                    </div>
+                    <div class="shareholder-table">
+                      <div class="sh-row sh-header">
+                        <span class="sh-col-rank">{{ $t('analysis.rank') }}</span>
+                        <span class="sh-col-name">{{ $t('analysis.holderName') }}</span>
+                        <span class="sh-col-type">{{ $t('analysis.holderType') }}</span>
+                        <span class="sh-col-share-type">{{ $t('analysis.shareType') }}</span>
+                        <span class="sh-col-holdnum">{{ $t('analysis.holdNum') }}</span>
+                        <span class="sh-col-ratio">{{ $t('analysis.freeHoldRatio') }}</span>
+                        <span class="sh-col-change">{{ $t('analysis.changeNum') }}</span>
+                        <span class="sh-col-change-ratio">{{ $t('analysis.changeRatio') }}</span>
                       </div>
-                      <div class="cm-item">
-                        <span class="cm-label">{{ $t('analysis.chipConcentration') }}</span>
-                        <span class="cm-value">{{ formatPercent(analysisOverview.dataPivot.chipConcentration) }}%</span>
+                      <div
+                        v-for="(holder, idx) in getTopShareholders(analysisOverview.topFreeShareholdersData)"
+                        :key="idx"
+                        class="sh-row"
+                      >
+                        <span class="sh-col-rank">{{ holder.rank }}</span>
+                        <span class="sh-col-name">{{ holder.holder_name }}</span>
+                        <span class="sh-col-type">
+                          <a-tag :color="getHolderTypeColor(holder.holder_type)" class="sh-type-tag">{{ holder.holder_type }}</a-tag>
+                        </span>
+                        <span class="sh-col-share-type">{{ holder.share_type || '-' }}</span>
+                        <span class="sh-col-holdnum">{{ formatLargeNum(holder.hold_num) }}</span>
+                        <span class="sh-col-ratio">{{ formatPercent(holder.free_holdnum_ratio) }}%</span>
+                        <span class="sh-col-change" :class="getChangeClass(holder.change_num)">{{ formatChangeNum(holder.change_num) }}</span>
+                        <span class="sh-col-change-ratio" :class="getChangeClass(holder.change_num)">{{ formatChangeRatio(holder.change_ratio, holder.change_num) }}</span>
                       </div>
-                      <div class="cm-item" v-if="analysisOverview.dataPivot.cost90Low">
-                        <span class="cm-label">{{ $t('analysis.cost90Range') }}</span>
-                        <span class="cm-value">{{ formatPrice(analysisOverview.dataPivot.cost90Low) }} ~ {{ formatPrice(analysisOverview.dataPivot.cost90High) }}</span>
-                      </div>
-                      <div class="cm-item" v-if="analysisOverview.dataPivot.cost70Low">
-                        <span class="cm-label">{{ $t('analysis.cost70Range') }}</span>
-                        <span class="cm-value">{{ formatPrice(analysisOverview.dataPivot.cost70Low) }} ~ {{ formatPrice(analysisOverview.dataPivot.cost70High) }}</span>
-                      </div>
-                      <div class="cm-item" v-if="analysisOverview.dataPivot.chipSummary">
-                        <span class="cm-label">{{ $t('analysis.chipSummary') }}</span>
-                        <span class="cm-value cm-hint">{{ analysisOverview.dataPivot.chipSummary }}</span>
-                      </div>
+                    </div>
+                    <div class="shareholder-analysis" v-if="analysisOverview.topFreeShareholdersAnalysis">
+                      {{ analysisOverview.topFreeShareholdersAnalysis }}
                     </div>
                   </div>
 
@@ -365,7 +418,6 @@
                   </div>
                 </div>
               </div>
-
             </div>
 
             <!-- 默认提示 -->
@@ -450,6 +502,7 @@ import { useI18n } from 'vue-i18n';
 import {
   createAnalysis,
   getAllAnalysis,
+  getAnalysisCursor,
   getAnalysisById,
   deleteAnalysis,
   getNotificationConfigs,
@@ -480,7 +533,8 @@ import {
   UserOutlined,
   LinkOutlined,
   RightOutlined,
-  PieChartOutlined
+  PieChartOutlined,
+  TeamOutlined
 } from '@ant-design/icons-vue';
 
 marked.use({
@@ -531,6 +585,10 @@ const pushingFeishu = ref(false);
 const exportingPdf = ref(false);
 const stockOptions = ref([]);
 const queueStatus = ref(null);
+const cursor = ref(null);
+const hasMore = ref(true);
+const loadingMore = ref(false);
+const allLoaded = ref(false);
 
 let searchTimer = null;
 let pollingTimer = null;
@@ -643,42 +701,75 @@ const handleExportPdf = async () => {
   }
 };
 
-const loadAnalysisRecords = async () => {
+const loadMore = async (reset = false) => {
+  if (!reset && (!hasMore.value || loadingMore.value)) return;
+  if (reset) {
+    cursor.value = null;
+    hasMore.value = true;
+    allLoaded.value = false;
+  }
+  loadingMore.value = true;
   try {
-    const response = await getAllAnalysis();
-    const newRecords = response.data.sort((a, b) => new Date(b.createTime) - new Date(a.createTime));
-    
-    // 比较新旧数据是否有变化
-    const hasChanges = compareRecords(analysisRecords.value, newRecords);
-    
-    if (hasChanges) {
-      analysisRecords.value = newRecords;
-      console.log('分析记录数据已更新');
+    const response = await getAnalysisCursor(cursor.value);
+    const result = response.data;
+    const items = result.items || [];
+    if (reset) {
+      analysisRecords.value = items;
+    } else {
+      analysisRecords.value = analysisRecords.value.concat(items);
+    }
+    hasMore.value = result.hasMore;
+    cursor.value = result.nextCursor;
+    if (!hasMore.value) {
+      allLoaded.value = true;
     }
   }
   catch (error) {
     console.error('加载分析记录失败:', error);
   }
+  finally {
+    loadingMore.value = false;
+  }
 };
 
-// 比较两个记录数组是否有变化
-const compareRecords = (oldRecords, newRecords) => {
-  if (oldRecords.length !== newRecords.length) {
-    return true;
+const handleScroll = (e) => {
+  const el = e.target;
+  if (el.scrollHeight - el.scrollTop - el.clientHeight < 50) {
+    loadMore(false);
   }
-  
-  for (let i = 0; i < oldRecords.length; i++) {
-    const oldRecord = oldRecords[i];
-    const newRecord = newRecords[i];
-    
-    if (oldRecord.id !== newRecord.id ||
-        oldRecord.status !== newRecord.status ||
-        oldRecord.progress !== newRecord.progress) {
-      return true;
+};
+
+// 轮询时仅刷新第一页，合并状态变化和新记录
+const pollRefresh = async () => {
+  try {
+    const response = await getAnalysisCursor(null, 10);
+    const result = response.data;
+    const freshItems = result.items || [];
+    if (freshItems.length === 0) return;
+    const existingIds = new Set(analysisRecords.value.map(r => r.id));
+    let changed = false;
+    // 更新已有记录的状态
+    for (const fresh of freshItems) {
+      const index = analysisRecords.value.findIndex(r => r.id === fresh.id);
+      if (index >= 0) {
+        if (analysisRecords.value[index].status !== fresh.status) {
+          analysisRecords.value[index] = fresh;
+          changed = true;
+        }
+      }
     }
+    // 将新记录（不在现有列表中的）添加到顶部
+    const newItems = freshItems.filter(f => !existingIds.has(f.id));
+    if (newItems.length > 0) {
+      analysisRecords.value = newItems.concat(analysisRecords.value);
+      changed = true;
+    }
+    if (changed) {
+      console.log('分析记录数据已更新');
+    }
+  } catch (error) {
+    console.error('轮询刷新失败:', error);
   }
-  
-  return false;
 };
 
 const loadQueueStatus = async () => {
@@ -746,7 +837,9 @@ const loadAnalysisOverview = async (id) => {
       dataPivot: parsedOverview.dataPivot || null,
       battlePlan: parsedOverview.battlePlan || null,
       positionAdvice: parsedOverview.positionAdvice || null,
-      checkList: parsedOverview.checkList || null
+      checkList: parsedOverview.checkList || null,
+      topFreeShareholdersData: parsedOverview.topFreeShareholdersData || null,
+      topFreeShareholdersAnalysis: parsedOverview.topFreeShareholdersAnalysis || ''
     };
   }
   catch (error) {
@@ -823,6 +916,74 @@ const formatPercent = (percent) => {
   const num = parseFloat(percent);
   if (isNaN(num)) return percent;
   return num.toFixed(2);
+};
+
+// 解析十大流通股东数据
+const getTopShareholders = (data) => {
+  if (!data) return [];
+  try {
+    const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+    const list = parsed?.data || [];
+    return list.slice(0, 10);
+  } catch {
+    return [];
+  }
+};
+
+// 股东类型颜色（仅区分个人与机构）
+const getHolderTypeColor = (type) => {
+  if (!type) return 'default';
+  if (type === '个人') return 'green';
+  return 'blue';
+};
+
+// 格式化大数字为 亿/万
+const formatLargeNum = (num) => {
+  if (num === undefined || num === null) return '-';
+  const n = Number(num);
+  if (isNaN(n)) return '-';
+  const abs = Math.abs(n);
+  if (abs >= 1e8) {
+    return (n / 1e8).toFixed(2) + '亿';
+  }
+  if (abs >= 1e4) {
+    return (n / 1e4).toFixed(2) + '万';
+  }
+  return String(n);
+};
+
+// 判断变动是否为 NaN 或无意义
+const isChangeUnchanged = (changeNum) => {
+  if (!changeNum || changeNum === '0' || changeNum === '--') return true;
+  const s = String(changeNum).toLowerCase().replace(/,/g, '').trim();
+  return s === '' || s === '0' || s === 'nan' || s === '--';
+};
+
+// 变动方向样式
+const getChangeClass = (changeNum) => {
+  if (isChangeUnchanged(changeNum)) return '';
+  const n = parseFloat(String(changeNum).replace(/,/g, ''));
+  if (n > 0) return 'change-up';
+  if (n < 0) return 'change-down';
+  return '';
+};
+
+// 格式化变动数量（含单位简化）
+const formatChangeNum = (changeNum) => {
+  if (isChangeUnchanged(changeNum)) return '不变';
+  const num = parseFloat(String(changeNum).replace(/,/g, ''));
+  const prefix = num > 0 ? '+' : '';
+  return prefix + formatLargeNum(Math.abs(num));
+};
+
+// 格式化变动比率
+const formatChangeRatio = (ratio, changeNum) => {
+  if (isChangeUnchanged(changeNum)) return '不变';
+  if (ratio === undefined || ratio === null) return '不变';
+  const r = Number(ratio);
+  if (isNaN(r) || r === 0) return '不变';
+  const prefix = r > 0 ? '+' : '';
+  return prefix + r.toFixed(2) + '%';
 };
 
 // 格式化筹码集中度（AKShare值0~1，转为百分比）(1位小数)
@@ -953,7 +1114,7 @@ const getStatusText = (status) => {
 };
 
 const refreshRecords = async () => {
-  await loadAnalysisRecords();
+  await loadMore(true);
   await loadQueueStatus();
   
   // 检查是否需要启动或停止轮询
@@ -965,7 +1126,7 @@ const checkPollingStatus = () => {
   // 如果轮询未启动，则启动轮询
   if (!pollingTimer) {
     pollingTimer = setInterval(() => {
-      loadAnalysisRecords();
+      pollRefresh();
       loadQueueStatus();
     }, 30000); // 30秒间隔
     console.log('定时轮询已启动，间隔30秒');
@@ -982,7 +1143,7 @@ const stopPolling = () => {
 };
 
 onMounted(() => {
-  loadAnalysisRecords();
+  loadMore(true);
   loadQueueStatus();
 
   // 从 query 参数中读取标的代码（来自持仓页面跳转）
@@ -990,6 +1151,26 @@ onMounted(() => {
   if (stockCode) {
     form.stockCode = stockCode;
     handleStockSearch(stockCode);
+  }
+
+  // 从 query 参数中读取分析记录ID（来自首页跳转）
+  const recordId = route.query.id;
+  if (recordId) {
+    loadMore(true).then(async () => {
+      const found = analysisRecords.value.find(r => r.id === Number(recordId))
+      if (found) {
+        await selectRecord(found)
+      } else {
+        try {
+          const res = await getAnalysisById(Number(recordId))
+          if (res.data) {
+            await selectRecord(res.data)
+          }
+        } catch {
+          // ignore
+        }
+      }
+    })
   }
 
   // 页面加载完成后自动启动定时轮询
@@ -1006,7 +1187,8 @@ onUnmounted(() => {
 <style scoped>
 .analysis-page {
   padding: 20px;
-  min-height: calc(100vh - 84px);
+  height: calc(100vh - 84px);
+  overflow: hidden;
   background: #f5f7fa;
 }
 
@@ -1014,19 +1196,28 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: 350px 1fr;
   gap: 20px;
-  min-height: calc(100vh - 124px);
+  height: 100%;
+  overflow: hidden;
 }
 
 /* 左侧面板 */
 .left-panel {
-  height: calc(100vh - 124px);
-  overflow-y: auto;
+  height: 100%;
+  overflow: hidden;
 }
 
 .records-card {
   height: 100%;
   display: flex;
   flex-direction: column;
+}
+
+.records-card :deep(.ant-card-body) {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .records-header {
@@ -1117,6 +1308,7 @@ onUnmounted(() => {
 .records-list {
   flex: 1;
   overflow-y: auto;
+  min-height: 0;
 }
 
 .records-list :deep(.ant-list-item) {
@@ -1192,6 +1384,22 @@ onUnmounted(() => {
   color: #999;
 }
 
+.end-hint {
+  text-align: center;
+  padding: 16px;
+  color: #bbb;
+  font-size: 13px;
+}
+
+.end-more {
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.end-more:hover {
+  color: #1890ff;
+}
+
 .empty-tip :deep(.anticon) {
   font-size: 48px;
   margin-bottom: 16px;
@@ -1210,8 +1418,9 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  height: calc(100vh - 124px);
+  height: 100%;
   min-height: 500px;
+  overflow: hidden;
 }
 
 .top-section {
@@ -1333,27 +1542,27 @@ onUnmounted(() => {
 .overview-content {
   flex: 1;
   overflow-y: auto;
-  padding: 12px;
+  padding: 6px 8px;
 }
 
-/* ===== 三栏布局容器 ===== */
+/* ===== 三栏布局 ===== */
 .overview-cols {
   display: grid;
-  grid-template-columns: 1.3fr 1fr 1fr;
-  gap: 12px;
+  grid-template-columns: 4fr 3fr 3fr;
+  gap: 8px;
   align-items: start;
 }
 
 .overview-col {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .overview-section {
   background: #fff;
   border-radius: 8px;
-  padding: 14px;
+  padding: 10px;
   border: 1px solid #e8e8e8;
 }
 
@@ -1364,7 +1573,7 @@ onUnmounted(() => {
   font-size: 13px;
   font-weight: 600;
   color: #333;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .sectors-inline {
@@ -1373,21 +1582,12 @@ onUnmounted(() => {
   gap: 6px;
 }
 
-.overview-section {
-  flex: 1;
-  min-width: 0;
-  background: #fff;
-  border-radius: 12px;
-  padding: 20px;
-  border: 1px solid #e8e8e8;
-}
-
 /* ===== 价格概览条（Hero） ===== */
 .price-hero {
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-  border-radius: 12px;
-  margin: 0 -12px 16px -12px;
-  padding: 20px 40px;
+  border-radius: 10px;
+  margin: 0 0 8px 0;
+  padding: 12px 24px;
   color: #fff;
 }
 
@@ -1400,22 +1600,22 @@ onUnmounted(() => {
 }
 
 .ph-stock-code {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 700;
   line-height: 1.2;
 }
 
 .ph-stock-name {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   opacity: 0.85;
-  line-height: 1.3;
+  line-height: 1.2;
 }
 
 .price-hero-main {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 20px;
   flex-wrap: wrap;
 }
 
@@ -1423,19 +1623,19 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: 120px;
+  min-width: 100px;
 }
 
 .ph-label {
-  font-size: 12px;
+  font-size: 11px;
   color: rgba(255,255,255,0.6);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   text-transform: uppercase;
   letter-spacing: 1px;
 }
 
 .ph-price {
-  font-size: 36px;
+  font-size: 30px;
   font-weight: 800;
   line-height: 1.1;
   letter-spacing: -1px;
@@ -1449,19 +1649,19 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
-  padding-left: 24px;
+  padding-left: 20px;
   border-left: 1px solid rgba(255,255,255,0.15);
 }
 
 .ph-change-pct {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 700;
 }
 .ph-change-pct.up { color: #ff4757; }
 .ph-change-pct.down { color: #2ed573; }
 
 .ph-change-amt {
-  font-size: 13px;
+  font-size: 12px;
   opacity: 0.8;
 }
 .ph-change-amt.up { color: #ff4757; }
@@ -1469,8 +1669,8 @@ onUnmounted(() => {
 
 .price-hero-stats {
   display: flex;
-  gap: 16px;
-  padding-left: 24px;
+  gap: 14px;
+  padding-left: 20px;
   border-left: 1px solid rgba(255,255,255,0.15);
 }
 
@@ -1487,7 +1687,7 @@ onUnmounted(() => {
 }
 
 .ph-stat-value {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
 }
 .ph-stat-value.high { color: #ff4757; }
@@ -1496,8 +1696,8 @@ onUnmounted(() => {
 .price-hero-volume {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding-left: 24px;
+  gap: 10px;
+  padding-left: 20px;
   border-left: 1px solid rgba(255,255,255,0.15);
   flex: 1;
   flex-wrap: wrap;
@@ -1516,13 +1716,13 @@ onUnmounted(() => {
 }
 
 .ph-vol-value {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
 }
 
 .ph-vol-divider {
   width: 1px;
-  height: 28px;
+  height: 24px;
   background: rgba(255,255,255,0.1);
 }
 
@@ -1537,35 +1737,35 @@ onUnmounted(() => {
 .ma-bars {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-bottom: 16px;
+  gap: 6px;
+  margin-bottom: 10px;
 }
 
 .ma-bar-item {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .ma-bar-label {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: #555;
-  width: 44px;
+  width: 40px;
   flex-shrink: 0;
 }
 
 .ma-bar-track {
   flex: 1;
-  height: 20px;
+  height: 16px;
   background: #f0f0f0;
-  border-radius: 10px;
+  border-radius: 8px;
   overflow: hidden;
 }
 
 .ma-bar-fill {
   height: 100%;
-  border-radius: 10px;
+  border-radius: 8px;
   transition: width 0.5s ease;
   min-width: 4px;
 }
@@ -1575,10 +1775,10 @@ onUnmounted(() => {
 .ma-bar-fill.ma60 { background: linear-gradient(90deg, #ca8a04, #eab308); }
 
 .ma-bar-value {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: #333;
-  width: 70px;
+  width: 65px;
   text-align: right;
   flex-shrink: 0;
 }
@@ -1587,23 +1787,24 @@ onUnmounted(() => {
 .sr-levels {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 .sr-card {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   background: #f8fafc;
-  border-radius: 10px;
-  padding: 12px 14px;
+  border-radius: 8px;
+  padding: 8px 12px;
 }
 
-.sr-card.support { border-left: 4px solid #52c41a; }
-.sr-card.resistance { border-left: 4px solid #f5222d; }
+.sr-card.support { border-left: 3px solid #52c41a; }
+.sr-card.resistance { border-left: 3px solid #f5222d; }
 
 .sr-icon {
-  font-size: 22px;
+  font-size: 18px;
 }
 
 .sr-body {
@@ -1613,101 +1814,95 @@ onUnmounted(() => {
 }
 
 .sr-label {
-  font-size: 12px;
+  font-size: 11px;
   color: #999;
 }
 
 .sr-value {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
 }
 .sr-card.support .sr-value { color: #52c41a; }
 .sr-card.resistance .sr-value { color: #f5222d; }
 
-/* ===== 筹码分布 - 获利/套牢突出展示 ===== */
-.chip-profit-loss {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-bottom: 14px;
-}
-
-.cpl-card {
-  text-align: center;
-  border-radius: 12px;
-  padding: 16px;
-}
-
-.cpl-card.profit {
-  background: linear-gradient(135deg, #fff1f0 0%, #ffccc7 100%);
-}
-
-.cpl-card.loss {
-  background: linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%);
-}
-
-.cpl-label {
-  font-size: 13px;
-  color: #666;
-  margin-bottom: 6px;
-}
-
-.cpl-value {
-  font-size: 28px;
-  font-weight: 800;
-}
-
-.cpl-card.profit .cpl-value { color: #f5222d; }
-.cpl-card.loss .cpl-value { color: #52c41a; }
-
-.chip-metrics {
+/* ===== 筹码分布 - 紧凑展示 ===== */
+.chip-compact {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.cm-item {
+.cc-pl {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
+  justify-content: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.cc-pl-item {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.cc-profit { color: #f5222d; }
+.cc-loss { color: #52c41a; }
+
+.cc-pl-divider {
+  color: #ddd;
+  font-size: 13px;
+}
+
+.cc-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+}
+
+.cc-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3px 4px;
   background: #f8fafc;
-  border-radius: 8px;
+  border-radius: 4px;
 }
 
-.cm-label {
-  font-size: 12px;
+.cc-label {
+  font-size: 10px;
   color: #999;
+  line-height: 1.2;
 }
 
-.cm-value {
-  font-size: 14px;
+.cc-value {
+  font-size: 12px;
   font-weight: 600;
   color: #333;
+  line-height: 1.3;
 }
 
-.cm-hint {
-  font-size: 12px;
-  font-weight: 400;
+.cc-summary {
+  font-size: 11px;
   color: #666;
-  text-align: right;
-  max-width: 60%;
+  line-height: 1.4;
+  text-align: center;
+  padding: 2px 0;
 }
 
 /* ===== 作战计划 ===== */
 .bp-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 4px;
+  margin-bottom: 6px;
 }
 
 .bp-card {
   background: #f8fafc;
-  border-radius: 10px;
-  padding: 12px;
+  border-radius: 6px;
+  padding: 6px 8px;
   text-align: center;
-  border-top: 3px solid transparent;
+  border-top: 2px solid transparent;
 }
 
 .bp-card.ideal { border-top-color: #1890ff; background: #f0f5ff; }
@@ -1716,13 +1911,13 @@ onUnmounted(() => {
 .bp-card.target { border-top-color: #52c41a; background: #f6ffed; }
 
 .bp-header {
-  font-size: 12px;
+  font-size: 10px;
   color: #666;
-  margin-bottom: 6px;
+  margin-bottom: 2px;
 }
 
 .bp-price {
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 700;
   color: #333;
 }
@@ -1730,43 +1925,196 @@ onUnmounted(() => {
 .bp-desc {
   font-size: 11px;
   color: #888;
-  margin-top: 6px;
-  line-height: 1.4;
+  margin-top: 4px;
+  line-height: 1.3;
 }
 
 .bp-rr {
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  gap: 8px;
-  padding-top: 10px;
+  gap: 6px;
+  padding-top: 6px;
   border-top: 1px dashed #e8e8e8;
 }
 
 .bp-rr-label {
-  font-size: 13px;
+  font-size: 12px;
   color: #999;
 }
 
 .bp-rr-value {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   color: #1890ff;
+}
+
+/* MACD 区块 */
+.macd-section {
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: #fafbff;
+  border-radius: 4px;
+  border: 1px solid #e8ecf4;
+}
+
+.macd-header {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1a1a2e;
+  margin-bottom: 4px;
+}
+
+.macd-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.macd-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 2px 0;
+  background: #fff;
+  border-radius: 4px;
+}
+
+.macd-label {
+  font-size: 10px;
+  color: #999;
+}
+
+.macd-value {
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+}
+
+.macd-value.macd-up {
+  color: #f5222d;
+}
+
+.macd-value.macd-down {
+  color: #52c41a;
+}
+
+.macd-signal-text {
+  font-size: 11px;
+  color: #555;
+  line-height: 1.4;
+  text-align: center;
+  word-break: break-all;
+}
+
+/* 十大流通股东 */
+.shareholder-table {
+  width: 100%;
+  font-size: 11px;
+}
+
+.sh-row {
+  display: flex;
+  align-items: center;
+  padding: 2px 0;
+  border-bottom: 1px solid #f0f0f0;
+  gap: 2px;
+}
+
+.sh-row.sh-header {
+  font-weight: 600;
+  color: #666;
+  font-size: 10px;
+  border-bottom: 2px solid #e8e8e8;
+}
+
+.sh-col-rank {
+  width: 20px;
+  min-width: 20px;
+  text-align: center;
+  color: #999;
+}
+
+.sh-col-name {
+  flex: 1;
+  min-width: 0;
+  word-break: break-all;
+  line-height: 1.3;
+}
+
+.sh-col-type {
+  width: 48px;
+  min-width: 48px;
+  text-align: center;
+}
+
+.sh-col-share-type {
+  width: 48px;
+  min-width: 48px;
+  text-align: center;
+  color: #666;
+}
+
+.sh-col-holdnum {
+  width: 72px;
+  min-width: 72px;
+  text-align: right;
+  font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+  font-size: 10px;
+}
+
+.sh-col-ratio {
+  width: 48px;
+  min-width: 48px;
+  text-align: right;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.sh-col-change {
+  width: 72px;
+  min-width: 72px;
+  text-align: right;
+  font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+  font-size: 10px;
+}
+
+.sh-col-change-ratio {
+  width: 52px;
+  min-width: 52px;
+  text-align: right;
+  font-size: 10px;
+}
+
+.change-up {
+  color: #cf1322;
+}
+
+.change-down {
+  color: #389e0d;
+}
+
+.sh-type-tag {
+  font-size: 9px !important;
+  line-height: 14px !important;
+  padding: 0 3px !important;
+}
+
+.shareholder-analysis {
+  margin-top: 4px;
+  padding: 4px 8px;
+  background: #fafafa;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #555;
+  line-height: 1.5;
 }
 
 /* 通用区块 */
 .section {
   margin-bottom: 14px;
-}
-
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 10px;
 }
 
 /* 核心洞察 */
@@ -1824,8 +2172,8 @@ onUnmounted(() => {
 }
 
 .core-insight-text {
-  font-size: 14px;
-  line-height: 1.7;
+  font-size: 13px;
+  line-height: 1.6;
   color: #333;
 }
 
@@ -1922,30 +2270,30 @@ onUnmounted(() => {
 .news-list-compact {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 6px;
 }
 
 .news-item-compact {
-  background: #ffffff;
-  border-radius: 8px;
-  padding: 14px;
-  border: 1px solid #e8e8e8;
+  background: #fafafa;
+  border-radius: 4px;
+  padding: 6px 8px;
+  border: 1px solid #f0f0f0;
   transition: all 0.3s ease;
 }
 
 .news-item-compact:hover {
   border-color: #1890ff;
-  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.15);
+  box-shadow: 0 1px 4px rgba(24, 144, 255, 0.15);
 }
 
 .news-title-compact {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #262626;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   display: flex;
   align-items: flex-start;
-  line-height: 1.5;
+  line-height: 1.4;
 }
 
 .news-num {
@@ -1956,52 +2304,32 @@ onUnmounted(() => {
 }
 
 .news-summary-compact {
-  font-size: 12px;
+  font-size: 11px;
   color: #666;
-  line-height: 1.5;
-  margin-bottom: 8px;
+  line-height: 1.4;
+  margin-bottom: 4px;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
 .news-meta-compact {
   display: flex;
-  gap: 12px;
-  font-size: 11px;
+  gap: 8px;
+  font-size: 10px;
   color: #999;
 }
 
 .news-source-compact {
-  padding: 1px 6px;
-  background: #f5f5f5;
-  border-radius: 3px;
+  padding: 0 4px;
+  background: #f0f0f0;
+  border-radius: 2px;
 }
 
 .news-time-compact {
   display: flex;
   align-items: center;
-}
-
-.news-link-compact {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  color: #1890ff;
-  text-decoration: none;
-  padding: 4px 10px;
-  background: #e6f7ff;
-  border-radius: 4px;
-  transition: all 0.3s ease;
-  margin-top: 8px;
-}
-
-.news-link-compact:hover {
-  background: #1890ff;
-  color: #ffffff;
-  text-decoration: none;
 }
 
 /* 新闻列表模块样式 */
@@ -2023,14 +2351,14 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: 10px;
   color: #1890ff;
   text-decoration: none;
-  padding: 4px 10px;
+  padding: 1px 6px;
   background: #e6f7ff;
-  border-radius: 4px;
+  border-radius: 3px;
   transition: all 0.3s ease;
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
 .news-link:hover {
@@ -2040,7 +2368,7 @@ onUnmounted(() => {
 }
 
 .view-more-news {
-  margin-top: 12px;
+  margin-top: 4px;
   text-align: right;
 }
 
@@ -2610,7 +2938,7 @@ onUnmounted(() => {
 
 /* 响应式适配 */
 @media (max-width: 1024px) {
-  .overview-columns {
+  .overview-cols {
     grid-template-columns: 1fr;
   }
 

@@ -24,6 +24,10 @@
             <WalletOutlined />
             <span>{{ $t('menu.portfolio') }}</span>
           </a-menu-item>
+          <a-menu-item key="/chat" @click="navigate('/chat')">
+            <MessageOutlined />
+            <span>{{ $t('menu.chat') }}</span>
+          </a-menu-item>
           <a-menu-item key="/market-review" @click="navigate('/market-review')">
             <FundOutlined />
             <span>{{ $t('menu.marketReview') }}</span>
@@ -136,6 +140,7 @@ import {
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  MessageOutlined,
   SettingOutlined,
   UserOutlined,
   WalletOutlined
@@ -156,6 +161,7 @@ const pageTitleMap = {
   '/home': () => t('menu.home'),
   '/analysis': () => t('menu.analysis'),
   '/portfolio': () => t('menu.portfolio'),
+  '/chat': () => t('menu.chat'),
   '/market-review': () => t('menu.marketReview'),
   '/settings/ai-model': () => t('menu.aiModel'),
   '/settings/notification': () => t('menu.notification'),

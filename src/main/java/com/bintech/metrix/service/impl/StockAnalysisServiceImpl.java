@@ -13,6 +13,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bintech.metrix.constants.BusinessConstants;
 import com.bintech.metrix.constants.SystemConstants;
 import com.bintech.metrix.dto.request.StockAnalysisRequest;
+import com.bintech.metrix.dto.response.CursorPageResult;
 import com.bintech.metrix.dto.response.NewsItem;
 import com.bintech.metrix.dto.response.StockAnalysisDetailResponse;
 import com.bintech.metrix.dto.response.StockAnalysisResponse;
@@ -79,18 +80,19 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
         String modelType = aiModelService.getActiveModelType();
         log.info("使用动态获取的模型类型进行分析: {}", modelType);
 
-        // 获取原始数据：实时行情、五档深度、K线、新闻舆情、筹码分布
+        // 获取原始数据：实时行情、五档深度、K线、筹码分布、十大流通股东、新闻舆情
         Map<String, Object> marketData = marketDataService.fetchRealTimeData(stockBasic);
         Map<String, Object> depthData = marketDataService.fetchDepthData(stockBasic);
         Map<String, Object> klinesData = marketDataService.fetchKlinesData(stockBasic, BusinessConstants.DEFAULT_KLINE_LIMIT);
-        Map<String, Object> newsSummary = newsCollector.collect(stockBasic, modelType);
         Map<String, Object> chipData = marketDataService.fetchChipData(stockBasic);
+        Map<String, Object> topFreeShareholdersData = marketDataService.fetchTopFreeShareholdersData(stockBasic);
+        Map<String, Object> newsSummary = newsCollector.collect(stockBasic, modelType);
 
         // AI分析：构建提示词 → 模型生成报告 → 提取核心洞察和关联板块 → 构建分析概览
-        String prompt = analysisPromptBuilder.build(stockBasic, analysisType, marketData, depthData, klinesData, newsSummary, chipData);
+        String prompt = analysisPromptBuilder.build(stockBasic, analysisType, marketData, depthData, klinesData, newsSummary, chipData, topFreeShareholdersData);
         String content = aiModelService.generateAnalysis(prompt, modelType);
         String coreInsight = analysisOverviewBuilder.generateCoreInsight(content, modelType);
-        AnalysisOverview overview = analysisOverviewBuilder.build(marketData, klinesData, content, coreInsight, chipData);
+        AnalysisOverview overview = analysisOverviewBuilder.build(marketData, klinesData, content, coreInsight, chipData, topFreeShareholdersData);
 
 
 
@@ -134,6 +136,27 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
         LambdaQueryWrapper<StockAnalysisRecord> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.orderByDesc(StockAnalysisRecord::getId);
         return recordMapper.selectList(queryWrapper);
+    }
+
+    @Override
+    public CursorPageResult<StockAnalysisRecord> cursorQuery(Long cursor, int limit) {
+        LambdaQueryWrapper<StockAnalysisRecord> wrapper = new LambdaQueryWrapper<>();
+        if (cursor != null && cursor > 0) {
+            wrapper.lt(StockAnalysisRecord::getId, cursor);
+        }
+        wrapper.orderByDesc(StockAnalysisRecord::getId);
+        wrapper.last("LIMIT " + (limit + 1));
+        List<StockAnalysisRecord> records = recordMapper.selectList(wrapper);
+        boolean hasMore = records.size() > limit;
+        if (hasMore) {
+            records = records.subList(0, limit);
+        }
+        Long nextCursor = records.isEmpty() ? null : records.getLast().getId();
+        return CursorPageResult.<StockAnalysisRecord>builder()
+                .items(records)
+                .hasMore(hasMore)
+                .nextCursor(nextCursor)
+                .build();
     }
 
     @Override

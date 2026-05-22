@@ -26,4 +26,9 @@ public class AnalysisOverview {
     /** 核心洞察 - 从完整分析报告生成的300字左右简短概述 */
     private String coreInsight;
 
+    /** 十大流通股东数据（JSON字符串） */
+    private String topFreeShareholdersData;
+
+    /** 十大流通股东分析 */
+    private String topFreeShareholdersAnalysis;
 }

@@ -1,5 +1,6 @@
 package com.bintech.metrix.service.impl;
 
+import com.bintech.metrix.repository.entity.MarketDataConfig;
 import com.bintech.metrix.repository.entity.StockBasic;
 import com.bintech.metrix.repository.mapper.MarketDataConfigMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,6 +16,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class MarketDataServiceImplTest {
@@ -34,10 +37,15 @@ class MarketDataServiceImplTest {
     }
 
     @Test
-    @DisplayName("测试筹码分布 - 正常获取（调用真实 akshare.py）")
+    @DisplayName("测试筹码分布 - 正常获取（调用 tickflow_chip.py）")
     void testFetchChipDataSuccess() {
-        ReflectionTestUtils.setField(marketDataService, "akshareScriptPath",
-                "python-service/akshare.py");
+        MarketDataConfig config = new MarketDataConfig();
+        config.setApiKey(System.getProperty("tickflow.api.key", "test_key"));
+        config.setTimeout(30);
+        when(configMapper.selectOne(any())).thenReturn(config);
+
+        ReflectionTestUtils.setField(marketDataService, "tickflowScriptPath",
+                "python-service/tickflow.py");
 
         StockBasic stockBasic = new StockBasic();
         stockBasic.setTsCode("002028.SZ");
@@ -64,9 +72,33 @@ class MarketDataServiceImplTest {
     }
 
     @Test
-    @DisplayName("测试筹码分布 - 脚本执行异常（脚本路径不存在）")
+    @DisplayName("测试筹码分布 - TickFlow配置不存在")
+    void testFetchChipDataConfigNotFound() {
+        when(configMapper.selectOne(any())).thenReturn(null);
+
+        StockBasic stockBasic = new StockBasic();
+        stockBasic.setTsCode("601138.SH");
+        stockBasic.setSymbol("601138");
+
+        Exception exception = assertThrows(RuntimeException.class,
+                () -> marketDataService.fetchChipData(stockBasic));
+
+        assertNotNull(exception.getMessage());
+        assertFalse(exception.getMessage().isEmpty(),
+                "错误信息不应为空");
+
+        log.info("测试通过：配置不存在异常正确处理，错误信息: {}", exception.getMessage());
+    }
+
+    @Test
+    @DisplayName("测试筹码分布 - 脚本路径不存在")
     void testFetchChipDataScriptNotFound() {
-        ReflectionTestUtils.setField(marketDataService, "akshareScriptPath",
+        MarketDataConfig config = new MarketDataConfig();
+        config.setApiKey("test_key");
+        config.setTimeout(30);
+        when(configMapper.selectOne(any())).thenReturn(config);
+
+        ReflectionTestUtils.setField(marketDataService, "tickflowScriptPath",
                 "python-service/nonexistent.py");
 
         StockBasic stockBasic = new StockBasic();
@@ -80,8 +112,6 @@ class MarketDataServiceImplTest {
         assertFalse(exception.getMessage().isEmpty(),
                 "错误信息不应为空");
 
-        log.info("测试通过：脚本异常正确处理，错误信息: {}", exception.getMessage());
-
-        log.info("测试通过：脚本异常正确处理，错误信息: {}", exception.getMessage());
+        log.info("测试通过：脚本不存在异常正确处理，错误信息: {}", exception.getMessage());
     }
 }

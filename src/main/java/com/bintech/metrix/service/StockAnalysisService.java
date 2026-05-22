@@ -3,6 +3,7 @@ package com.bintech.metrix.service;
 import java.util.List;
 
 import com.bintech.metrix.dto.request.StockAnalysisRequest;
+import com.bintech.metrix.dto.response.CursorPageResult;
 import com.bintech.metrix.dto.response.StockAnalysisDetailResponse;
 import com.bintech.metrix.dto.response.StockAnalysisResponse;
 import com.bintech.metrix.repository.entity.StockAnalysisRecord;
@@ -43,6 +44,15 @@ public interface StockAnalysisService {
      */
     StockAnalysisDetailResponse getAnalysisDetail(Long id);
     
+    /**
+     * 游标分页查询分析记录
+     *
+     * @param cursor 上一页最后一条记录的ID，null或0表示第一页
+     * @param limit  每页条数，默认10
+     * @return 游标分页结果
+     */
+    CursorPageResult<StockAnalysisRecord> cursorQuery(Long cursor, int limit);
+
     /**
      * 执行异步分析任务
      * 
