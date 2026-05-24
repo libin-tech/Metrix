@@ -9,9 +9,15 @@ Metrix = Metric（指标） + Matrix（矩阵）
 一个基于量化交易视角的资产评估工具。
 
 ## Web界面概览
-![股票分析](.doc/images/analysis_img_cn.png)
+![股票分析 - AI 多维度分析页面](.doc/images/analysis_img_cn.png)
+<p align="center">AI 多维度分析页面</p>
 
-![大盘复盘](.doc/images/market_review_cn.png)
+![大盘复盘 - AI 每日市场复盘页面](.doc/images/market_review_cn.png)
+<p align="center">AI 每日市场复盘页面</p>
+
+![问一问 - 多轮对话式 AI 分析页面](.doc/images/chat_cn.png)
+<p align="center">多轮对话式 AI 分析页面</p>
+
 
 ## 技术栈
 

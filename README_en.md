@@ -7,9 +7,14 @@
 Metrix = Metric + Matrix - an asset evaluation tool based on the perspective of quantitative trading.
 
 ## Web preview
-![analysis](.doc/images/analysis_img_en.png)
+![analysis - AI multi-dimensional analysis page](.doc/images/analysis_img_en.png)
+<p align="center">AI multi-dimensional analysis page</p>
 
-![review](.doc/images/market_review_en.png)
+![review - AI daily market review page](.doc/images/market_review_en.png)
+<p align="center">AI daily market review page</p>
+
+![chat - Multi-turn conversational AI analysis page](.doc/images/chat_en.png)
+<p align="center">Multi-turn conversational AI analysis page</p>
 
 ## Tech Stack
 
