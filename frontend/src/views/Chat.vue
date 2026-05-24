@@ -9,11 +9,25 @@
           <PlusOutlined />
           {{ $t('chat.newSession') }}
         </a-button>
+        <div class="session-toolbar">
+          <div class="toolbar-left" @click.stop="toggleSelectAll">
+            <a-checkbox :checked="isAllSelected" :indeterminate="isIndeterminate" />
+            <span v-if="selectedSessionIds.size > 0" class="selected-count">{{ $t('chat.selectedCount', { count: selectedSessionIds.size }) }}</span>
+            <span v-else class="select-all-label">{{ $t('chat.selectAll') }}</span>
+          </div>
+          <a-button v-if="selectedSessionIds.size > 0" type="primary" danger size="small" @click="confirmBatchDelete">
+            <DeleteOutlined />
+            {{ $t('chat.batchDelete') }}
+          </a-button>
+        </div>
         <div class="session-list">
           <div v-for="session in sessions" :key="session.id"
                class="session-item"
-               :class="{ active: currentSessionId === session.id }"
+               :class="{ active: currentSessionId === session.id, selected: selectedSessionIds.has(session.id) }"
                @click="switchSession(session.id)">
+            <div class="session-checkbox" @click.stop="toggleSessionSelect(session.id)">
+              <a-checkbox :checked="selectedSessionIds.has(session.id)" />
+            </div>
             <div class="session-info">
               <div class="session-name">{{ truncateName(session.sessionName) }}</div>
               <div class="session-meta">
@@ -31,98 +45,57 @@
 
       <div class="message-panel">
         <div class="message-list" ref="messageListRef">
-          <div v-for="msg in displayMessages" :key="msg.id" class="message-item"
+          <div v-for="msg in messages" :key="'msg-' + msg.id" class="message-item"
                :class="msg.role === 'user' ? 'user-msg' : 'assistant-msg'">
             <div class="msg-avatar">
-              <a-avatar :style="msg.role === 'user' ? { backgroundColor: '#1890ff' } : { backgroundColor: '#52c41a' }">
-                {{ msg.role === 'user' ? 'U' : 'AI' }}
-              </a-avatar>
+              <a-avatar v-if="msg.role === 'user'" :style="{ backgroundColor: 'var(--primary-color)' }">U</a-avatar>
+              <a-avatar v-else :size="70" :src="'/Metrix-logo.png'" />
             </div>
             <div class="msg-content-wrapper">
               <div class="msg-role-label">{{ msg.role === 'user' ? 'User' : 'Metrix AI' }}</div>
               
               <template v-if="msg.role === 'assistant'">
                 <div v-if="msg.isStreaming" class="streaming-container">
-                  <details v-if="msg.thinkingContent" class="thinking-box" open>
-                    <summary class="thinking-header">
-                      <span class="thinking-title">{{ $t('chat.thinking') }}</span>
-                      <span class="typing-indicator" v-if="msg.isThinking">
-                        <span class="dot"></span>
-                        <span class="dot"></span>
-                        <span class="dot"></span>
-                      </span>
-                    </summary>
-                    <div class="thinking-content">
-                      <MarkdownRender 
-                        :content="msg.thinkingContent"
-                        :max-live-nodes="0"
-                        :batch-rendering="true"
-                        class="streaming-markdown"
-                      />
-                    </div>
-                  </details>
-                  
-                  <div v-if="msg.reportContent || msg.isReporting" class="report-section">
-                    <div class="report-header" v-if="msg.isReporting">
-                      <span class="report-title">{{ $t('chat.report') }}</span>
-                      <span class="typing-indicator">
-                        <span class="dot"></span>
-                        <span class="dot"></span>
-                        <span class="dot"></span>
-                      </span>
-                    </div>
-                    <MarkdownRender 
-                      :content="msg.reportContent"
-                      :max-live-nodes="0"
-                      :batch-rendering="true"
-                      class="streaming-markdown"
-                    />
-                  </div>
-                  
-                  <div v-if="!msg.thinkingContent && !msg.reportContent" class="msg-content">
-                    <div class="thinking-placeholder">
-                      <span class="typing-indicator">
-                        <span class="dot"></span>
-                        <span class="dot"></span>
-                        <span class="dot"></span>
-                      </span>
+                  <div class="step-overlay">
+                    <MarkdownRender :content="currentStep || t('chat.thinkingPrompt')" :final="true" />
+                    <div class="typing-indicator">
+                      <span class="dot"></span>
+                      <span class="dot"></span>
+                      <span class="dot"></span>
                     </div>
                   </div>
                 </div>
-                
+
                 <template v-else>
-                  <details v-if="extractThinking(msg.content)" class="thinking-box">
+                  <div v-if="msg.steps && msg.steps.length > 0" class="process-steps-box">
+                    <details open>
+                      <summary class="process-summary">{{ $t('chat.processingSteps') }} ({{ formatDuration(totalElapsed(msg.steps)) }})</summary>
+                      <div v-for="s in msg.steps" :key="s.step" class="step-row">
+                        <span class="step-status-icon">{{ s.status === 'completed' ? '✅' : '⚠️' }}</span>
+                        <span class="step-label">Step {{ s.step }}/8: {{ s.title }}</span>
+                        <span class="step-duration">{{ formatDuration(s.elapsed) }}</span>
+                      </div>
+                    </details>
+                  </div>
+                  <details open v-if="extractThinking(msg.content)" class="thinking-box">
                     <summary>{{ $t('chat.thinking') }}</summary>
-                    <div class="msg-content markdown-body">
-                      <MarkdownRender :content="extractThinking(msg.content)" />
-                    </div>
+                    <div class="thinking-content" v-html="renderMarkdown(extractThinking(msg.content))"></div>
                   </details>
-                  <div v-if="extractReport(msg.content)" class="msg-content markdown-body">
-                    <MarkdownRender :content="extractReport(msg.content)" />
-                  </div>
-                  <div v-else class="msg-content markdown-body">
-                    <MarkdownRender :content="msg.content" />
-                  </div>
+                  <div v-if="extractReport(msg.content)" class="report-content markdown-rendered" v-html="renderMarkdown(extractReport(msg.content))"></div>
+                  <div v-else class="report-content markdown-rendered" v-html="renderMarkdown(msg.content)"></div>
                 </template>
-                
+
                 <div v-if="msg.tokens && !msg.isStreaming" class="msg-tokens">Token: {{ msg.tokens }}</div>
               </template>
               
-              <div v-else class="msg-content markdown-body">
-                <MarkdownRender :content="msg.content" />
-              </div>
+               <div v-else class="msg-content markdown-body">
+                 <MarkdownRender :content="msg.content" :final="true" />
+               </div>
             </div>
           </div>
         </div>
 
-        <div class="steps-panel" v-if="stepsContent">
-          <div class="steps-header">处理进度</div>
-          <div class="steps-content markdown-body">
-            <MarkdownRender :content="stepsContent" />
-          </div>
-        </div>
-
-        <div class="input-area">
+         <div class="input-area">
           <a-textarea v-model:value="inputText"
                       :placeholder="$t('chat.inputPlaceholder')"
                       :rows="3"
@@ -146,9 +119,9 @@ import { ref, computed, onMounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { message, Modal } from 'ant-design-vue'
 import { PlusOutlined, DeleteOutlined, SendOutlined } from '@ant-design/icons-vue'
-import { createChatSession, listChatSessions, deleteChatSession, getChatSessionMessages, sendChatMessage } from '../api/index.js'
+import { createChatSession, listChatSessions, deleteChatSession, deleteChatSessions, getChatSessionMessages, sendChatMessage } from '../api/index.js'
 import MarkdownRender from 'markstream-vue'
-import 'markstream-vue/index.css'
+import { marked } from 'marked'
 
 const { t } = useI18n()
 
@@ -160,106 +133,17 @@ const messages = ref([])
 const currentSessionId = ref(null)
 const inputText = ref('')
 const isStreaming = ref(false)
-const streamingMessage = ref(null)
-const stepsContent = ref('')
+const currentStep = ref('')
 const messageListRef = ref(null)
 const sessionLimitModal = ref(false)
+const selectedSessionIds = ref(new Set())
 
-const streamParser = {
-  buffer: '',
-  phase: 'init',
-  thinkingContent: '',
-  reportContent: '',
-  
-  reset() {
-    this.buffer = ''
-    this.phase = 'init'
-    this.thinkingContent = ''
-    this.reportContent = ''
-  },
-  
-  append(token) {
-    this.buffer += token
-    this.processBuffer()
-  },
-  
-  processBuffer() {
-    while (true) {
-      if (this.phase === 'init') {
-        const thinkingIdx = this.buffer.indexOf(THINKING_MARKER)
-        if (thinkingIdx !== -1) {
-          const before = this.buffer.substring(0, thinkingIdx)
-          this.buffer = this.buffer.substring(thinkingIdx + THINKING_MARKER.length)
-          this.phase = 'thinking'
-          continue
-        }
-        
-        const reportIdx = this.buffer.indexOf(REPORT_MARKER)
-        if (reportIdx !== -1) {
-          const before = this.buffer.substring(0, reportIdx)
-          this.thinkingContent += before
-          this.buffer = this.buffer.substring(reportIdx + REPORT_MARKER.length)
-          this.phase = 'report'
-          continue
-        }
-        
-        if (this.buffer.length > Math.max(THINKING_MARKER.length, REPORT_MARKER.length) * 2) {
-          const safeLen = this.buffer.length - Math.max(THINKING_MARKER.length, REPORT_MARKER.length)
-          const toEmit = this.buffer.substring(0, safeLen)
-          this.thinkingContent += toEmit
-          this.buffer = this.buffer.substring(safeLen)
-        }
-        break
-      }
-      
-      if (this.phase === 'thinking') {
-        const reportIdx = this.buffer.indexOf(REPORT_MARKER)
-        if (reportIdx !== -1) {
-          const before = this.buffer.substring(0, reportIdx)
-          this.thinkingContent += before
-          this.buffer = this.buffer.substring(reportIdx + REPORT_MARKER.length)
-          this.phase = 'report'
-          continue
-        }
-        
-        const keepLen = REPORT_MARKER.length
-        if (this.buffer.length > keepLen) {
-          const emitLen = this.buffer.length - keepLen
-          const toEmit = this.buffer.substring(0, emitLen)
-          this.thinkingContent += toEmit
-          this.buffer = this.buffer.substring(emitLen)
-        }
-        break
-      }
-      
-      if (this.phase === 'report') {
-        if (this.buffer.length > 0) {
-          this.reportContent += this.buffer
-          this.buffer = ''
-        }
-        break
-      }
-    }
-  },
-  
-  flush() {
-    if (this.buffer.length > 0) {
-      if (this.phase === 'init' || this.phase === 'thinking') {
-        this.thinkingContent += this.buffer
-      } else {
-        this.reportContent += this.buffer
-      }
-      this.buffer = ''
-    }
-  }
-}
+const isAllSelected = computed(() => {
+  return sessions.value.length > 0 && selectedSessionIds.value.size === sessions.value.length
+})
 
-const displayMessages = computed(() => {
-  const result = [...messages.value]
-  if (streamingMessage.value) {
-    result.push(streamingMessage.value)
-  }
-  return result
+const isIndeterminate = computed(() => {
+  return selectedSessionIds.value.size > 0 && selectedSessionIds.value.size < sessions.value.length
 })
 
 function extractThinking(content) {
@@ -289,8 +173,8 @@ async function loadSessions() {
 
 async function createSession() {
   isStreaming.value = false
-  streamingMessage.value = null
-  stepsContent.value = ''
+  currentStep.value = ''
+  selectedSessionIds.value = new Set()
   try {
     const now = new Date()
     const name = t('chat.sessionName') + ' ' + now.toLocaleString('zh-CN')
@@ -310,17 +194,64 @@ async function createSession() {
 
 async function switchSession(id) {
   isStreaming.value = false
-  streamingMessage.value = null
-  stepsContent.value = ''
+  currentStep.value = ''
+  selectedSessionIds.value = new Set()
   currentSessionId.value = id
   try {
     const res = await getChatSessionMessages(id)
-    messages.value = res.data || []
+    const msgs = (res.data || []).map(m => {
+      if (m.steps && typeof m.steps === 'string') {
+        try { m.steps = JSON.parse(m.steps) } catch (e) { m.steps = [] }
+      }
+      return m
+    })
+    messages.value = msgs
     await nextTick()
     scrollToBottom()
   } catch (e) {
     console.error('加载消息失败', e)
   }
+}
+
+function toggleSessionSelect(id) {
+  const set = new Set(selectedSessionIds.value)
+  if (set.has(id)) {
+    set.delete(id)
+  } else {
+    set.add(id)
+  }
+  selectedSessionIds.value = set
+}
+
+function toggleSelectAll() {
+  if (isAllSelected.value) {
+    selectedSessionIds.value = new Set()
+  } else {
+    selectedSessionIds.value = new Set(sessions.value.map(s => s.id))
+  }
+}
+
+function confirmBatchDelete() {
+  if (selectedSessionIds.value.size === 0) return
+  Modal.confirm({
+    title: t('chat.batchDeleteConfirm'),
+    content: t('chat.batchDeleteDesc', { count: selectedSessionIds.value.size }),
+    onOk: async () => {
+      try {
+        const ids = Array.from(selectedSessionIds.value)
+        await deleteChatSessions(ids)
+        if (currentSessionId.value && ids.includes(currentSessionId.value)) {
+          currentSessionId.value = null
+          messages.value = []
+        }
+        selectedSessionIds.value = new Set()
+        await loadSessions()
+        message.success(t('chat.batchDeleteSuccess', { count: ids.length }))
+      } catch (e) {
+        message.error('批量删除失败')
+      }
+    }
+  })
 }
 
 function confirmDeleteSession(id) {
@@ -333,8 +264,7 @@ function confirmDeleteSession(id) {
           currentSessionId.value = null
           messages.value = []
           isStreaming.value = false
-          streamingMessage.value = null
-          stepsContent.value = ''
+          currentStep.value = ''
         }
         await loadSessions()
       } catch (e) {
@@ -344,33 +274,24 @@ function confirmDeleteSession(id) {
   })
 }
 
-function initStreamingMessage() {
-  streamParser.reset()
-  streamingMessage.value = {
-    id: Date.now() + 1,
-    role: 'assistant',
-    content: '',
-    thinkingContent: '',
-    reportContent: '',
-    tokens: 0,
-    isStreaming: true,
-    isThinking: true,
-    isReporting: false,
-    createTime: new Date().toISOString()
+function renderMarkdown(content) {
+  if (!content) return ''
+  try {
+    const html = marked.parse(content, { async: false })
+    return typeof html === 'string' ? html : content
+  } catch (e) {
+    console.error('renderMarkdown error:', e)
+    return content
   }
 }
 
-function updateStreamingMessageFromParser() {
-  if (!streamingMessage.value) return
-  streamingMessage.value.thinkingContent = streamParser.thinkingContent
-  streamingMessage.value.reportContent = streamParser.reportContent
-  
-  if (streamParser.phase === 'report') {
-    streamingMessage.value.isThinking = false
-    streamingMessage.value.isReporting = true
-  }
-  
-  scrollToBottom()
+function formatDuration(ms) {
+  if (ms < 1000) return ms + 'ms'
+  return (ms / 1000).toFixed(1) + 's'
+}
+
+function totalElapsed(steps) {
+  return steps.reduce((sum, s) => sum + (s.elapsed || 0), 0)
 }
 
 async function handleSend() {
@@ -397,16 +318,25 @@ async function handleSend() {
 
   inputText.value = ''
   isStreaming.value = true
-  stepsContent.value = ''
-  initStreamingMessage()
+  currentStep.value = ''
 
-  messages.value.push({
+  const userMsg = {
     id: Date.now(),
     role: 'user',
     content: text,
     tokens: Math.ceil(text.length / 2),
     createTime: new Date().toISOString()
-  })
+  }
+  const assistantMsg = {
+    id: Date.now() + 1,
+    role: 'assistant',
+    content: '',
+    tokens: 0,
+    isStreaming: true,
+    steps: [],
+    createTime: new Date().toISOString()
+  }
+  messages.value.push(userMsg, assistantMsg)
 
   await nextTick()
   scrollToBottom()
@@ -417,66 +347,33 @@ async function handleSend() {
     currentSessionId.value,
     text,
     {
-      onThinking: (token) => {
-        if (!streamingMessage.value) return
-        fullContent += token
-        streamParser.append(token)
-        updateStreamingMessageFromParser()
-      },
-      onReport: (token) => {
-        if (!streamingMessage.value) return
-        fullContent += token
-        streamParser.append(token)
-        updateStreamingMessageFromParser()
-      },
       onStep: (text) => {
-        if (stepsContent.value) {
-          stepsContent.value += '\n\n' + text
-        } else {
-          stepsContent.value = text
-        }
+        currentStep.value = text
         scrollToBottom()
       },
       onDone: (data) => {
-        streamParser.flush()
-        if (streamingMessage.value) {
-          const tokens = data.tokens || Math.ceil(fullContent.length / 2)
-          streamingMessage.value.isStreaming = false
-          streamingMessage.value.isThinking = false
-          streamingMessage.value.isReporting = false
-          streamingMessage.value.tokens = tokens
-          streamingMessage.value.thinkingContent = streamParser.thinkingContent
-          streamingMessage.value.reportContent = streamParser.reportContent
-          
-          messages.value.push({
-            ...streamingMessage.value,
-            content: fullContent
-          })
-          streamingMessage.value = null
+        const msgs = messages.value
+        const last = msgs[msgs.length - 1]
+        if (last && last.role === 'assistant' && last.isStreaming) {
+          last.content = data.content || ''
+          last.tokens = data.tokens || Math.ceil((data.content || '').length / 2)
+          last.steps = data.steps || []
+          last.isStreaming = false
         }
         isStreaming.value = false
-        stepsContent.value = ''
+        currentStep.value = ''
         loadSessions()
         scrollToBottom()
       },
       onError: (err) => {
-        streamParser.flush()
-        if (streamingMessage.value && fullContent) {
-          streamingMessage.value.isStreaming = false
-          streamingMessage.value.isThinking = false
-          streamingMessage.value.isReporting = false
-          streamingMessage.value.tokens = Math.ceil(fullContent.length / 2)
-          streamingMessage.value.thinkingContent = streamParser.thinkingContent
-          streamingMessage.value.reportContent = streamParser.reportContent
-          
-          messages.value.push({
-            ...streamingMessage.value,
-            content: fullContent
-          })
-          streamingMessage.value = null
+        const msgs = messages.value
+        const last = msgs[msgs.length - 1]
+        if (last && last.role === 'assistant' && last.isStreaming) {
+          last.content = last.content || ''
+          last.isStreaming = false
         }
         isStreaming.value = false
-        stepsContent.value = ''
+        currentStep.value = ''
         message.error(typeof err === 'string' ? err : 'AI响应出错')
         scrollToBottom()
       }
@@ -531,6 +428,36 @@ onMounted(() => {
   overflow-y: auto;
 }
 
+.session-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 4px;
+  margin-bottom: 8px;
+  background: #fff1f0;
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.selected-count {
+  font-size: 12px;
+  color: #ff4d4f;
+  font-weight: 500;
+}
+
+.select-all-label {
+  font-size: 12px;
+  color: #666;
+}
+
 .session-item {
   display: flex;
   align-items: center;
@@ -548,7 +475,18 @@ onMounted(() => {
 
 .session-item.active {
   background: #e6f7ff;
-  border-left: 3px solid #1890ff;
+  border-left: 3px solid var(--primary-color);
+}
+
+.session-item.selected {
+  background: #fff1f0;
+}
+
+.session-checkbox {
+  flex-shrink: 0;
+  margin-right: 6px;
+  display: flex;
+  align-items: center;
 }
 
 .session-info {
@@ -653,62 +591,12 @@ onMounted(() => {
   overflow: hidden;
 }
 
-.thinking-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 13px;
-  color: #d48806;
-  padding: 8px 12px;
-  background: #fffbe6;
-  list-style: none;
-}
-
-.thinking-header::-webkit-details-marker {
-  display: none;
-}
-
-.thinking-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.thinking-content {
-  padding: 8px 12px 12px;
-  font-size: 13px;
-  color: #666;
-  line-height: 1.6;
-  background: #fffef5;
-  border-top: 1px solid #ffe58f;
-}
-
-.thinking-placeholder {
-  display: flex;
-  justify-content: center;
-  padding: 20px;
-}
-
-.report-section {
-  background: transparent;
-}
-
-.report-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-  font-weight: 600;
-  font-size: 14px;
-  color: #333;
-}
-
 .typing-indicator {
   display: inline-flex;
   gap: 4px;
   align-items: center;
+  justify-content: center;
+  margin-top: 8px;
 }
 
 .typing-indicator .dot {
@@ -742,25 +630,68 @@ onMounted(() => {
   }
 }
 
-.steps-panel {
+.step-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 0;
+  text-align: center;
+  font-size: 14px;
+  color: #52c41a;
+}
+
+.process-steps-box {
+  margin-bottom: 16px;
   background: #f0f5ff;
-  border-top: 1px solid #d6e4ff;
-  padding: 12px 20px;
-  max-height: 150px;
-  overflow-y: auto;
+  border: 1px solid #d6e4ff;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
-.steps-header {
-  font-size: 12px;
+.process-steps-box summary {
+  cursor: pointer;
   font-weight: 600;
-  color: #1890ff;
-  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--primary-color);
+  padding: 8px 12px;
+  background: #f0f5ff;
 }
 
-.steps-content {
+.process-summary {
+  display: block;
+}
+
+.step-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
   font-size: 13px;
-  line-height: 1.8;
   color: #333;
+  border-top: 1px solid #e8e8e8;
+}
+
+.step-row:last-child {
+  border-bottom: none;
+}
+
+.step-status-icon {
+  flex-shrink: 0;
+  font-size: 14px;
+}
+
+.step-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.step-duration {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: #999;
+  font-family: 'Courier New', monospace;
 }
 
 .input-area {
@@ -782,25 +713,30 @@ onMounted(() => {
   color: #bbb;
 }
 
-:deep(.streaming-markdown h1) { font-size: 1.5em; margin: 0.5em 0; }
-:deep(.streaming-markdown h2) { font-size: 1.3em; margin: 0.5em 0; }
-:deep(.streaming-markdown h3) { font-size: 1.1em; margin: 0.4em 0; }
-:deep(.streaming-markdown p) { margin: 0.3em 0; }
-:deep(.streaming-markdown table) { border-collapse: collapse; width: 100%; margin: 0.5em 0; font-size: 13px; }
-:deep(.streaming-markdown th) { background: #fafafa; border: 1px solid #e8e8e8; padding: 6px 10px; font-weight: 600; }
-:deep(.streaming-markdown td) { border: 1px solid #e8e8e8; padding: 6px 10px; }
-:deep(.streaming-markdown code) { background: #f5f5f5; padding: 2px 6px; border-radius: 3px; font-size: 13px; }
-:deep(.streaming-markdown pre) { background: #f5f5f5; padding: 12px; border-radius: 6px; overflow-x: auto; }
-:deep(.streaming-markdown ul) { padding-left: 20px; }
-:deep(.streaming-markdown ol) { padding-left: 20px; }
-:deep(.streaming-markdown strong) { font-weight: 600; }
-
 .thinking-box summary {
   cursor: pointer;
   font-weight: 600;
   font-size: 13px;
   color: #d48806;
-  padding: 4px 0;
+  padding: 4px 12px;
+}
+
+.thinking-content {
+  padding: 8px 12px 12px;
+  font-size: 13px;
+  color: #666;
+  line-height: 1.6;
+  background: #fffef5;
+  border-top: 1px solid #ffe58f;
+}
+
+.report-content {
+  background: #f6ffed;
+  padding: 12px 16px;
+  border-radius: 4px 12px 12px 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  word-break: break-word;
 }
 
 .thinking-box .msg-content {
@@ -813,4 +749,102 @@ onMounted(() => {
 .thinking-box .msg-content :deep(p) {
   margin: 0.2em 0;
 }
+
+.markdown-rendered :deep(h1),
+.markdown-rendered :deep(h2),
+.markdown-rendered :deep(h3),
+.markdown-rendered :deep(h4) {
+  margin: 1em 0 0.5em;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.markdown-rendered :deep(h1) { font-size: 22px; }
+.markdown-rendered :deep(h2) { font-size: 19px; }
+.markdown-rendered :deep(h3) { font-size: 16px; }
+.markdown-rendered :deep(h4) { font-size: 14px; }
+
+.markdown-rendered :deep(p) {
+  margin: 0.5em 0;
+  line-height: 1.7;
+}
+
+.markdown-rendered :deep(ul),
+.markdown-rendered :deep(ol) {
+  padding-left: 22px;
+  margin: 0.5em 0;
+}
+
+.markdown-rendered :deep(li) {
+  margin: 0.3em 0;
+}
+
+.markdown-rendered :deep(blockquote) {
+  border-left: 4px solid #d6e4ff;
+  padding: 4px 12px;
+  margin: 0.5em 0;
+  color: #555;
+  background: #f8faff;
+}
+
+.markdown-rendered :deep(code) {
+  background: #f0f0f0;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.9em;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+
+.markdown-rendered :deep(pre) {
+  background: #f5f5f5;
+  padding: 12px 16px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+
+.markdown-rendered :deep(pre code) {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+.markdown-rendered :deep(table) {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5em 0;
+}
+
+.markdown-rendered :deep(th),
+.markdown-rendered :deep(td) {
+  border: 1px solid #e0e0e0;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.markdown-rendered :deep(th) {
+  background: #fafafa;
+  font-weight: 600;
+}
+
+.markdown-rendered :deep(hr) {
+  border: none;
+  border-top: 1px solid #e0e0e0;
+  margin: 1em 0;
+}
+
+.markdown-rendered :deep(a) {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+.markdown-rendered :deep(a:hover) {
+  text-decoration: underline;
+}
+
+.markdown-rendered :deep(img) {
+  max-width: 100%;
+  border-radius: 4px;
+}
+
 </style>

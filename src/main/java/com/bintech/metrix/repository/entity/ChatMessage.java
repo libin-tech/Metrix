@@ -32,4 +32,7 @@ public class ChatMessage extends BaseEntity {
     @TableField(value = "stock_name")
     private String stockName;
 
+    @TableField(value = "steps")
+    private String steps;
+
 }

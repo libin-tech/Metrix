@@ -16,6 +16,8 @@ public interface ChatService {
 
     void deleteSession(Long id);
 
+    void deleteSessions(List<Long> ids, Long userId);
+
     List<ChatMessageVO> getSessionMessages(Long sessionId);
 
 }

@@ -21,5 +21,6 @@ public class ChatMessageVO {
     private String stockCode;
     private String stockName;
     private LocalDateTime createTime;
+    private String steps;
 
 }

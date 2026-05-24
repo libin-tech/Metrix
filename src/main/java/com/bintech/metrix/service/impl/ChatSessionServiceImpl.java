@@ -15,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -88,6 +90,23 @@ public class ChatSessionServiceImpl implements ChatSessionService {
                 .eq(ChatMessage::getSessionId, id));
         sessionMapper.deleteById(id);
         log.info("删除对话会话及其消息: sessionId={}", id);
+    }
+
+    @Override
+    @Transactional
+    public void deleteSessions(List<Long> ids, Long userId) {
+        List<ChatSession> sessions = sessionMapper.selectList(
+                new LambdaQueryWrapper<ChatSession>()
+                        .in(ChatSession::getId, ids)
+                        .eq(ChatSession::getUserId, userId));
+        if (sessions.isEmpty()) return;
+        Set<Long> validIds = sessions.stream().map(ChatSession::getId).collect(Collectors.toSet());
+        messageMapper.delete(new LambdaQueryWrapper<ChatMessage>()
+                .in(ChatMessage::getSessionId, validIds));
+        sessionMapper.delete(new LambdaQueryWrapper<ChatSession>()
+                .in(ChatSession::getId, validIds)
+                .eq(ChatSession::getUserId, userId));
+        log.info("批量删除对话会话及其消息: ids={}, userId={}", validIds, userId);
     }
 
     @Override

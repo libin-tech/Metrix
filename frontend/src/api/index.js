@@ -85,6 +85,8 @@ export const listChatSessions = () => service.get('/chat/sessions')
 export const deleteChatSession = id => service.delete(`/chat/session/${id}`)
 export const getChatSessionMessages = id => service.get(`/chat/session/${id}/messages`)
 
+export const deleteChatSessions = (ids) => service.post('/chat/sessions/delete', ids)
+
 export const sendChatMessage = async (sessionId, content, callbacks) => {
   const token = localStorage.getItem('token')
   const { onThinking, onReport, onDone, onError, onStep } = callbacks
@@ -124,7 +126,7 @@ export const sendChatMessage = async (sessionId, content, callbacks) => {
           } else if (line.startsWith('event:')) {
             eventType = line.slice(6).trim()
           } else if (line.startsWith('data:')) {
-            data = line.slice(5).trim()
+            data = line.slice(5).replace(/^ /, '')
           }
         }
         if (eventType === 'done') {

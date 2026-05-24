@@ -370,6 +370,13 @@ export default {
     qaCount: '问答数量',
     disclaimer: '免责声明：本分析仅供参考，不构成投资建议。投资有风险，入市需谨慎。',
     thinkingPrompt: '正在思考中...',
+    processingSteps: '处理过程',
+    selectAll: '全选',
+    selectedCount: '已选择 {count} 项',
+    batchDelete: '批量删除',
+    batchDeleteConfirm: '确认批量删除',
+    batchDeleteDesc: '确定要删除选中的 {count} 个会话吗？删除后不可恢复。',
+    batchDeleteSuccess: '成功删除 {count} 个会话',
   },
   common: {
     copyright: '版权所有 © {year} Metrix',

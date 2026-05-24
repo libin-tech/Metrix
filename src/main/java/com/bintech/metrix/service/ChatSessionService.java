@@ -15,6 +15,8 @@ public interface ChatSessionService {
 
     void deleteSession(Long id);
 
+    void deleteSessions(List<Long> ids, Long userId);
+
     void updateSessionTokenAndCount(Long sessionId, int tokens);
 
     void updateSessionName(Long sessionId, String sessionName);

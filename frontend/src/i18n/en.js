@@ -370,6 +370,13 @@ export default {
     qaCount: 'Q&A Count',
     disclaimer: 'Disclaimer: This analysis is for reference only and does not constitute investment advice.',
     thinkingPrompt: 'Thinking...',
+    processingSteps: 'Processing Steps',
+    selectAll: 'Select All',
+    selectedCount: '{count} selected',
+    batchDelete: 'Batch Delete',
+    batchDeleteConfirm: 'Confirm Batch Delete',
+    batchDeleteDesc: 'Are you sure you want to delete {count} sessions? This action cannot be undone.',
+    batchDeleteSuccess: 'Successfully deleted {count} sessions',
   },
   common: {
     copyright: 'Copyright \u00a9 {year} Metrix',

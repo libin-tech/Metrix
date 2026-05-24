@@ -5,6 +5,7 @@ import Antd from 'ant-design-vue'
 import 'ant-design-vue/dist/reset.css'
 import i18n from './i18n'
 import {marked} from 'marked'
+import 'markstream-vue/index.css'
 
 marked.use({gfm: true, breaks: true})
 

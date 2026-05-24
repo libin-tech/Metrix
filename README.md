@@ -28,13 +28,14 @@ Metrix = Metric（指标） + Matrix（矩阵）
 ## 功能特性
 
 - **AI 智能分析** — 集成大模型对股票进行多维度分析（技术面、资金面、消息面）
+- **AI 问一问** — 支持多轮对话式分析，实时追踪 8 步处理过程的耗时与状态，Markdown 流式渲染
+- **主题切换** — 内置 5 种主题色（天空蓝/翡翠绿/暮光紫/落日橙/极光青），基于 Ant Design Vue Design Token 全局生效
 - **实时行情** — 通过 TickFlow 获取实时报价、深度数据、K 线数据
 - **新闻聚合** — 通过博查 API 获取相关股票新闻并自动摘要
 - **筹码分析** — Python 脚本计算筹码分布与成本集中度
 - **PDF 导出** — 将分析报告导出为 PDF 文件
 - **大盘复盘** — 对每日 A 股主要指数进行 AI 复盘分析，生成市场总结与趋势研判
 - **持仓管理** — 多账户持仓管理，支持批量录入、一键评估、实时盈亏监控
-- **PDF 导出** — 将分析报告导出为 PDF 文件
 - **飞书通知** — 分析完成后通过飞书 Webhook 推送结果
 - **多模型支持** — 支持 OpenAI 兼容接口和 Ollama 本地模型
 - **国际化** — 支持中文和英文界面
@@ -126,6 +127,7 @@ Metrix/
 │       ├── views/         # 页面组件
 │       ├── api/           # API 客户端
 │       ├── router/        # 路由
+│       ├── composables/   # Vue 组合式函数（主题、状态管理等）
 │       └── i18n/          # 国际化
 ├── python-service/        # Python 辅助服务
 │   ├── tickflow.py        # 实时行情采集
@@ -184,6 +186,12 @@ Metrix/
 | `PUT  /api/config/market-data` | 更新行情源配置 |
 | `PUT  /api/config/news-source` | 更新新闻源配置 |
 | `PUT  /api/config/notification` | 更新通知配置 |
+| `POST /api/chat/session` | 创建对话会话 |
+| `GET  /api/chat/sessions` | 会话列表 |
+| `DELETE /api/chat/session/{id}` | 删除会话 |
+| `POST /api/chat/sessions/delete` | 批量删除会话 |
+| `GET  /api/chat/session/{id}/messages` | 会话消息列表 |
+| `POST /api/chat/send` | 发送消息（SSE 流式响应） |
 
 ## 开发指南
 

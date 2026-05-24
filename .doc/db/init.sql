@@ -544,6 +544,7 @@ CREATE TABLE "chat_message"
     tokens        INTEGER      DEFAULT 0                                   NOT NULL,
     stock_code    VARCHAR(20),
     stock_name    VARCHAR(100),
+    steps         TEXT,
     create_time   TIMESTAMP    DEFAULT NOW()                               NOT NULL,
     update_time   TIMESTAMP,
     version       INTEGER      DEFAULT 0                                   NOT NULL,
@@ -563,6 +564,7 @@ COMMENT ON COLUMN chat_message.content IS '消息内容';
 COMMENT ON COLUMN chat_message.tokens IS '消耗Token数';
 COMMENT ON COLUMN chat_message.stock_code IS '关联股票代码';
 COMMENT ON COLUMN chat_message.stock_name IS '关联股票名称';
+COMMENT ON COLUMN chat_message.steps IS 'AI分析步骤记录（JSON数组），包含每步耗时和状态';
 COMMENT ON COLUMN chat_message.create_time IS '创建时间';
 COMMENT ON COLUMN chat_message.update_time IS '更新时间';
 COMMENT ON COLUMN chat_message.version IS '版本号（乐观锁）';

@@ -52,6 +52,13 @@ public class ChatController {
         return ApiResponse.success("删除成功", null);
     }
 
+    @PostMapping("/sessions/delete")
+    public ApiResponse<Void> deleteSessions(@RequestBody List<Long> ids) {
+        long userId = StpUtil.getLoginIdAsLong();
+        chatService.deleteSessions(ids, userId);
+        return ApiResponse.success("批量删除成功", null);
+    }
+
     @GetMapping("/session/{id}/messages")
     public ApiResponse<List<ChatMessageVO>> getSessionMessages(@PathVariable Long id) {
         List<ChatMessageVO> messages = chatService.getSessionMessages(id);
