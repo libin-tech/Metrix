@@ -1,5 +1,16 @@
 package com.bintech.metrix.service.impl;
 
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bintech.metrix.constants.BusinessConstants;
 import com.bintech.metrix.core.analysis.StockAdvisorPromptBuilder;
@@ -12,24 +23,13 @@ import com.bintech.metrix.repository.mapper.ChatMessageMapper;
 import com.bintech.metrix.repository.mapper.StockBasicMapper;
 import com.bintech.metrix.service.AiModelService;
 import com.bintech.metrix.service.ChatService;
+import com.bintech.metrix.service.ChatSessionService;
 import com.bintech.metrix.service.MarketDataService;
 import com.bintech.metrix.service.NewsService;
-import com.bintech.metrix.service.StockBasicService;
-import com.bintech.metrix.service.ChatSessionService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 
 @Slf4j
 @Service

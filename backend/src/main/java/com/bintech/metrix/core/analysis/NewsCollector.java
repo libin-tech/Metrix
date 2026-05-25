@@ -1,23 +1,22 @@
 package com.bintech.metrix.core.analysis;
 
-import com.bintech.metrix.constants.ApiConstants;
-import com.bintech.metrix.constants.BusinessConstants;
-import com.bintech.metrix.constants.SystemConstants;
-import com.bintech.metrix.repository.entity.StockBasic;
-import com.bintech.metrix.service.AiModelService;
-import com.bintech.metrix.service.NewsService;
-import cn.hutool.json.JSONArray;
-import cn.hutool.json.JSONObject;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.bintech.metrix.constants.ApiConstants.KEY_MESSAGE;
+import org.springframework.stereotype.Component;
+
+import com.bintech.metrix.constants.ApiConstants;
+import com.bintech.metrix.constants.BusinessConstants;
+import com.bintech.metrix.repository.entity.StockBasic;
+import com.bintech.metrix.service.AiModelService;
+import com.bintech.metrix.service.NewsService;
+
+import cn.hutool.json.JSONArray;
+import cn.hutool.json.JSONObject;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Component

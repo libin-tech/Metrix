@@ -9,8 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.bintech.metrix.enums.StockAnalysisStatus;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -25,16 +23,17 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.bintech.metrix.dto.request.StockAnalysisRequest;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bintech.metrix.core.queue.AnalysisTask;
 import com.bintech.metrix.core.queue.AnalysisTaskQueue;
+import com.bintech.metrix.dto.request.StockAnalysisRequest;
 import com.bintech.metrix.dto.response.ApiResponse;
 import com.bintech.metrix.dto.response.CursorPageResult;
 import com.bintech.metrix.dto.response.StockAnalysisDetailResponse;
+import com.bintech.metrix.enums.StockAnalysisStatus;
 import com.bintech.metrix.repository.entity.StockAnalysisRecord;
 import com.bintech.metrix.repository.entity.StockBasic;
 import com.bintech.metrix.repository.mapper.StockAnalysisRecordMapper;
-import com.bintech.metrix.service.NotificationService;
 import com.bintech.metrix.service.PdfExportService;
 import com.bintech.metrix.service.PortfolioHoldingService;
 import com.bintech.metrix.service.StockAnalysisService;
@@ -69,7 +68,6 @@ public class StockAnalysisController {
     private final StockAnalysisRecordMapper recordMapper;
     private final StockBasicService stockBasicService;
     private final AnalysisTaskQueue analysisTaskQueue;
-    private final NotificationService notificationService;
     private final PdfExportService pdfExportService;
     private final PortfolioHoldingService portfolioHoldingService;
 
