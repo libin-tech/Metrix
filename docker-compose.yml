@@ -22,7 +22,6 @@ services:
 
   app:
     build:
-      context: .
       dockerfile: Dockerfile
     container_name: Metrix-Server
     environment:
