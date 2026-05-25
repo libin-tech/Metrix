@@ -81,7 +81,12 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
 
         // 获取原始数据：实时行情、五档深度、K线、筹码分布、十大流通股东、新闻舆情
         Map<String, Object> marketData = marketDataService.fetchRealTimeData(stockBasic);
-        Map<String, Object> depthData = marketDataService.fetchDepthData(stockBasic);
+        Map<String, Object> depthData = null;
+        try {
+            depthData = marketDataService.fetchDepthData(stockBasic);
+        } catch (Exception e) {
+            log.warn("获取五档深度行情失败，跳过: {}", e.getMessage());
+        }
         Map<String, Object> klinesData = marketDataService.fetchKlinesData(stockBasic, BusinessConstants.DEFAULT_KLINE_LIMIT);
         Map<String, Object> chipData = marketDataService.fetchChipData(stockBasic);
         Map<String, Object> topFreeShareholdersData = marketDataService.fetchTopFreeShareholdersData(stockBasic);
