@@ -1,10 +1,19 @@
 package com.bintech.metrix.service.impl;
 
-import cn.hutool.http.HttpRequest;
-import cn.hutool.http.HttpResponse;
-import cn.hutool.json.JSONArray;
-import cn.hutool.json.JSONObject;
-import cn.hutool.json.JSONUtil;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.bintech.metrix.constants.ApiConstants;
@@ -16,16 +25,14 @@ import com.bintech.metrix.repository.entity.StockBasic;
 import com.bintech.metrix.repository.mapper.NewsSourceConfigMapper;
 import com.bintech.metrix.service.AiModelService;
 import com.bintech.metrix.service.NewsService;
+
+import cn.hutool.http.HttpRequest;
+import cn.hutool.http.HttpResponse;
+import cn.hutool.json.JSONArray;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Service
@@ -34,6 +41,12 @@ public class NewsServiceImpl implements NewsService {
 
     private final NewsSourceConfigMapper configMapper;
     private final AiModelService aiModelService;
+
+    @Value("${python.executable:python}")
+    private String pythonExecutable;
+
+    @Value("${python.akshare-script-path:python-service/akshare.py}")
+    private String akshareScriptPath;
 
     @Override
     @Transactional
@@ -113,7 +126,83 @@ public class NewsServiceImpl implements NewsService {
     @Override
     public Map<String, Object> fetchStockNews(StockBasic stockBasic) {
         log.info("开始获取股票新闻: stockCode={}", stockBasic.getTsCode());
-        
+
+        Map<String, Object> result = tryAkShareNews(stockBasic);
+        if (result != null) {
+            return result;
+        }
+
+        log.info("AKShare新闻获取失败，使用Bocha兜底: stockCode={}", stockBasic.getTsCode());
+        return fetchBochaNews(stockBasic);
+    }
+
+    private Map<String, Object> tryAkShareNews(StockBasic stockBasic) {
+        try {
+            String scriptPath = akshareScriptPath.replace("akshare.py", "akshare_news.py");
+
+            List<String> command = new ArrayList<>();
+            command.add(pythonExecutable);
+            command.add(scriptPath);
+            command.add("--symbol");
+            command.add(stockBasic.getSymbol());
+
+            log.info("执行AKShare新闻脚本: {}", String.join(" ", command));
+
+            ProcessBuilder pb = new ProcessBuilder(command);
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+
+            StringBuilder outputBuilder = new StringBuilder();
+            Thread reader = Thread.ofVirtual()
+                    .name("akshare-news-reader")
+                    .start(() -> {
+                        try (BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                            String line;
+                            while ((line = br.readLine()) != null) {
+                                outputBuilder.append(line).append('\n');
+                            }
+                        } catch (Exception e) {
+                            log.warn("读取AKShare新闻脚本输出流异常: {}", e.getMessage());
+                        }
+                    });
+
+            boolean finished = process.waitFor(SystemConstants.DEFAULT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            reader.join(SystemConstants.READER_JOIN_TIMEOUT_MILLIS);
+
+            if (!finished) {
+                process.destroyForcibly();
+                log.warn("AKShare新闻脚本执行超时");
+                return null;
+            }
+
+            String output = outputBuilder.toString().trim();
+            if (output.isEmpty()) {
+                log.warn("AKShare新闻脚本输出为空");
+                return null;
+            }
+
+            log.debug("AKShare新闻脚本原始输出: {}", output);
+
+            JSONObject json = JSONUtil.parseObj(output);
+            if (!ApiConstants.STATUS_SUCCESS.equals(json.getStr(ApiConstants.KEY_STATUS))) {
+                log.warn("AKShare新闻获取失败: {}", json.getStr(ApiConstants.KEY_MESSAGE));
+                return null;
+            }
+
+            JSONArray data = json.getJSONArray(ApiConstants.KEY_DATA);
+            Map<String, Object> result = new HashMap<>();
+            result.put(ApiConstants.KEY_STATUS, ApiConstants.STATUS_SUCCESS);
+            result.put(ApiConstants.KEY_DATA, data != null ? data : new JSONArray());
+            result.put(ApiConstants.KEY_COUNT, json.getInt(ApiConstants.KEY_COUNT, 0));
+            log.info("AKShare新闻获取成功，共{}条", json.getInt(ApiConstants.KEY_COUNT, 0));
+            return result;
+        } catch (Exception e) {
+            log.warn("AKShare新闻脚本执行异常: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private Map<String, Object> fetchBochaNews(StockBasic stockBasic) {
         LambdaQueryWrapper<NewsSourceConfig> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(NewsSourceConfig::getSourceName, BusinessConstants.SOURCE_NAME_BOCHA);
         NewsSourceConfig config = configMapper.selectOne(queryWrapper);
@@ -124,24 +213,22 @@ public class NewsServiceImpl implements NewsService {
         }
 
         Map<String, Object> result = new HashMap<>();
-        
+
         try {
-            // 构建请求URL，处理末尾斜杠
             String apiUrl = config.getApiUrl();
             if (apiUrl.endsWith(SystemConstants.URL_TRAILING_SLASH)) {
                 apiUrl = apiUrl.substring(0, apiUrl.length() - 1);
             }
             String url = apiUrl + BusinessConstants.BOCHA_API_PATH;
-            
+
             log.info("调用博查搜索API: {}", url);
-            
-            // 构建请求体（JSON格式）
+
             JSONObject requestBody = new JSONObject();
             requestBody.set(ApiConstants.KEY_QUERY, String.format(BusinessConstants.BOCHA_SEARCH_QUERY, stockBasic.getTsCode(), stockBasic.getName()));
             requestBody.set(ApiConstants.KEY_COUNT, BusinessConstants.DEFAULT_NEWS_COUNT);
             requestBody.set("freshness", BusinessConstants.NEWS_FRESHNESS);
             requestBody.set(BusinessConstants.KEY_SUMMARY, true);
-            
+
             int timeoutMs = (config.getTimeout() != null ? config.getTimeout() : SystemConstants.DEFAULT_TIMEOUT_SECONDS) * SystemConstants.MILLIS_PER_SECOND;
 
             HttpResponse response = HttpRequest.post(url)
@@ -154,7 +241,7 @@ public class NewsServiceImpl implements NewsService {
 
             int statusCode = response.getStatus();
             log.info("博查API响应状态码: {}", statusCode);
-            
+
             if (statusCode >= ApiConstants.HTTP_STATUS_BAD_REQUEST) {
                 result.put(ApiConstants.KEY_STATUS, ApiConstants.STATUS_ERROR);
                 result.put(ApiConstants.KEY_MESSAGE, String.format("请求失败(HTTP %d)", statusCode));
