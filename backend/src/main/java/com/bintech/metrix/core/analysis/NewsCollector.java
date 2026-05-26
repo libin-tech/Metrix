@@ -58,11 +58,11 @@ public class NewsCollector {
             try {
                 JSONObject jsonObj = newsArray.getJSONObject(i);
                 Map<String, Object> newsItem = new HashMap<>();
-                newsItem.put("title", jsonObj.getStr(ApiConstants.KEY_NAME, "未知标题"));
-                newsItem.put("summary", jsonObj.getStr(BusinessConstants.KEY_SUMMARY, jsonObj.getStr(BusinessConstants.KEY_SNIPPET, "无摘要")));
-                newsItem.put("source", jsonObj.getStr(BusinessConstants.KEY_SITE_NAME, "未知来源"));
-                newsItem.put("publishTime", jsonObj.getStr(BusinessConstants.KEY_DATE_PUBLISHED, "未知时间"));
-                newsItem.put("url", jsonObj.getStr(ApiConstants.KEY_URL, ""));
+                newsItem.put(ApiConstants.KEY_TITLE, jsonObj.getStr(ApiConstants.KEY_TITLE, "未知标题"));
+                newsItem.put(BusinessConstants.KEY_SUMMARY, jsonObj.getStr(BusinessConstants.KEY_SUMMARY, "无摘要"));
+                newsItem.put(ApiConstants.KEY_SOURCE, jsonObj.getStr(ApiConstants.KEY_SOURCE, "未知来源"));
+                newsItem.put("publishTime", jsonObj.getStr("publishTime", "未知时间"));
+                newsItem.put(ApiConstants.KEY_URL, jsonObj.getStr(ApiConstants.KEY_URL, ""));
                 newsList.add(newsItem);
             } catch (Exception e) {
                 log.warn("解析第{}条新闻数据失败: {}", i + 1, e.getMessage());

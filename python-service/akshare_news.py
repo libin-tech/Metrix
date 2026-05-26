@@ -88,7 +88,7 @@ def main():
         news_list.append(news_item)
 
     data = _normalize(news_list)
-    print(json.dumps({"status": "success", "data": data, "count": len(data)}, ensure_ascii=False, flush=True)
+    print(json.dumps({"status": "success", "data": data, "count": len(data)}, ensure_ascii=False), flush=True)
 
 
 def _normalize(news_list):

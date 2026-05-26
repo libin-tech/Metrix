@@ -293,11 +293,24 @@ public class NewsServiceImpl implements NewsService {
             log.error("博查API响应缺少webPages字段");
             return;
         }
+        JSONArray rawPages = webPages.getJSONArray(ApiConstants.KEY_VALUE);
+        JSONArray normalizedPages = new JSONArray();
+        if (rawPages != null) {
+            for (int i = 0; i < rawPages.size(); i++) {
+                JSONObject raw = rawPages.getJSONObject(i);
+                JSONObject item = new JSONObject();
+                item.set(ApiConstants.KEY_TITLE, raw.getStr("name", ""));
+                item.set(BusinessConstants.KEY_SUMMARY, raw.getStr(BusinessConstants.KEY_SUMMARY, raw.getStr(BusinessConstants.KEY_SNIPPET, "")));
+                item.set(ApiConstants.KEY_SOURCE, raw.getStr(BusinessConstants.KEY_SITE_NAME, ""));
+                item.set("publishTime", raw.getStr(BusinessConstants.KEY_DATE_PUBLISHED, ""));
+                item.set(ApiConstants.KEY_URL, raw.getStr(ApiConstants.KEY_URL, ""));
+                normalizedPages.add(item);
+            }
+        }
         result.put(ApiConstants.KEY_STATUS, ApiConstants.STATUS_SUCCESS);
-        result.put(ApiConstants.KEY_DATA, webPages.getJSONArray(ApiConstants.KEY_VALUE));
+        result.put(ApiConstants.KEY_DATA, normalizedPages);
         result.put(ApiConstants.KEY_COUNT, webPages.getInt(BusinessConstants.KEY_TOTAL_ESTIMATED_MATCHES, 0));
-        int resultCount = webPages.getJSONArray(ApiConstants.KEY_VALUE) != null 
-                ? webPages.getJSONArray(ApiConstants.KEY_VALUE).size() : 0;
+        int resultCount = normalizedPages.size();
         log.info("博查新闻搜索成功，返回{}条结果", resultCount);
     }
 

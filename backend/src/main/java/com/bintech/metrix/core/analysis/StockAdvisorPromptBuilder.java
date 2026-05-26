@@ -3,6 +3,7 @@ package com.bintech.metrix.core.analysis;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import com.bintech.metrix.constants.ApiConstants;
+import com.bintech.metrix.constants.BusinessConstants;
 import com.bintech.metrix.repository.entity.StockBasic;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -143,10 +144,10 @@ public class StockAdvisorPromptBuilder {
             for (int i = 0; i < Math.min(newsArray.size(), 10); i++) {
                 JSONObject item = newsArray.getJSONObject(i);
                 prompt.append("  ").append(i + 1).append(". ");
-                prompt.append("标题: ").append(item.getStr("name", "未知")).append("\n");
-                prompt.append("    摘要: ").append(item.getStr("summary", item.getStr("snippet", "无摘要"))).append("\n");
-                prompt.append("    来源: ").append(item.getStr("siteName", "未知来源")).append("\n");
-                prompt.append("    时间: ").append(item.getStr("datePublished", "未知时间")).append("\n");
+                prompt.append("标题: ").append(item.getStr(ApiConstants.KEY_TITLE, "未知")).append("\n");
+                prompt.append("    摘要: ").append(item.getStr(BusinessConstants.KEY_SUMMARY, "无摘要")).append("\n");
+                prompt.append("    来源: ").append(item.getStr(ApiConstants.KEY_SOURCE, "未知来源")).append("\n");
+                prompt.append("    时间: ").append(item.getStr("publishTime", "未知时间")).append("\n");
             }
             prompt.append("\n");
         } catch (Exception e) {
