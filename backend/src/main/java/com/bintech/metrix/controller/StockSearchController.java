@@ -1,6 +1,7 @@
 package com.bintech.metrix.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.bintech.metrix.dto.response.ApiResponse;
 import com.bintech.metrix.dto.response.StockInfo;
 import com.bintech.metrix.service.StockSearchService;
@@ -26,6 +27,7 @@ public class StockSearchController {
     private final StockSearchService stockSearchService;
 
     @GetMapping("/search")
+    @SaCheckPermission("stock:search")
     public ApiResponse<List<StockInfo>> searchStocks(@RequestParam String keyword) {
         List<StockInfo> stocks = stockSearchService.searchStocks(keyword);
         return ApiResponse.success(stocks);

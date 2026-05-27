@@ -6,6 +6,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bintech.metrix.constants.BusinessConstants;
 import com.bintech.metrix.dto.request.UserLoginRequest;
 import com.bintech.metrix.dto.response.UserLoginResponse;
+import com.bintech.metrix.enums.UserRole;
+import com.bintech.metrix.enums.UserStatus;
 import com.bintech.metrix.repository.entity.User;
 import com.bintech.metrix.repository.mapper.UserMapper;
 import com.bintech.metrix.service.UserService;
@@ -33,7 +35,7 @@ public class UserServiceImpl implements UserService {
             admin.setUsername(BusinessConstants.DEFAULT_ADMIN_USERNAME);
             admin.setPassword(DigestUtil.md5Hex(BusinessConstants.DEFAULT_ADMIN_PASSWORD));
             admin.setEmail(BusinessConstants.DEFAULT_ADMIN_EMAIL);
-            admin.setRole(BusinessConstants.DEFAULT_ADMIN_ROLE);
+            admin.setRole(UserRole.ADMIN);
             admin.setIsActive(true);
             admin.setCreateTime(LocalDateTime.now());
             admin.setUpdateTime(LocalDateTime.now());
@@ -56,17 +58,20 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("Invalid username or password");
         }
         
-        if (!user.getIsActive()) {
-            throw new RuntimeException("User account is inactive");
+        if (user.getStatus() != UserStatus.NORMAL) {
+            throw new RuntimeException("账号已被" + (user.getFreezeReason() != null ? "冻结：" + user.getFreezeReason() : "禁用"));
         }
         
         StpUtil.login(user.getId());
+        StpUtil.getTokenSession().set("username", user.getUsername());
         
         return new UserLoginResponse(
                 StpUtil.getTokenValue(),
                 user.getId(),
                 user.getUsername(),
-                user.getRole()
+                user.getRole(),
+                user.getNickname(),
+                user.getAvatar()
         );
     }
 

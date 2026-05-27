@@ -1,5 +1,43 @@
 # 变更记录
 
+## 1.4.0 (2026-05-27)
+### 权限管理系统
+- 新增 RBAC 权限系统：系统角色、系统菜单、系统接口、角色-菜单-接口三级关联
+- Sa-Token 升级至 1.45.0，注解鉴权：所有 Controller 方法统一添加 `@SaCheckPermission`
+- 全局异常处理新增 `FrozenUserException`（code=1001）、`NotPermissionException`、`NotRoleException`
+- 后端新增 `SaAnnotationInterceptor` 处理 `@SaCheckPermission` 注解
+- 新增 `GET /api/auth/permissions` 接口返回用户权限码列表
+- 新用户注册自动分配 USER 默认角色
+
+### 管理后台
+- 用户管理：列表展示角色名称，冻结用户弹窗填写原因，隐藏管理员用户
+- 角色管理：菜单/接口权限分两个 Tab 独立保存，全选/取消全选功能
+- 菜单管理：树形展示、增删改、关联接口、上级菜单选择（过滤按钮节点）
+- 接口管理：完整 100+ 接口注册数据（`.doc/db/system_api.sql`）
+- 数据统计：今日/日期范围使用统计（标的评估数+复盘数）
+- 审计日志：分页查询，操作类型着色，时间范围筛选
+
+### 前端优化
+- 侧边栏菜单按权限动态展示，无权限项自动隐藏
+- 新增默认首页：管理员展示数据看板，普通用户展示欢迎页+使用指南
+- 右上角展示用户昵称（微信昵称优先，用户名 fallback）
+- 侧边栏 Logo 改为纯 CSS "M" 字母图标
+- 所有硬编码中文替换为 `$t()` 国际化，新增 `welcome`/`common` i18n 段
+
+### 接口与数据
+- axios 响应拦截器增加业务 `code` 校验和 403/1001 特殊处理
+- 冻结用户 1001 错误码弹出 `Modal.error` 固定窗口提示
+- 数据库脚本合并为 `ddl-init.sql`（完整 DDL）+ `dml-init.sql`（初始数据）
+- 修复 `MenuCreateRequest`/`MenuUpdateRequest` 枚举校验 `@NotBlank`→`@NotNull`
+
+### Bug 修复
+- 修复菜单树/上级菜单 TreeSelect `replace-fields`/`field-names` 不生效问题
+- 修复 `loadAnalysisRecords` 未定义导致的“开始评估”报错
+- 修复登录后白屏：`fetchUser` 改为 `watch(route.path)` 触发
+- 修复 Ant Design Vue Tree switcher/icon/title 重叠问题
+- 修复 `onUnmounted` 误删导致的启动报错
+- 修复 Sa-Token 注解鉴权失效（`SaInterceptor` 匿名子类覆写 `preHandle` 导致注解处理器被绕过）
+
 ## 1.3.0 (2026-05-24)
 - 新增主题切换系统：提供天空蓝、翡翠绿、暮光紫、落日橙、极光青 5 种主题色，通过 Ant Design Vue ConfigProvider Design Token 实现全局生效
 - 新增问一问功能增强：AI 分析步骤追踪（8步过程耗时与状态）、批量删除会话、Markdown 流式渲染

@@ -659,7 +659,7 @@ const handleAnalyze = async () => {
   }
   finally {
     submitting.value = false;
-    await loadAnalysisRecords();
+    await loadMore(true);
     await loadQueueStatus();
   }
 };

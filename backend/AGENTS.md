@@ -28,8 +28,9 @@
 - 日期字段必须使用 `LocalDate` 类型。
 - 时间字段必须使用 `LocalTime` 类型。
 - 使用条件构造器方式进行操作。禁止直接写sql。
-- 枚举类型使用MyBatis-Plus自动映射枚举。
+- 表示状态或类型的字段需要用枚举类代替。枚举类型使用MyBatis-Plus自动映射枚举。
 - 所有字段必须添加注释。
+
 
 ## 4. 建表语句规范
 - 必须包含 `id`, `create_time`, `update_time`, `version`, `creator`, `modifier` 字段。
@@ -51,3 +52,4 @@
 
 ## 7. 数据库规范
 - 脚本存放路径：`.doc/db/V{version}_{description}.sql`
+

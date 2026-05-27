@@ -16,6 +16,7 @@ import com.bintech.metrix.constants.BusinessConstants;
 import com.bintech.metrix.core.analysis.StockAdvisorPromptBuilder;
 import com.bintech.metrix.dto.response.ChatMessageVO;
 import com.bintech.metrix.dto.response.ChatSessionVO;
+import com.bintech.metrix.enums.ChatRole;
 import com.bintech.metrix.repository.entity.ChatMessage;
 import com.bintech.metrix.repository.entity.ChatSession;
 import com.bintech.metrix.repository.entity.StockBasic;
@@ -83,7 +84,7 @@ public class ChatServiceImpl implements ChatService {
             try {
                 ChatMessage userMsg = new ChatMessage();
                 userMsg.setSessionId(sessionId);
-                userMsg.setRole("user");
+                userMsg.setRole(ChatRole.USER);
                 userMsg.setContent(content);
                 userMsg.setTokens(content.length() / 2);
                 userMsg.setCreateTime(LocalDateTime.now());
@@ -287,7 +288,7 @@ public class ChatServiceImpl implements ChatService {
                                          String stockCode, String stockName, String steps) {
         ChatMessage msg = new ChatMessage();
         msg.setSessionId(sessionId);
-        msg.setRole("assistant");
+        msg.setRole(ChatRole.ASSISTANT);
         msg.setContent(content);
         msg.setTokens(tokens);
         msg.setStockCode(stockCode);

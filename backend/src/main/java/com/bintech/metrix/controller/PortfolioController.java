@@ -1,6 +1,7 @@
 package com.bintech.metrix.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.bintech.metrix.dto.request.BrokerAccountRequest;
 import com.bintech.metrix.dto.request.PortfolioHoldingRequest;
 import com.bintech.metrix.dto.response.ApiResponse;
@@ -36,6 +37,7 @@ public class PortfolioController {
      * @return 券商账户列表
      */
     @GetMapping("/accounts")
+    @SaCheckPermission("portfolio:account:list")
     public ApiResponse<List<BrokerAccount>> getAccounts() {
         return ApiResponse.success(brokerAccountService.getAllAccounts());
     }
@@ -47,6 +49,7 @@ public class PortfolioController {
      * @return 创建成功的账户对象
      */
     @PostMapping("/accounts")
+    @SaCheckPermission("portfolio:account:create")
     public ApiResponse<BrokerAccount> createAccount(@Valid @RequestBody BrokerAccountRequest request) {
         BrokerAccount account = brokerAccountService.createAccount(request);
         return ApiResponse.success("券商账户创建成功", account);
@@ -60,6 +63,7 @@ public class PortfolioController {
      * @return 更新后的账户
      */
     @PutMapping("/accounts/{id}")
+    @SaCheckPermission("portfolio:account:update")
     public ApiResponse<BrokerAccount> updateAccount(@PathVariable Long id, @Valid @RequestBody BrokerAccountRequest request) {
         BrokerAccount account = brokerAccountService.updateAccount(id, request);
         return ApiResponse.success("券商账户更新成功", account);
@@ -71,6 +75,7 @@ public class PortfolioController {
      * @param id 账户ID
      */
     @DeleteMapping("/accounts/{id}")
+    @SaCheckPermission("portfolio:account:delete")
     public ApiResponse<Void> deleteAccount(@PathVariable Long id) {
         brokerAccountService.deleteAccount(id);
         return ApiResponse.success("券商账户删除成功", null);
@@ -84,6 +89,7 @@ public class PortfolioController {
      * @return 持仓VO列表（不含实时行情）
      */
     @GetMapping("/holdings")
+    @SaCheckPermission("portfolio:holding:list")
     public ApiResponse<List<PortfolioHoldingVO>> getHoldings(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long accountId) {
@@ -96,6 +102,7 @@ public class PortfolioController {
      * @param request 持仓请求（账户、标的代码/名称、成本、数量）
      */
     @PostMapping("/holdings")
+    @SaCheckPermission("portfolio:holding:create")
     public ApiResponse<Void> createHolding(@Valid @RequestBody PortfolioHoldingRequest request) {
         portfolioHoldingService.createHolding(request);
         return ApiResponse.success("持仓添加成功", null);
@@ -108,6 +115,7 @@ public class PortfolioController {
      * @param items     持仓请求列表
      */
     @PostMapping("/holdings/batch")
+    @SaCheckPermission("portfolio:holding:batch-create")
     public ApiResponse<Void> batchCreateHoldings(
             @RequestParam Long accountId,
             @RequestBody List<PortfolioHoldingRequest> items) {
@@ -124,6 +132,7 @@ public class PortfolioController {
      * @return 持仓VO列表（实时行情字段为空，需轮询获取）
      */
     @PostMapping("/holdings/refresh-prices")
+    @SaCheckPermission("portfolio:holding:refresh")
     public ApiResponse<List<PortfolioHoldingVO>> refreshPrices() {
         return ApiResponse.success(portfolioHoldingService.refreshPrices());
     }
@@ -138,6 +147,7 @@ public class PortfolioController {
      * @return 已完成刷新的VO映射（key=持仓ID）
      */
     @PostMapping("/holdings/poll-refreshed")
+    @SaCheckPermission("portfolio:holding:poll")
     public ApiResponse<Map<Long, PortfolioHoldingVO>> pollRefreshedPrices(@RequestBody List<Long> ids) {
         return ApiResponse.success(portfolioHoldingService.pollRefreshedPrices(ids));
     }
@@ -148,6 +158,7 @@ public class PortfolioController {
      * @param id 持仓ID
      */
     @DeleteMapping("/holdings/{id}")
+    @SaCheckPermission("portfolio:holding:delete")
     public ApiResponse<Void> deleteHolding(@PathVariable Long id) {
         portfolioHoldingService.deleteHolding(id);
         return ApiResponse.success("持仓删除成功", null);

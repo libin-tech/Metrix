@@ -48,16 +48,6 @@ public final class SystemConstants {
     public static final int HEADING_MIN_LEVEL = 1;
     public static final int HEADING_MAX_LEVEL = 6;
 
-    /* ==================== PDF导出 ==================== */
-    public static final String PAGE_MARGIN_CSS = "2cm";
-    public static final String BODY_FONT_FAMILY = "'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif";
-    public static final String H1_FONT_SIZE = "20pt";
-    public static final String H2_FONT_SIZE = "16pt";
-    public static final String H3_FONT_SIZE = "14pt";
-    public static final String H4_FONT_SIZE = "12pt";
-    public static final String BODY_FONT_SIZE = "11pt";
-    public static final String SMALL_FONT_SIZE = "10pt";
-
     /* ==================== 斜杠常量 ==================== */
     public static final String URL_TRAILING_SLASH = "/";
 }

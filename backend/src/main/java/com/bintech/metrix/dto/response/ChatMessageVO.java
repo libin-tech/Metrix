@@ -1,5 +1,6 @@
 package com.bintech.metrix.dto.response;
 
+import com.bintech.metrix.enums.ChatRole;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,7 +16,7 @@ public class ChatMessageVO {
 
     private Long id;
     private Long sessionId;
-    private String role;
+    private ChatRole role;
     private String content;
     private Integer tokens;
     private String stockCode;

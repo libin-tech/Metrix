@@ -14,13 +14,8 @@ public final class BusinessConstants {
     public static final int MA_PERIOD_20 = 20;
     public static final int MA_PERIOD_60 = 60;
     public static final int SUPPORT_LOOKBACK = 20;
-    public static final int RESISTANCE_LOOKBACK = 20;
 
-    /* ==================== MACD 参数 ==================== */
-    public static final int MACD_FAST_PERIOD = 12;
-    public static final int MACD_SLOW_PERIOD = 26;
-    public static final int MACD_SIGNAL_PERIOD = 9;
-    public static final int MACD_SCALE = 4;
+
 
     /* ==================== 筹码分布阈值 ==================== */
     public static final BigDecimal CHIP_BALANCE_PERCENT = BigDecimal.valueOf(50);
@@ -86,7 +81,7 @@ public final class BusinessConstants {
     public static final String DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm:ss";
 
     /* ==================== 认证排除路径 ==================== */
-    public static final String[] EXCLUDED_AUTH_PATHS = {"/api/auth/login", "/api/auth/check"};
+    //public static final String[] EXCLUDED_AUTH_PATHS = {"/api/auth/login", "/api/auth/check", "/api/auth/login-by-code", "/api/wechat/callback"};
 
     /* ==================== 问一问对话限制 ==================== */
     public static final int MAX_CHAT_SESSIONS_PER_USER = 100;
@@ -96,5 +91,8 @@ public final class BusinessConstants {
     public static final String DEFAULT_ADMIN_USERNAME = "admin";
     public static final String DEFAULT_ADMIN_PASSWORD = "admin123";
     public static final String DEFAULT_ADMIN_EMAIL = "admin@example.com";
-    public static final String DEFAULT_ADMIN_ROLE = "ADMIN";
+
+    /* ==================== SAAS ==================== */
+    public static final int LOGIN_CODE_LENGTH = 6;
+    public static final String WECHAT_LOGIN_TRIGGER_KEYWORD = "验证码";
 }

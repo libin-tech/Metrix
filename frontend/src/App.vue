@@ -9,7 +9,7 @@
       <!-- 侧边栏 -->
       <a-layout-sider v-model:collapsed="collapsed" :width="200" class="sider">
         <div class="logo">
-          <img src="/Metrix.png" class="logo-icon" alt="Metrix" />
+          <div class="logo-icon-box">M</div>
           <span v-show="!collapsed" class="logo-text">{{ $t('layout.logo') }}</span>
         </div>
         <a-menu theme="dark" mode="inline" :selected-keys="[currentPath]" class="main-menu">
@@ -17,46 +17,76 @@
             <HomeOutlined />
             <span>{{ $t('menu.home') }}</span>
           </a-menu-item>
-          <a-menu-item key="/analysis" @click="navigate('/analysis')">
+          <a-menu-item v-if="hasPerm('system:analysis:view')" key="/analysis" @click="navigate('/analysis')">
             <LineChartOutlined />
             <span>{{ $t('menu.analysis') }}</span>
           </a-menu-item>
-          <a-menu-item key="/portfolio" @click="navigate('/portfolio')">
+          <a-menu-item v-if="hasPerm('system:portfolio:view')" key="/portfolio" @click="navigate('/portfolio')">
             <WalletOutlined />
             <span>{{ $t('menu.portfolio') }}</span>
           </a-menu-item>
-          <a-menu-item key="/chat" @click="navigate('/chat')">
+          <a-menu-item v-if="hasPerm('system:chat:view')" key="/chat" @click="navigate('/chat')">
             <MessageOutlined />
             <span>{{ $t('menu.chat') }}</span>
           </a-menu-item>
-          <a-menu-item key="/market-review" @click="navigate('/market-review')">
+          <a-menu-item v-if="hasPerm('system:market-review:view')" key="/market-review" @click="navigate('/market-review')">
             <FundOutlined />
             <span>{{ $t('menu.marketReview') }}</span>
           </a-menu-item>
-          <a-sub-menu key="settings">
+          <a-sub-menu v-if="showSettings" key="settings">
             <template #title>
               <SettingOutlined />
               <span>{{ $t('menu.settings') }}</span>
             </template>
-            <a-menu-item key="/settings/ai-model" @click="navigate('/settings/ai-model')">
+            <a-menu-item v-if="hasPerm('system:ai-model:view')" key="/settings/ai-model" @click="navigate('/settings/ai-model')">
               <ApiOutlined />
               <span>{{ $t('menu.aiModel') }}</span>
             </a-menu-item>
-            <a-menu-item key="/settings/notification" @click="navigate('/settings/notification')">
+            <a-menu-item v-if="hasPerm('system:notification:view')" key="/settings/notification" @click="navigate('/settings/notification')">
               <BellOutlined />
               <span>{{ $t('menu.notification') }}</span>
             </a-menu-item>
-            <a-menu-item key="/settings/news-source" @click="navigate('/settings/news-source')">
+            <a-menu-item v-if="hasPerm('system:news-source:view')" key="/settings/news-source" @click="navigate('/settings/news-source')">
               <FileTextOutlined />
               <span>{{ $t('menu.newsSource') }}</span>
             </a-menu-item>
-            <a-menu-item key="/settings/market-data" @click="navigate('/settings/market-data')">
+            <a-menu-item v-if="hasPerm('system:market-data:view')" key="/settings/market-data" @click="navigate('/settings/market-data')">
               <DatabaseOutlined />
               <span>{{ $t('menu.marketData') }}</span>
             </a-menu-item>
-            <a-menu-item key="/settings/stock-basic" @click="navigate('/settings/stock-basic')">
+            <a-menu-item v-if="hasPerm('system:stock-basic:view')" key="/settings/stock-basic" @click="navigate('/settings/stock-basic')">
               <BookOutlined />
               <span>{{ $t('menu.stockBasic') }}</span>
+            </a-menu-item>
+          </a-sub-menu>
+          <a-sub-menu v-if="showAdmin" key="admin">
+            <template #title>
+              <SafetyCertificateOutlined />
+              <span>{{ $t('menu.admin') }}</span>
+            </template>
+            <a-menu-item v-if="hasPerm('system:user:list')" key="/admin/users" @click="navigate('/admin/users')">
+              <TeamOutlined />
+              <span>{{ $t('menu.userManagement') }}</span>
+            </a-menu-item>
+            <a-menu-item v-if="hasPerm('system:role:list')" key="/admin/roles" @click="navigate('/admin/roles')">
+              <SafetyOutlined />
+              <span>{{ $t('menu.roleManagement') }}</span>
+            </a-menu-item>
+            <a-menu-item v-if="hasPerm('system:menu:list')" key="/admin/menus" @click="navigate('/admin/menus')">
+              <MenuOutlined />
+              <span>{{ $t('menu.menuManagement') }}</span>
+            </a-menu-item>
+            <a-menu-item v-if="hasPerm('system:api:list')" key="/admin/apis" @click="navigate('/admin/apis')">
+              <ApiOutlined />
+              <span>{{ $t('menu.apiManagement') }}</span>
+            </a-menu-item>
+            <a-menu-item v-if="hasPerm('system:stats:view')" key="/admin/stats" @click="navigate('/admin/stats')">
+              <BarChartOutlined />
+              <span>{{ $t('menu.usageStats') }}</span>
+            </a-menu-item>
+            <a-menu-item v-if="hasPerm('system:audit:view')" key="/admin/audit-log" @click="navigate('/admin/audit-log')">
+              <FileTextOutlined />
+              <span>{{ $t('menu.auditLog') }}</span>
             </a-menu-item>
           </a-sub-menu>
         </a-menu>
@@ -136,7 +166,7 @@
 </template>
 
 <script setup>
-import {computed, onMounted, onUnmounted, ref} from 'vue'
+import {computed, onMounted, ref, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import {useI18n} from 'vue-i18n'
 import {message} from 'ant-design-vue'
@@ -159,12 +189,17 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   MessageOutlined,
+  SafetyCertificateOutlined,
+  SafetyOutlined,
   SettingOutlined,
+  TeamOutlined,
+  MenuOutlined,
   UserOutlined,
   WalletOutlined
 } from '@ant-design/icons-vue'
 
 import {useTheme} from './composables/useTheme.js'
+import { getPermissions, getCurrentUser } from './api'
 
 const {locale, t} = useI18n()
 const router = useRouter()
@@ -174,14 +209,41 @@ const {currentTheme, THEMES, select: selectTheme, themeConfig} = useTheme()
 const themeList = Object.entries(THEMES).map(([key, val]) => ({key, ...val}))
 
 const collapsed = ref(false)
-const currentUser = ref('管理员')
+const currentUser = ref('')
 
 const isLoginPage = computed(() => route.path === '/login')
 const currentPath = computed(() => route.path)
 
+const permissions = ref([])
+const permSet = computed(() => new Set(permissions.value))
+const hasPerm = (code) => permSet.value.has(code)
+
+const showSettings = computed(() =>
+  ['system:ai-model:view', 'system:notification:view', 'system:news-source:view',
+   'system:market-data:view', 'system:stock-basic:view', 'system:account:view']
+    .some(code => permSet.value.has(code)))
+
+const showAdmin = computed(() =>
+  ['system:user:list', 'system:role:list', 'system:menu:list',
+   'system:api:list', 'system:stats:view', 'system:audit:view']
+    .some(code => permSet.value.has(code)))
+
+const fetchUser = async () => {
+  if (!localStorage.getItem('token')) return
+  try {
+    const res = await getPermissions()
+    permissions.value = res.data || []
+  } catch { /* ignore */ }
+  try {
+    const me = await getCurrentUser()
+    currentUser.value = me.data?.nickname || me.data?.username || ''
+  } catch { /* ignore */ }
+}
+
 const pageTitleMap = {
   '/': () => t('menu.home'),
   '/home': () => t('menu.home'),
+  '/dashboard': () => t('menu.home'),
   '/analysis': () => t('menu.analysis'),
   '/portfolio': () => t('menu.portfolio'),
   '/chat': () => t('menu.chat'),
@@ -191,7 +253,13 @@ const pageTitleMap = {
   '/settings/news-source': () => t('menu.newsSource'),
   '/settings/market-data': () => t('menu.marketData'),
   '/settings/stock-basic': () => t('menu.stockBasic'),
-  '/settings/account-management': () => t('menu.accountManagement')
+  '/settings/account-management': () => t('menu.accountManagement'),
+  '/admin/users': () => t('menu.userManagement'),
+  '/admin/roles': () => t('menu.roleManagement'),
+  '/admin/menus': () => t('menu.menuManagement'),
+  '/admin/apis': () => t('menu.apiManagement'),
+  '/admin/stats': () => t('menu.usageStats'),
+  '/admin/audit-log': () => t('menu.auditLog')
 }
 
 const pageTitle = computed(() => {
@@ -214,15 +282,12 @@ const handleLogout = () => {
   router.push('/login')
 }
 
-const handleRouteChange = () => {
-}
-
 onMounted(() => {
-  router.afterEach(handleRouteChange)
+  fetchUser()
 })
 
-onUnmounted(() => {
-  router.afterEach(handleRouteChange)
+watch(() => route.path, () => {
+  fetchUser()
 })
 </script>
 
@@ -279,10 +344,19 @@ body {
   border-bottom: 1px solid #1f2f3d;
 }
 
-.logo-icon {
-  width: 44px;
-  height: 44px;
-  object-fit: contain;
+
+.logo-icon-box {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: #1890ff;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
 .logo-text {
@@ -315,7 +389,7 @@ body {
 .header-title {
   font-size: 18px;
   font-weight: bold;
-  color: #333;
+  color: #888;
 }
 
 .header-actions {

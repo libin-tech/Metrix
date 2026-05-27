@@ -1,6 +1,7 @@
 package com.bintech.metrix.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.bintech.metrix.constants.ApiConstants;
 import com.bintech.metrix.dto.response.ApiResponse;
 import com.bintech.metrix.dto.response.PageResult;
@@ -24,6 +25,7 @@ public class StockBasicController {
     private final StockBasicService stockBasicService;
 
     @GetMapping("/page")
+    @SaCheckPermission("stock:basic:page")
     public ApiResponse<PageResult<StockBasic>> pageQuery(
             @RequestParam(required = false, defaultValue = "") String keyword,
             @RequestParam(defaultValue = ApiConstants.DEFAULT_PAGE) int page,
@@ -33,6 +35,7 @@ public class StockBasicController {
     }
 
     @PostMapping("/import")
+    @SaCheckPermission("stock:basic:import")
     public ApiResponse<String> importCsv(@RequestParam("file") MultipartFile file) {
         String msg = stockBasicService.importCsv(file);
         return ApiResponse.success(msg);

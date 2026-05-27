@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -242,7 +243,7 @@ public class NewsServiceImpl implements NewsService {
             int statusCode = response.getStatus();
             log.info("博查API响应状态码: {}", statusCode);
 
-            if (statusCode >= ApiConstants.HTTP_STATUS_BAD_REQUEST) {
+            if (statusCode >= HttpStatus.BAD_REQUEST.value()) {
                 result.put(ApiConstants.KEY_STATUS, ApiConstants.STATUS_ERROR);
                 result.put(ApiConstants.KEY_MESSAGE, String.format("请求失败(HTTP %d)", statusCode));
                 log.error("博查API请求失败: HTTP {}", statusCode);
@@ -262,7 +263,7 @@ public class NewsServiceImpl implements NewsService {
             log.debug("博查API响应: {}", responseBody);
 
             int code = jsonResult.getInt(ApiConstants.KEY_CODE, -1);
-            if (code == ApiConstants.HTTP_STATUS_OK) {
+            if (code == HttpStatus.OK.value()) {
                 parseBochaResult(jsonResult, result);
             } else {
                 result.put(ApiConstants.KEY_STATUS, ApiConstants.STATUS_ERROR);

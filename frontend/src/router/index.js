@@ -8,13 +8,17 @@ const routes = [
   },
   {
     path: '/',
-    name: 'HomeIndex',
-    component: () => import('../views/Home.vue'),
+    name: 'Welcome',
+    component: () => import('../views/Welcome.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/home',
-    name: 'Home',
+    redirect: '/'
+  },
+  {
+    path: '/dashboard',
+    name: 'Dashboard',
     component: () => import('../views/Home.vue'),
     meta: { requiresAuth: true }
   },
@@ -76,6 +80,42 @@ const routes = [
     path: '/market-review',
     name: 'MarketReview',
     component: () => import('../views/MarketReview.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin/users',
+    name: 'UserManagement',
+    component: () => import('../views/admin/UserManagement.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin/roles',
+    name: 'RoleManagement',
+    component: () => import('../views/admin/RoleManagement.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin/menus',
+    name: 'MenuManagement',
+    component: () => import('../views/admin/MenuManagement.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin/apis',
+    name: 'ApiManagement',
+    component: () => import('../views/admin/ApiManagement.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin/stats',
+    name: 'Stats',
+    component: () => import('../views/admin/Stats.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin/audit-log',
+    name: 'AuditLog',
+    component: () => import('../views/admin/AuditLog.vue'),
     meta: { requiresAuth: true }
   }
 ]

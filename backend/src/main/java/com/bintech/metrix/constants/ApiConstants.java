@@ -7,11 +7,14 @@ public final class ApiConstants {
 
     private ApiConstants() {}
 
-    /** HTTP 状态码 */
-    public static final int HTTP_STATUS_OK = 200;
-    public static final int HTTP_STATUS_BAD_REQUEST = 400;
-    public static final int HTTP_STATUS_UNAUTHORIZED = 401;
-    public static final int HTTP_STATUS_INTERNAL_ERROR = 500;
+    /** API基础路径 */
+    public static final String API_BASE_PATH = "/api";
+    /** API路径匹配规则 */
+    public static final String PATH_PATTERNS = API_BASE_PATH + "/**";
+
+    /** 冻结用户异常码 */
+    public static final int FROZEN_USER_CODE = 1001;
+
 
     /** 响应JSON字段名 */
     public static final String KEY_STATUS = "status";
@@ -23,7 +26,6 @@ public final class ApiConstants {
     public static final String KEY_TITLE = "title";
     public static final String KEY_SOURCE = "source";
     public static final String KEY_VALUE = "value";
-    public static final String KEY_NAME = "name";
     public static final String KEY_URL = "url";
 
     /** 状态值 */

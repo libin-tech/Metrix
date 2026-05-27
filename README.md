@@ -26,7 +26,7 @@ Metrix = Metric（指标） + Matrix（矩阵）
 | 后端 | Java 21, Spring Boot 4.0.5, MyBatis-Plus 3.5.15 |
 | 数据库 | PostgreSQL 16                                   |
 | AI | LangChain4j 0.36.2 (OpenAI / Ollama)            |
-| 认证 | Sa-Token 1.36.0 (JWT)                           |
+| 认证 | Sa-Token 1.45.0 (JWT, 注解鉴权)                  |
 | 前端 | Vue 3, Ant Design Vue, Vite                     |
 | 数据源 | TickFlow (行情), 博查 (新闻), AKshare (基础数据)          |
 | 工具 | Hutool 5.8.13, Flexmark, Lombok                 |
@@ -45,6 +45,7 @@ Metrix = Metric（指标） + Matrix（矩阵）
 - **飞书通知** — 分析完成后通过飞书 Webhook 推送结果
 - **多模型支持** — 支持 OpenAI 兼容接口和 Ollama 本地模型
 - **国际化** — 支持中文和英文界面
+- **权限管理** — 基于 RBAC 的权限系统，支持角色/菜单/接口三级权限控制，接口粒度的注解鉴权，动态菜单展示
 
 ## 快速开始
 
@@ -64,7 +65,8 @@ cp .env.example .env
 # 编辑 .env 填入 PostgreSQL 连接信息
 
 # 2. 初始化数据库
-psql -h 127.0.0.1 -U postgres -d stock_analysis -f .doc/db/init.sql
+psql -h 127.0.0.1 -U postgres -d stock_analysis -f .doc/db/ddl-init.sql
+psql -h 127.0.0.1 -U postgres -d stock_analysis -f .doc/db/dml-init.sql
 
 # 3. 启动后端
 mvn clean package -DskipTests
@@ -85,7 +87,8 @@ npm run dev
 docker compose up -d --build
 
 # 初始化数据库（首次部署）
-docker compose exec -T postgres psql -U postgres -d stock_analysis < .doc/db/init.sql
+docker compose exec -T postgres psql -U postgres -d stock_analysis < .doc/db/ddl-init.sql
+docker compose exec -T postgres psql -U postgres -d stock_analysis < .doc/db/dml-init.sql
 
 # 查看日志
 docker compose logs -f app
@@ -121,27 +124,29 @@ npm run preview
 Metrix/
 ├── src/main/java/com/bintech/metrix/
 │   ├── controller/        # REST 控制器
+│   │   └── admin/         # 管理后台控制器
 │   ├── service/           # 业务逻辑层
 │   ├── repository/        # 持久层（Entity + Mapper）
-│   ├── core/              # 核心业务（分析引擎、任务队列）
 │   ├── dto/               # 数据传输对象
 │   ├── enums/             # 枚举
-│   ├── config/            # 配置类
+│   ├── config/            # 配置类（含 Sa-Token 鉴权）
+│   ├── constants/         # 常量定义
 │   └── exception/         # 全局异常处理
 ├── frontend/              # Vue 3 前端
 │   └── src/
 │       ├── views/         # 页面组件
+│       │   └── admin/     # 管理后台页面
 │       ├── api/           # API 客户端
 │       ├── router/        # 路由
 │       ├── composables/   # Vue 组合式函数（主题、状态管理等）
 │       └── i18n/          # 国际化
 ├── python-service/        # Python 辅助服务
-│   ├── tickflow.py        # 实时行情采集
-│   └── akshare.py         # 筹码分布计算
 └── .doc/
-    ├── db/                # 数据库迁移脚本
-    ├── images/            # 图片资源
-    └── basic/             # 基础数据文件
+    ├── db/                # 数据库脚本（DDL+DML+种子数据）
+    │   ├── ddl-init.sql   # 完整建表脚本
+    │   ├── dml-init.sql   # 初始数据（角色、管理员用户）
+    │   └── system_api.sql # 接口注册数据
+    └── images/            # 图片资源
 ```
 
 ## 配置说明
@@ -170,34 +175,43 @@ Metrix/
 
 ## API 概览
 
-所有 API 以 `/api` 为前缀，部分接口需要登录认证（Sa-Token JWT）。
+所有 API 以 `/api` 为前缀，部分接口需要登录认证（Sa-Token JWT）。共 100+ 个 API 端点，完整列表见 `.doc/db/system_api.sql`。
+
+### 业务接口
 
 | 端点 | 说明 |
 |------|------|
 | `POST /api/auth/login` | 用户登录 |
-| `GET  /api/stock/basic/list` | 股票列表（分页） |
-| `GET  /api/stock/search` | 股票搜索 |
-| `POST /api/stock/analysis` | 提交分析任务 |
-| `GET  /api/stock/analysis/result` | 获取分析结果 |
-| `GET  /api/stock/analysis/detail` | 分析详情 |
-| `GET  /api/stock/analysis/export/pdf` | 导出 PDF |
-| `GET  /api/stock/analysis/queue/status` | 队列状态 |
-| `POST /api/portfolio/holding` | 新增持仓 |
-| `POST /api/portfolio/holding/batch` | 批量新增持仓 |
-| `GET  /api/portfolio/holding/list` | 持仓列表 |
+| `POST /api/auth/login-by-code` | 微信扫码登录 |
+| `GET  /api/auth/permissions` | 获取当前用户权限列表 |
+| `POST /api/analysis` | 提交分析任务 |
+| `GET  /api/analysis` | 分析记录列表 |
+| `GET  /api/analysis/{id}/detail` | 分析报告详情 |
+| `GET  /api/analysis/{id}/pdf` | 导出 PDF |
 | `POST /api/market-review/trigger` | 发起大盘复盘 |
-| `GET  /api/market-review/list` | 复盘记录列表 |
-| `GET  /api/market-review/detail` | 复盘详情 |
-| `PUT  /api/config/ai-model` | 更新 AI 模型配置 |
-| `PUT  /api/config/market-data` | 更新行情源配置 |
-| `PUT  /api/config/news-source` | 更新新闻源配置 |
-| `PUT  /api/config/notification` | 更新通知配置 |
+| `GET  /api/market-review` | 复盘记录列表 |
 | `POST /api/chat/session` | 创建对话会话 |
 | `GET  /api/chat/sessions` | 会话列表 |
-| `DELETE /api/chat/session/{id}` | 删除会话 |
-| `POST /api/chat/sessions/delete` | 批量删除会话 |
-| `GET  /api/chat/session/{id}/messages` | 会话消息列表 |
 | `POST /api/chat/send` | 发送消息（SSE 流式响应） |
+| `GET  /api/portfolio/holdings` | 持仓列表 |
+| `POST /api/portfolio/holdings/batch` | 批量新增持仓 |
+| `GET  /api/stock-basic/page` | 标的数据（分页） |
+| `GET  /api/stocks/search` | 标的搜索 |
+
+### 管理接口
+
+| 端点 | 说明 | 权限 |
+|------|------|------|
+| `GET  /api/admin/users` | 用户列表 | `system:user:list` |
+| `PUT  /api/admin/users/{id}/freeze` | 冻结用户 | `system:user:freeze` |
+| `GET  /api/admin/roles` | 角色列表 | `system:role:list` |
+| `POST /api/admin/roles/{id}/menus` | 分配菜单权限 | `system:role:assign-menu` |
+| `POST /api/admin/roles/{id}/apis` | 分配接口权限 | `system:role:assign-api` |
+| `GET  /api/admin/menus/tree` | 菜单树 | `system:menu:list` |
+| `POST /api/admin/menus` | 创建菜单 | `system:menu:create` |
+| `GET  /api/admin/apis` | 接口列表 | `system:api:list` |
+| `GET  /api/admin/usage-stats/today` | 今日统计 | `system:stats:today` |
+| `GET  /api/admin/audit-logs` | 审计日志 | `system:audit:view` |
 
 ## 开发指南
 

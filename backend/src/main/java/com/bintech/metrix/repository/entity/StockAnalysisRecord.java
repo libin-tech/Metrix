@@ -79,6 +79,12 @@ public class StockAnalysisRecord extends BaseEntity {
     private String analysisOverview;
 
     /**
+     * 用户ID（数据隔离）
+     */
+    @TableField(value = "user_id")
+    private Long userId;
+
+    /**
      * 是否属于持仓（非数据库字段）
      */
     @TableField(exist = false)

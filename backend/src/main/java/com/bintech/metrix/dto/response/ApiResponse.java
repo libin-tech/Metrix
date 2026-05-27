@@ -4,6 +4,7 @@ import com.bintech.metrix.constants.ApiConstants;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.http.HttpStatus;
 
 import java.time.LocalDateTime;
 
@@ -18,11 +19,11 @@ public class ApiResponse<T> {
     private LocalDateTime timestamp;
 
     public static <T> ApiResponse<T> success(T data) {
-        return new ApiResponse<>(ApiConstants.HTTP_STATUS_OK, ApiConstants.DEFAULT_SUCCESS_MSG, data, LocalDateTime.now());
+        return new ApiResponse<>(HttpStatus.OK.value(), ApiConstants.DEFAULT_SUCCESS_MSG, data, LocalDateTime.now());
     }
 
     public static <T> ApiResponse<T> success(String message, T data) {
-        return new ApiResponse<>(ApiConstants.HTTP_STATUS_OK, message, data, LocalDateTime.now());
+        return new ApiResponse<>(HttpStatus.OK.value(), message, data, LocalDateTime.now());
     }
 
     public static <T> ApiResponse<T> error(Integer code, String message) {
@@ -30,6 +31,6 @@ public class ApiResponse<T> {
     }
 
     public static <T> ApiResponse<T> error(String message) {
-        return new ApiResponse<>(ApiConstants.HTTP_STATUS_INTERNAL_ERROR, message, null, LocalDateTime.now());
+        return new ApiResponse<>(HttpStatus.INTERNAL_SERVER_ERROR.value(), message, null, LocalDateTime.now());
     }
 }

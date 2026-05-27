@@ -30,6 +30,12 @@ sa-token:
   token-style: jwt
   jwt-secret-key: aa3e7c8f2b9d4a6e8f0c1d2b3a4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0
 
+wechat:
+  app-id: ${WECHAT_APP_ID:}
+  app-secret: ${WECHAT_APP_SECRET:}
+  token: ${WECHAT_TOKEN:}
+  encoding-aes-key: ${WECHAT_ENCODING_AES_KEY:}
+
 python:
   executable: python
   tickflow-script-path: python-service/tickflow.py

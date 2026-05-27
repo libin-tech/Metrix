@@ -1,5 +1,6 @@
 package com.bintech.metrix.config;
 
+import com.bintech.metrix.constants.ApiConstants;
 import com.bintech.metrix.constants.SystemConstants;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
@@ -20,7 +21,7 @@ public class WebConfig implements WebMvcConfigurer {
      */
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/api/**")
+        registry.addMapping(ApiConstants.PATH_PATTERNS)
                 .allowedOrigins("*")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")

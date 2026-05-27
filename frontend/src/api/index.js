@@ -1,4 +1,6 @@
 import axios from 'axios'
+import { message, Modal } from 'ant-design-vue'
+import i18n from '../i18n'
 
 const service = axios.create({
   baseURL: '/api',
@@ -20,18 +22,32 @@ service.interceptors.request.use(
 
 service.interceptors.response.use(
   response => {
-    return response.data
+    const body = response.data
+    if (body && body.code != null && body.code !== 200) {
+      if (body.code === 1001) {
+        Modal.error({ title: i18n.global.t('common.accountFrozen'), content: body.message || i18n.global.t('common.accountFrozenDefault'), okText: i18n.global.t('common.ok') })
+      } else {
+        message.error(body.message || '请求失败')
+      }
+      return Promise.reject(new Error(body.message || '请求失败'))
+    }
+    return body
   },
   error => {
     if (error.response && error.response.status === 401) {
       localStorage.removeItem('token')
       window.location.href = '/login'
     }
+    if (error.response && error.response.status === 403) {
+      message.error(error.response.data?.message || '无权限访问')
+    }
     return Promise.reject(error)
   }
 )
 
 export const login = data => service.post('/auth/login', data)
+export const loginByCode = code => service.post('/auth/login-by-code', { code })
+export const verifyCode = code => service.get('/auth/verify-code', { params: { code } })
 
 export const getAnalysisById = id => service.get(`/analysis/${id}`)
 export const getAllAnalysis = () => service.get('/analysis')
@@ -153,3 +169,46 @@ export const getMarketReviewDetail = (id) => service.get(`/market-review/${id}`)
 export const deleteMarketReview = (id) => service.delete(`/market-review/${id}`)
 export const triggerMarketReview = () => service.post('/market-review/trigger')
 export const createMarketReview = (reviewDate) => service.post('/market-review/create', null, { params: { reviewDate } })
+
+export const getAdminUsers = (page, size, keyword) => service.get('/admin/users', { params: { page, size, keyword } })
+export const freezeUser = (id, data) => service.put(`/admin/users/${id}/freeze`, data)
+export const unfreezeUser = (id) => service.put(`/admin/users/${id}/unfreeze`)
+
+export const getRolePage = (page, size, keyword) => service.get('/admin/roles', { params: { page, size, keyword } })
+export const getRoleDetail = (id) => service.get(`/admin/roles/${id}`)
+export const createRole = (data) => service.post('/admin/roles', data)
+export const updateRole = (id, data) => service.put(`/admin/roles/${id}`, data)
+export const deleteRole = (id) => service.delete(`/admin/roles/${id}`)
+export const getAllRoles = () => service.get('/admin/roles/list-all')
+export const assignRoleMenus = (roleId, data) => service.post(`/admin/roles/${roleId}/menus`, data)
+export const assignRoleApis = (roleId, data) => service.post(`/admin/roles/${roleId}/apis`, data)
+export const getRoleMenus = (roleId) => service.get(`/admin/roles/${roleId}/menus`)
+export const getRoleApis = (roleId) => service.get(`/admin/roles/${roleId}/apis`)
+
+export const getMenuTree = () => service.get('/admin/menus/tree')
+export const getMenuById = (id) => service.get(`/admin/menus/${id}`)
+export const createMenu = (data) => service.post('/admin/menus', data)
+export const updateMenu = (id, data) => service.put(`/admin/menus/${id}`, data)
+export const deleteMenu = (id) => service.delete(`/admin/menus/${id}`)
+export const getMenuApis = (menuId) => service.get(`/admin/menus/${menuId}/apis`)
+export const assignMenuApis = (menuId, data) => service.post(`/admin/menus/${menuId}/apis`, data)
+
+export const getApiPage = (page, size, keyword) => service.get('/admin/apis', { params: { page, size, keyword } })
+export const getApiById = (id) => service.get(`/admin/apis/${id}`)
+export const createApi = (data) => service.post('/admin/apis', data)
+export const updateApi = (id, data) => service.put(`/admin/apis/${id}`, data)
+export const deleteApi = (id) => service.delete(`/admin/apis/${id}`)
+export const getAllApis = () => service.get('/admin/apis/list-all')
+
+export const getUserRoles = (userId) => service.get(`/admin/users/${userId}/roles`)
+export const assignUserRoles = (userId, data) => service.post(`/admin/users/${userId}/roles`, data)
+
+export const getPermissions = () => service.get('/auth/permissions')
+
+export const getCurrentUser = () => service.get('/auth/me')
+
+export const getTodayStats = () => service.get('/admin/usage-stats/today')
+export const getStatsByRange = (startDate, endDate) => service.get('/admin/usage-stats/range', { params: { startDate, endDate } })
+
+export const getAuditLogs = (page, size, userId, action, startTime, endTime) =>
+  service.get('/admin/audit-logs', { params: { page, size, userId, action, startTime, endTime } })

@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import cn.dev33.satoken.annotation.SaCheckLogin;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -31,15 +32,20 @@ import com.bintech.metrix.dto.response.ApiResponse;
 import com.bintech.metrix.dto.response.CursorPageResult;
 import com.bintech.metrix.dto.response.StockAnalysisDetailResponse;
 import com.bintech.metrix.enums.StockAnalysisStatus;
+import com.bintech.metrix.enums.UserRole;
 import com.bintech.metrix.repository.entity.StockAnalysisRecord;
 import com.bintech.metrix.repository.entity.StockBasic;
+import com.bintech.metrix.repository.entity.User;
 import com.bintech.metrix.repository.mapper.StockAnalysisRecordMapper;
 import com.bintech.metrix.service.PdfExportService;
 import com.bintech.metrix.service.PortfolioHoldingService;
 import com.bintech.metrix.service.StockAnalysisService;
 import com.bintech.metrix.service.StockBasicService;
+import com.bintech.metrix.service.UserService;
 
-import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.stp.StpUtil;
+import com.bintech.metrix.service.UsageStatsService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -70,6 +76,8 @@ public class StockAnalysisController {
     private final AnalysisTaskQueue analysisTaskQueue;
     private final PdfExportService pdfExportService;
     private final PortfolioHoldingService portfolioHoldingService;
+    private final UsageStatsService usageStatsService;
+    private final UserService userService;
 
     /**
      * 异步执行股票分析
@@ -81,16 +89,23 @@ public class StockAnalysisController {
      * @return 分析任务创建结果
      */
     @PostMapping
+    @SaCheckPermission("analysis:record:create")
     public ApiResponse<Map<String, Object>> analyzeStockAsync(@Valid @RequestBody StockAnalysisRequest request) {
         String stockCode = request.getStockCode();
-        
-        // 检查队列是否还有容量
+
+        Long userId = StpUtil.getLoginIdAsLong();
+        User user = userService.getUserById(userId);
+        boolean isAdmin = UserRole.ADMIN == user.getRole();
+
+        if (!isAdmin && !usageStatsService.checkAndIncrementAnalysis(userId)) {
+            return ApiResponse.error("每日标的评估次数限制（2次）已用完，请明天再试。因成本原因，每天仅限评估2次。");
+        }
+
         if (!analysisTaskQueue.canSubmit()) {
             return ApiResponse.error("当前任务队列已满，请稍后再试");
         }
 
         try {
-            // 查询股票基本信息
             StockBasic stockBasic = stockBasicService.getByTsCode(stockCode);
 
             // 检查该股票是否已在分析中
@@ -108,6 +123,7 @@ public class StockAnalysisController {
 
             // 创建分析记录，初始状态为"分析中"
             StockAnalysisRecord record = new StockAnalysisRecord();
+            record.setUserId(userId);
             record.setStockCode(stockBasic.getTsCode());
             record.setStockName(stockBasic.getName());
             record.setAnalysisType(request.getAnalysisType());
@@ -142,6 +158,7 @@ public class StockAnalysisController {
      * @return 任务队列状态信息
      */
     @GetMapping("/queue/status")
+    @SaCheckPermission("analysis:queue:status")
     public ApiResponse<Map<String, Object>> getQueueStatus() {
         Map<String, Object> status = new HashMap<>();
         status.put("runningTasks", analysisTaskQueue.getRunningTaskCount());
@@ -158,6 +175,7 @@ public class StockAnalysisController {
      * @return 分析记录列表
      */
     @GetMapping
+    @SaCheckPermission("analysis:record:list")
     public ApiResponse<List<StockAnalysisRecord>> getAllAnalysisRecords() {
         List<StockAnalysisRecord> records = stockAnalysisService.getAllAnalysisRecords();
         Set<String> holdingStockCodes = portfolioHoldingService.getHoldingStockCodes();
@@ -175,6 +193,7 @@ public class StockAnalysisController {
      * @return 游标分页结果
      */
     @GetMapping("/cursor")
+    @SaCheckPermission("analysis:record:cursor")
     public ApiResponse<CursorPageResult<StockAnalysisRecord>> cursorQuery(
             @RequestParam(required = false) Long cursor,
             @RequestParam(defaultValue = "10") int limit) {
@@ -193,6 +212,7 @@ public class StockAnalysisController {
      * @return 分析记录
      */
     @GetMapping("/{id}")
+    @SaCheckPermission("analysis:record:detail")
     public ApiResponse<StockAnalysisRecord> getAnalysisById(@PathVariable Long id) {
         StockAnalysisRecord record = stockAnalysisService.getAnalysisById(id);
         return ApiResponse.success(record);
@@ -205,6 +225,7 @@ public class StockAnalysisController {
      * @return 空响应
      */
     @DeleteMapping("/{id}")
+    @SaCheckPermission("analysis:record:delete")
     public ApiResponse<Void> deleteAnalysisRecord(@PathVariable Long id) {
         stockAnalysisService.deleteAnalysisRecord(id);
         return ApiResponse.success("分析记录删除成功", null);
@@ -219,6 +240,7 @@ public class StockAnalysisController {
      * @return 格式化的分析详情响应
      */
     @GetMapping("/{id}/detail")
+    @SaCheckPermission("analysis:record:report")
     public ApiResponse<StockAnalysisDetailResponse> getAnalysisDetail(@PathVariable Long id) {
         StockAnalysisDetailResponse response = stockAnalysisService.getAnalysisDetail(id);
         return ApiResponse.success(response);
@@ -231,6 +253,7 @@ public class StockAnalysisController {
      * @return 推送结果
      */
     @PostMapping("/{id}/push-feishu")
+    @SaCheckPermission("analysis:record:push-feishu")
     public ApiResponse<Boolean> pushToFeishu(@PathVariable Long id) {
         try {
             stockAnalysisService.pushToFeishu(id);
@@ -247,6 +270,7 @@ public class StockAnalysisController {
      * @return PDF文件流
      */
     @GetMapping("/{id}/pdf")
+    @SaCheckPermission("analysis:record:pdf")
     public ResponseEntity<Resource> exportPdf(@PathVariable Long id) {
         StockAnalysisRecord record = stockAnalysisService.getAnalysisById(id);
         StockBasic stockBasic = stockBasicService.getByTsCode(record.getStockCode());

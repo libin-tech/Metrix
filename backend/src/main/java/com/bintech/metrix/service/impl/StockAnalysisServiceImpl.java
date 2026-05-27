@@ -137,14 +137,18 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
 
     @Override
     public List<StockAnalysisRecord> getAllAnalysisRecords() {
+        Long userId = cn.dev33.satoken.stp.StpUtil.getLoginIdAsLong();
         LambdaQueryWrapper<StockAnalysisRecord> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(StockAnalysisRecord::getUserId, userId);
         queryWrapper.orderByDesc(StockAnalysisRecord::getId);
         return recordMapper.selectList(queryWrapper);
     }
 
     @Override
     public CursorPageResult<StockAnalysisRecord> cursorQuery(Long cursor, int limit) {
+        Long userId = cn.dev33.satoken.stp.StpUtil.getLoginIdAsLong();
         LambdaQueryWrapper<StockAnalysisRecord> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(StockAnalysisRecord::getUserId, userId);
         if (cursor != null && cursor > 0) {
             wrapper.lt(StockAnalysisRecord::getId, cursor);
         }

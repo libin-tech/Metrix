@@ -4,16 +4,16 @@
 
 > English | [中文](./README.md)
 
-Metrix = Metric + Matrix - an asset evaluation tool based on the perspective of quantitative trading.
+Metrix = Metric + Matrix — an asset evaluation tool from the perspective of quantitative trading.
 
-## Web preview
-![analysis - AI multi-dimensional analysis page](.doc/images/analysis_img_en.png)
+## Web Preview
+![Analysis - AI multi-dimensional analysis page](.doc/images/analysis_img_en.png)
 <p align="center">AI multi-dimensional analysis page</p>
 
-![review - AI daily market review page](.doc/images/market_review_en.png)
+![Review - AI daily market review page](.doc/images/market_review_en.png)
 <p align="center">AI daily market review page</p>
 
-![chat - Multi-turn conversational AI analysis page](.doc/images/chat_en.png)
+![Chat - Multi-turn conversational AI analysis page](.doc/images/chat_en.png)
 <p align="center">Multi-turn conversational AI analysis page</p>
 
 ## Tech Stack
@@ -23,7 +23,7 @@ Metrix = Metric + Matrix - an asset evaluation tool based on the perspective of 
 | Backend | Java 21, Spring Boot 4.0.5, MyBatis-Plus 3.5.15              |
 | Database | PostgreSQL 16                                                |
 | AI | LangChain4j 0.36.2 (OpenAI / Ollama)                         |
-| Auth | Sa-Token 1.36.0 (JWT)                                        |
+| Auth | Sa-Token 1.45.0 (JWT, Annotation-based Auth)                 |
 | Frontend | Vue 3, Ant Design Vue, Vite                                  |
 | Data Sources | TickFlow (market data), Bocha (news), AKshare (fundamentals) |
 | Utilities | Hutool 5.8.13, Flexmark, Lombok                              |
@@ -31,6 +31,8 @@ Metrix = Metric + Matrix - an asset evaluation tool based on the perspective of 
 ## Features
 
 - **AI Analysis** — Multi-dimensional stock analysis powered by LLMs (technical analysis, capital flow, news sentiment)
+- **AI Chat** — Multi-turn conversational analysis with real-time tracking of 8-step processing (timing & status), Markdown streaming rendering
+- **Theme Switching** — 5 built-in color themes (Sky Blue / Emerald Green / Twilight Purple / Sunset Orange / Aurora Cyan), globally applied via Ant Design Vue Design Tokens
 - **Real-time Market Data** — Real-time quotes, depth data, and K-line data via TickFlow
 - **News Aggregation** — Stock-related news via Bocha API with auto-summarization
 - **Chip Distribution** — Python-based shareholding cost distribution analysis
@@ -40,6 +42,7 @@ Metrix = Metric + Matrix - an asset evaluation tool based on the perspective of 
 - **Feishu Notifications** — Push analysis results via Feishu Webhook
 - **Multi-Model Support** — OpenAI-compatible APIs and local Ollama models
 - **i18n** — Chinese and English UI
+- **Permission Management** — RBAC-based permission system with role/menu/API three-level access control, annotation-based API authorization, and dynamic menu rendering
 
 ## Quick Start
 
@@ -59,7 +62,8 @@ cp .env.example .env
 # Edit .env with your PostgreSQL connection info
 
 # 2. Initialize database
-psql -h 127.0.0.1 -U postgres -d stock_analysis -f .doc/db/init.sql
+psql -h 127.0.0.1 -U postgres -d stock_analysis -f .doc/db/ddl-init.sql
+psql -h 127.0.0.1 -U postgres -d stock_analysis -f .doc/db/dml-init.sql
 
 # 3. Start backend
 mvn clean package -DskipTests
@@ -80,7 +84,8 @@ Frontend runs at `http://localhost:5173`, backend API at `http://localhost:8080`
 docker compose up -d --build
 
 # Initialize database (first deployment only)
-docker compose exec -T postgres psql -U postgres -d stock_analysis < .doc/db/init.sql
+docker compose exec -T postgres psql -U postgres -d stock_analysis < .doc/db/ddl-init.sql
+docker compose exec -T postgres psql -U postgres -d stock_analysis < .doc/db/dml-init.sql
 
 # View logs
 docker compose logs -f app
@@ -116,26 +121,29 @@ Frontend runs at `http://localhost:4173` (preview) or your nginx-configured port
 Metrix/
 ├── src/main/java/com/bintech/metrix/
 │   ├── controller/        # REST controllers
+│   │   └── admin/         # Admin console controllers
 │   ├── service/           # Business logic layer
 │   ├── repository/        # Persistence layer (Entity + Mapper)
-│   ├── core/              # Core engine (analysis, task queue)
 │   ├── dto/               # Data transfer objects
 │   ├── enums/             # Enumerations
-│   ├── config/            # Configuration classes
+│   ├── config/            # Configuration classes (incl. Sa-Token auth)
+│   ├── constants/         # Constants
 │   └── exception/         # Global exception handler
 ├── frontend/              # Vue 3 frontend
 │   └── src/
 │       ├── views/         # Page components
+│       │   └── admin/     # Admin console pages
 │       ├── api/           # API client
 │       ├── router/        # Router configuration
+│       ├── composables/   # Vue composables (themes, state management, etc.)
 │       └── i18n/          # Internationalization
 ├── python-service/        # Python sidecar services
-│   ├── tickflow.py        # Real-time market data fetcher
-│   └── akshare.py         # Chip distribution calculator
 └── .doc/
-    ├── db/                # Database migration scripts
-    ├── images/            # Image assets
-    └── basic/             # Fundamental data files
+    ├── db/                # Database scripts (DDL + DML + seed data)
+    │   ├── ddl-init.sql   # Full table creation script
+    │   ├── dml-init.sql   # Initial data (roles, admin user)
+    │   └── system_api.sql # API registration data
+    └── images/            # Image assets
 ```
 
 ## Configuration
@@ -164,28 +172,43 @@ Manage AI models through the frontend config page:
 
 ## API Overview
 
-All APIs are prefixed with `/api`. Some endpoints require authentication (Sa-Token JWT).
+All APIs are prefixed with `/api`. Some endpoints require authentication (Sa-Token JWT). 100+ API endpoints in total — see `.doc/db/system_api.sql` for the full list.
+
+### Business APIs
 
 | Endpoint | Description |
 |----------|-------------|
 | `POST /api/auth/login` | User login |
-| `GET  /api/stock/basic/list` | Stock list (paginated) |
-| `GET  /api/stock/search` | Stock search |
-| `POST /api/stock/analysis` | Submit analysis task |
-| `GET  /api/stock/analysis/result` | Get analysis result |
-| `GET  /api/stock/analysis/detail` | Analysis detail |
-| `GET  /api/stock/analysis/export/pdf` | Export PDF |
-| `GET  /api/stock/analysis/queue/status` | Queue status |
-| `POST /api/portfolio/holding` | Add holding |
-| `POST /api/portfolio/holding/batch` | Batch add holdings |
-| `GET  /api/portfolio/holding/list` | List holdings |
+| `POST /api/auth/login-by-code` | WeChat scan-code login |
+| `GET  /api/auth/permissions` | Get current user permissions |
+| `POST /api/analysis` | Submit analysis task |
+| `GET  /api/analysis` | Analysis records list |
+| `GET  /api/analysis/{id}/detail` | Analysis report detail |
+| `GET  /api/analysis/{id}/pdf` | Export PDF |
 | `POST /api/market-review/trigger` | Trigger market review |
-| `GET  /api/market-review/list` | List market reviews |
-| `GET  /api/market-review/detail` | Market review detail |
-| `PUT  /api/config/ai-model` | Update AI model config |
-| `PUT  /api/config/market-data` | Update market data source config |
-| `PUT  /api/config/news-source` | Update news source config |
-| `PUT  /api/config/notification` | Update notification config |
+| `GET  /api/market-review` | Market review list |
+| `POST /api/chat/session` | Create chat session |
+| `GET  /api/chat/sessions` | Session list |
+| `POST /api/chat/send` | Send message (SSE streaming) |
+| `GET  /api/portfolio/holdings` | Holdings list |
+| `POST /api/portfolio/holdings/batch` | Batch add holdings |
+| `GET  /api/stock-basic/page` | Stock data (paginated) |
+| `GET  /api/stocks/search` | Stock search |
+
+### Admin APIs
+
+| Endpoint | Description | Permission |
+|----------|-------------|------------|
+| `GET  /api/admin/users` | User list | `system:user:list` |
+| `PUT  /api/admin/users/{id}/freeze` | Freeze user | `system:user:freeze` |
+| `GET  /api/admin/roles` | Role list | `system:role:list` |
+| `POST /api/admin/roles/{id}/menus` | Assign menu permissions | `system:role:assign-menu` |
+| `POST /api/admin/roles/{id}/apis` | Assign API permissions | `system:role:assign-api` |
+| `GET  /api/admin/menus/tree` | Menu tree | `system:menu:list` |
+| `POST /api/admin/menus` | Create menu | `system:menu:create` |
+| `GET  /api/admin/apis` | API list | `system:api:list` |
+| `GET  /api/admin/usage-stats/today` | Today's stats | `system:stats:today` |
+| `GET  /api/admin/audit-logs` | Audit logs | `system:audit:view` |
 
 ## Development Guide
 
