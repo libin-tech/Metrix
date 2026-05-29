@@ -3,6 +3,7 @@ package com.bintech.metrix.controller.admin;
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.bintech.metrix.annotation.Audit;
 import com.bintech.metrix.dto.request.UserAssignRoleRequest;
 import com.bintech.metrix.dto.response.ApiResponse;
 import com.bintech.metrix.repository.entity.SystemUserRole;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Audit(resourceType = "系统用户角色")
 @RestController
 @RequestMapping("/api/admin/users")
 @RequiredArgsConstructor

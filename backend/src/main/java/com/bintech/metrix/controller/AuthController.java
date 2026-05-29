@@ -2,6 +2,7 @@ package com.bintech.metrix.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.stp.StpUtil;
+import com.bintech.metrix.annotation.Audit;
 import com.bintech.metrix.dto.request.UserLoginRequest;
 import com.bintech.metrix.dto.response.ApiResponse;
 import com.bintech.metrix.dto.response.UserLoginResponse;
@@ -23,6 +24,7 @@ import java.util.Map;
  *
  * <p>提供用户登录、登出、会话状态管理等功能，基于Sa-Token实现。
  */
+@Audit(resourceType = "认证")
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor

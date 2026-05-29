@@ -170,6 +170,9 @@ export const deleteMarketReview = (id) => service.delete(`/market-review/${id}`)
 export const triggerMarketReview = () => service.post('/market-review/trigger')
 export const createMarketReview = (reviewDate) => service.post('/market-review/create', null, { params: { reviewDate } })
 
+export const getMarketActivity = () => service.get('/market-activity')
+export const getMarketIndex = () => service.get('/market-index')
+
 export const getAdminUsers = (page, size, keyword) => service.get('/admin/users', { params: { page, size, keyword } })
 export const freezeUser = (id, data) => service.put(`/admin/users/${id}/freeze`, data)
 export const unfreezeUser = (id) => service.put(`/admin/users/${id}/unfreeze`)

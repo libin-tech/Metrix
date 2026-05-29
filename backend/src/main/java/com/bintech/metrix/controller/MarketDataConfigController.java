@@ -2,6 +2,7 @@ package com.bintech.metrix.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import com.bintech.metrix.annotation.Audit;
 import com.bintech.metrix.dto.request.MarketDataConfigRequest;
 import com.bintech.metrix.dto.response.ApiResponse;
 import com.bintech.metrix.repository.entity.MarketDataConfig;
@@ -17,6 +18,7 @@ import java.util.List;
  *
  * <p>提供行情数据源的CRUD管理，支持多种数据源配置。
  */
+@Audit(resourceType = "行情源配置")
 @RestController
 @RequestMapping("/api/market-data")
 @RequiredArgsConstructor

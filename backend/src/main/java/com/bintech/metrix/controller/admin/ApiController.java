@@ -3,6 +3,7 @@ package com.bintech.metrix.controller.admin;
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.bintech.metrix.annotation.Audit;
 import com.bintech.metrix.dto.request.ApiCreateRequest;
 import com.bintech.metrix.dto.request.ApiUpdateRequest;
 import com.bintech.metrix.dto.response.ApiResponse;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+@Audit(resourceType = "系统接口")
 @RestController
 @RequestMapping("/api/admin/apis")
 @RequiredArgsConstructor

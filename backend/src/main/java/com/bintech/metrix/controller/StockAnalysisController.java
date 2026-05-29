@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.bintech.metrix.annotation.Audit;
 import com.bintech.metrix.core.queue.AnalysisTask;
 import com.bintech.metrix.core.queue.AnalysisTaskQueue;
 import com.bintech.metrix.dto.request.StockAnalysisRequest;
@@ -63,6 +64,7 @@ import lombok.extern.slf4j.Slf4j;
  * 
  * <p>所有接口均需要登录认证（@SaCheckLogin）。
  */
+@Audit(resourceType = "股票分析")
 @Slf4j
 @RestController
 @RequestMapping("/api/analysis")

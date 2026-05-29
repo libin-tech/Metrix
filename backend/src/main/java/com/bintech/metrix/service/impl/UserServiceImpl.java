@@ -1,6 +1,8 @@
 package com.bintech.metrix.service.impl;
 
+import cn.dev33.satoken.stp.SaLoginModel;
 import cn.dev33.satoken.stp.StpUtil;
+import cn.dev33.satoken.stp.parameter.SaLoginParameter;
 import cn.hutool.crypto.digest.DigestUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bintech.metrix.constants.BusinessConstants;
@@ -62,8 +64,7 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("账号已被" + (user.getFreezeReason() != null ? "冻结：" + user.getFreezeReason() : "禁用"));
         }
         
-        StpUtil.login(user.getId());
-        StpUtil.getTokenSession().set("username", user.getUsername());
+        StpUtil.login(user.getId(), new SaLoginParameter().setExtra("username", user.getUsername()));
         
         return new UserLoginResponse(
                 StpUtil.getTokenValue(),

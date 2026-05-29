@@ -9,8 +9,10 @@ import com.bintech.metrix.repository.mapper.AuditLogMapper;
 import com.bintech.metrix.service.AuditLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -25,7 +27,8 @@ public class AuditLogServiceImpl implements AuditLogService {
     private final AuditLogMapper auditLogMapper;
 
     @Override
-    @Transactional
+    @Async
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void log(Long userId, String username, String action, String resourceType, String resourceId, String detail, String ipAddress, String userAgent) {
         AuditLog auditLog = new AuditLog();
         auditLog.setUserId(userId);

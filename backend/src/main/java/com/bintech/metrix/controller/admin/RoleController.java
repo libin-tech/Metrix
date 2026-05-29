@@ -3,6 +3,7 @@ package com.bintech.metrix.controller.admin;
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.bintech.metrix.annotation.Audit;
 import com.bintech.metrix.dto.request.RoleAssignApiRequest;
 import com.bintech.metrix.dto.request.RoleAssignMenuRequest;
 import com.bintech.metrix.dto.request.RoleCreateRequest;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+@Audit(resourceType = "系统角色")
 @RestController
 @RequestMapping("/api/admin/roles")
 @RequiredArgsConstructor

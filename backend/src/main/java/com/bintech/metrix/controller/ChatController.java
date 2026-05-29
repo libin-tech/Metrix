@@ -1,6 +1,7 @@
 package com.bintech.metrix.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
+import com.bintech.metrix.annotation.Audit;
 import com.bintech.metrix.dto.request.ChatSendRequest;
 import com.bintech.metrix.dto.request.ChatSessionCreateRequest;
 import com.bintech.metrix.dto.response.ApiResponse;
@@ -24,6 +25,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 
+@Audit(resourceType = "聊天")
 @Slf4j
 @RestController
 @RequestMapping("/api/chat")

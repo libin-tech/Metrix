@@ -1,6 +1,8 @@
 package com.bintech.metrix.service.impl;
 
+import cn.dev33.satoken.stp.SaLoginModel;
 import cn.dev33.satoken.stp.StpUtil;
+import cn.dev33.satoken.stp.parameter.SaLoginParameter;
 import cn.hutool.cache.CacheUtil;
 import cn.hutool.cache.impl.TimedCache;
 import cn.hutool.core.util.RandomUtil;
@@ -91,8 +93,7 @@ public class WechatAuthServiceImpl implements WechatAuthService {
             throw new FrozenUserException("账号已被冻结" + (reason != null ? "：" + reason : ""));
         }
 
-        StpUtil.login(user.getId());
-        StpUtil.getTokenSession().set("username", user.getUsername());
+        StpUtil.login(user.getId(), new SaLoginParameter().setExtra("username", user.getUsername()));
 
         log.info("用户验证码登录成功: userId={}, openid={}, nickname={}",
                 user.getId(), openid, user.getNickname());

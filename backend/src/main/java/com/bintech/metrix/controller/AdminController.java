@@ -6,6 +6,7 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.bintech.metrix.annotation.Audit;
 import com.bintech.metrix.dto.response.ApiResponse;
 import com.bintech.metrix.dto.response.AuditLogVO;
 import com.bintech.metrix.dto.response.UsageStatsVO;
@@ -36,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Audit(resourceType = "管理")
 @Slf4j
 @RestController
 @RequestMapping("/api/admin")

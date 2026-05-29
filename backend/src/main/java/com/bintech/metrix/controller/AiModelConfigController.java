@@ -2,6 +2,7 @@ package com.bintech.metrix.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import com.bintech.metrix.annotation.Audit;
 import com.bintech.metrix.dto.request.AiModelConfigRequest;
 import com.bintech.metrix.dto.request.AiModelTestRequest;
 import com.bintech.metrix.dto.response.AiModelTestResponse;
@@ -19,6 +20,7 @@ import java.util.List;
  *
  * <p>提供AI模型的CRUD管理、连接测试、激活切换等功能。
  */
+@Audit(resourceType = "AI模型配置")
 @RestController
 @RequestMapping("/api/ai-model")
 @RequiredArgsConstructor

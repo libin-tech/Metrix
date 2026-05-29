@@ -2,6 +2,7 @@ package com.bintech.metrix.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import com.bintech.metrix.annotation.Audit;
 import com.bintech.metrix.dto.request.BrokerAccountRequest;
 import com.bintech.metrix.dto.request.PortfolioHoldingRequest;
 import com.bintech.metrix.dto.response.ApiResponse;
@@ -22,6 +23,7 @@ import java.util.Map;
  * <p>提供券商账户和持仓标的的CRUD、行情异步刷新（轮询）REST API。
  * 所有接口均需登录认证（{@code @SaCheckLogin}）。
  */
+@Audit(resourceType = "持仓管理")
 @RestController
 @RequestMapping("/api/portfolio")
 @RequiredArgsConstructor

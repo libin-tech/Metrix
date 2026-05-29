@@ -3,6 +3,7 @@ package com.bintech.metrix.controller;
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.stp.StpUtil;
+import com.bintech.metrix.annotation.Audit;
 import com.bintech.metrix.dto.response.ApiResponse;
 import com.bintech.metrix.dto.response.CursorPageResult;
 import com.bintech.metrix.enums.MarketReviewStatus;
@@ -21,6 +22,7 @@ import java.util.Map;
 /**
  * 大盘复盘控制器
  */
+@Audit(resourceType = "大盘复盘")
 @RestController
 @RequestMapping("/api/market-review")
 @RequiredArgsConstructor
