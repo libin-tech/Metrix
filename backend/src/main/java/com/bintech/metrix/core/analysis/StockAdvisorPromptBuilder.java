@@ -73,7 +73,6 @@ public class StockAdvisorPromptBuilder {
                         Map<String, Object> topFreeShareholdersData) {
         List<String> missing = new ArrayList<>();
         if (!isDataValid(marketData)) missing.add("实时行情");
-        if (!isDataValid(depthData)) missing.add("深度行情");
         if (!isDataValid(newsData)) missing.add("新闻");
         if (!isDataValid(klinesData)) missing.add("K线数据");
 

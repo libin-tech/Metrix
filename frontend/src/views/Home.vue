@@ -652,38 +652,34 @@ onUnmounted(() => {
   line-height: 1.2;
 }
 
-.market-activity-card {
-  height: fit-content;
-}
-
 .market-activity-card :deep(.ant-card-body) {
-  padding: 14px 16px;
+  padding: 6px 10px;
 }
 
 .index-quotes {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+  gap: 6px;
 }
 
 .index-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 10px;
-  border-radius: 6px;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
   background: #f8f9fa;
 }
 
 .index-name {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: #333;
   white-space: nowrap;
 }
 
 .index-value {
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -697,7 +693,7 @@ onUnmounted(() => {
 }
 
 .index-change {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
@@ -717,13 +713,13 @@ onUnmounted(() => {
 
 /* ── 赚钱效应分析 card ── */
 .activity-analysis-card :deep(.ant-card-body) {
-  padding: 14px 16px;
+  padding: 6px 10px;
 }
 
 .bar-group {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 8px;
 }
 
 .bar-row {
@@ -735,15 +731,15 @@ onUnmounted(() => {
 .bar-row-labels {
   display: flex;
   align-items: center;
-  gap: 16px;
-  font-size: 13px;
+  gap: 10px;
+  font-size: 12px;
   font-weight: 600;
 }
 
 .bar-label-item {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   white-space: nowrap;
 }
 
@@ -752,8 +748,8 @@ onUnmounted(() => {
 .bar-label-item.gray { color: #8c8c8c; }
 
 .bar-dot {
-  width: 10px;
-  height: 10px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   display: inline-block;
 }
@@ -764,8 +760,8 @@ onUnmounted(() => {
 
 .stacked-bar {
   display: flex;
-  height: 14px;
-  border-radius: 7px;
+  height: 6px;
+  border-radius: 3px;
   overflow: hidden;
   background: #f0f0f0;
 }
