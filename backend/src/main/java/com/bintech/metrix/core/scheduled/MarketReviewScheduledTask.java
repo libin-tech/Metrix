@@ -17,13 +17,16 @@ public class MarketReviewScheduledTask {
 
     private final MarketReviewService marketReviewService;
 
+    /**
+     * 定时任务：每个交易日15:30自动触发大盘复盘
+     */
     @Scheduled(cron = "0 30 15 * * MON-FRI")
     @Transactional
     public void scheduledReview() {
         log.info("定时任务：开始大盘复盘");
         String today = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         try {
-            marketReviewService.createReview(today);
+            marketReviewService.createReview(today, null);
             log.info("定时大盘复盘任务已提交: {}", today);
         } catch (Exception e) {
             log.error("定时大盘复盘失败: {}", e.getMessage(), e);

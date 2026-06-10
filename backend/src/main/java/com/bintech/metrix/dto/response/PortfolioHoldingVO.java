@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
@@ -21,4 +22,6 @@ public class PortfolioHoldingVO {
     private BigDecimal currentPrice;
     private BigDecimal profitLossPercent;
     private BigDecimal profitLossAmount;
+    private BigDecimal cachedPrice;
+    private LocalDateTime cachedPriceTime;
 }

@@ -29,6 +29,9 @@ public class MarketReviewDataFetcher {
     @Value("${python.akshare-script-path:python-service/akshare.py}")
     private String akshareScriptPath;
 
+    /**
+     * 通过调用 AKShare Python 脚本获取四大指数（上证/深证/创业板/科创50）的行情和K线数据
+     */
     public Map<String, Object> fetchIndexData(String reviewDate) {
         String symbols = String.join(",", INDEX_SYMBOLS);
         String scriptPath = akshareScriptPath.replace("akshare.py", "akshare_index.py");

@@ -28,13 +28,21 @@ public class AnalysisOverviewBuilder {
     private final CoreInsightPromptBuilder coreInsightPromptBuilder;
 
     /**
+     * 从完整分析报告中提取核心洞察和关联板块（无用户ID版本）
+     */
+    public String generateCoreInsight(String analysisResult, String modelType) {
+        return generateCoreInsight(analysisResult, modelType, null);
+    }
+
+    /**
      * 从完整分析报告中提取核心洞察和关联板块
      *
      * @param analysisResult AI分析报告全文
      * @param modelType      AI模型类型
+     * @param userId         用户ID
      * @return String
      */
-    public String generateCoreInsight(String analysisResult, String modelType) {
+    public String generateCoreInsight(String analysisResult, String modelType, Long userId) {
 
         try {
             if (analysisResult == null || analysisResult.isBlank()) {
@@ -42,7 +50,7 @@ public class AnalysisOverviewBuilder {
                 return "暂无核心洞察";
             }
             String prompt = coreInsightPromptBuilder.buildCoreInsightPrompt(analysisResult);
-            return aiModelService.generateAnalysis(prompt, modelType);
+            return aiModelService.generateAnalysis(prompt, modelType, userId);
         } catch (Exception e) {
             log.error("生成核心洞察失败: {}", e.getMessage(), e);
             return "核心洞察分析失败";
@@ -50,9 +58,6 @@ public class AnalysisOverviewBuilder {
 
     }
 
-    /**
-     * 从AI回复中解析关联板块列表
-     */
     private List<String> parseRelatedSectors(String response) {
         List<String> sectors = new ArrayList<>();
         try {
@@ -79,7 +84,7 @@ public class AnalysisOverviewBuilder {
     }
 
     /**
-     * 构建分析概览，封装实时行情、数据透视、作战计划、股东数据
+     * 构建完整的分析概览对象，包含实时行情、数据枢纽、作战计划和筹码分析
      */
     public AnalysisOverview build(Map<String, Object> marketData, Map<String, Object> klinesData,
                                    String analysisResult, String coreInsight, Map<String, Object> chipData,
@@ -99,6 +104,9 @@ public class AnalysisOverviewBuilder {
         }
     }
 
+    /**
+     * 从市场数据中解析实时行情（当前价、涨跌幅、成交量等）
+     */
     private RealTimeMarket buildRealTimeMarket(Map<String, Object> marketData) {
         if (marketData == null) return null;
         try {
@@ -111,15 +119,12 @@ public class AnalysisOverviewBuilder {
             BigDecimal prevClose = quote.getBigDecimal("prev_close", BigDecimal.ZERO);
             JSONObject ext = quote.getJSONObject("ext");
 
-            // 涨跌幅优先从 ext 获取（change_pct 为小数，需转为百分比值）
             BigDecimal changePercent = ext.getBigDecimal("change_pct", BigDecimal.ZERO);
             if (changePercent.compareTo(BusinessConstants.CHANGE_PCT_THRESHOLD) < 0) {
                 changePercent = changePercent.multiply(BusinessConstants.PCT_MULTIPLIER);
             }
 
-
             BigDecimal changeAmount = ext.getBigDecimal("change_amount", BigDecimal.ZERO);
-
 
             BigDecimal turnoverRate = ext.getBigDecimal("turnover_rate", BigDecimal.ZERO);
             if (turnoverRate.compareTo(BusinessConstants.TURNOVER_RATE_THRESHOLD) < 0) {
@@ -146,6 +151,9 @@ public class AnalysisOverviewBuilder {
         }
     }
 
+    /**
+     * 构建数据枢纽：整合均线、MACD、支撑/阻力位、筹码分布
+     */
     private DataPivot buildDataPivot(Map<String, Object> marketData, Map<String, Object> klinesData, Map<String, Object> chipData) {
         DataPivot.DataPivotBuilder builder = DataPivot.builder();
 
@@ -243,7 +251,6 @@ public class AnalysisOverviewBuilder {
             BigDecimal cost70High = data.getBigDecimal("cost_70_high");
             BigDecimal concentration70 = data.getBigDecimal("concentration_70");
 
-            // 筹码集中度：获利比例越偏离50%，筹码越集中
             BigDecimal deviation = profitRatio.subtract(BusinessConstants.CHIP_BALANCE_PERCENT).abs();
             BigDecimal concentration = BusinessConstants.CHIP_BASE_SCORE.subtract(deviation.multiply(BusinessConstants.CHIP_CONCENTRATION_FACTOR))
                     .setScale(1, java.math.RoundingMode.HALF_UP);
@@ -257,7 +264,6 @@ public class AnalysisOverviewBuilder {
                 distributionDesc = "套牢盘占比高，上方存在较大压力位";
             }
 
-            // 生成筹码综合总结
             String chipSummary = buildChipSummary(avgCost, cost90Low, cost90High, concentration90,
                     cost70Low, cost70High, concentration70, profitRatio, lossRatio);
 
@@ -299,6 +305,9 @@ public class AnalysisOverviewBuilder {
         return sb.toString();
     }
 
+    /**
+     * 构建作战计划：基于均线计算理想/次优入场价、止损价、目标价和盈亏比
+     */
     private BattlePlan buildBattlePlan(Map<String, Object> marketData, Map<String, Object> klinesData) {
         BigDecimal currentPrice = BigDecimal.ZERO;
         BigDecimal ma5 = BigDecimal.ZERO;
@@ -384,6 +393,9 @@ public class AnalysisOverviewBuilder {
         }
     }
 
+    /**
+     * 计算移动平均线（MA）
+     */
     private BigDecimal calcMA(JSONArray closeData, int period) {
         int count = Math.min(period, closeData.size());
         BigDecimal sum = BigDecimal.ZERO;
@@ -393,6 +405,9 @@ public class AnalysisOverviewBuilder {
         return sum.divide(BigDecimal.valueOf(count), 2, java.math.RoundingMode.HALF_UP);
     }
 
+    /**
+     * 计算支撑位：取最近 N 日最低价的最小值
+     */
     private BigDecimal calcSupport(JSONArray lowData) {
         if (lowData == null || lowData.size() < BusinessConstants.SUPPORT_LOOKBACK) return BigDecimal.ZERO;
         BigDecimal support = lowData.getBigDecimal(lowData.size() - 1);
@@ -403,6 +418,9 @@ public class AnalysisOverviewBuilder {
         return support.setScale(2, java.math.RoundingMode.HALF_UP);
     }
 
+    /**
+     * 计算阻力位：取最近 N 日最高价的最大值
+     */
     private BigDecimal calcResistance(JSONArray highData) {
         if (highData == null || highData.size() < BusinessConstants.SUPPORT_LOOKBACK) return BigDecimal.ZERO;
         BigDecimal resistance = highData.getBigDecimal(highData.size() - 1);
@@ -413,6 +431,9 @@ public class AnalysisOverviewBuilder {
         return resistance.setScale(2, java.math.RoundingMode.HALF_UP);
     }
 
+    /**
+     * 分析十大流通股东：统计机构/个人比例，识别知名机构并给出评分
+     */
     private String buildTopFreeShareholdersAnalysis(Map<String, Object> topFreeShareholdersData) {
         if (topFreeShareholdersData == null) return "暂无十大流通股东数据";
         try {

@@ -17,91 +17,44 @@ import java.util.function.Consumer;
  */
 public interface AiModelService {
 
-    /**
-     * 创建模型配置
-     *
-     * @param request 配置请求（模型类型、API Key、端点等）
-     * @return 创建后的配置
-     */
     AiModelConfig createConfig(AiModelConfigRequest request);
 
-    /**
-     * 更新模型配置
-     *
-     * @param id      配置ID
-     * @param request 配置请求
-     * @return 更新后的配置
-     */
     AiModelConfig updateConfig(Long id, AiModelConfigRequest request);
 
-    /** 根据ID获取配置 */
     AiModelConfig getConfigById(Long id);
 
-    /** 获取所有配置 */
     List<AiModelConfig> getAllConfigs();
 
-    /** 获取已激活的配置列表 */
+    List<AiModelConfig> getAllConfigs(Long userId);
+
     List<AiModelConfig> getActiveConfigs();
 
-    /**
-     * 获取当前激活的模型类型
-     *
-     * <p>从数据库中查询当前激活的AI模型配置，如果存在多个激活配置，返回第一个。
-     * 如果没有找到激活配置，返回默认值"OPENAI"。
-     *
-     * @return 当前激活的模型类型
-     */
+    List<AiModelConfig> getActiveConfigs(Long userId);
+
     String getActiveModelType();
 
-    /**
-     * 获取当前激活的模型配置
-     *
-     * <p>从数据库中查询当前激活的AI模型配置，如果存在多个激活配置，返回第一个。
-     * 如果没有找到激活配置，返回null。
-     *
-     * @return 当前激活的模型配置，若无则返回null
-     */
+    String getActiveModelType(Long userId);
+
     AiModelConfig getActiveConfig();
 
-    /** 删除配置 */
+    AiModelConfig getActiveConfig(Long userId);
+
     void deleteConfig(Long id);
 
-    /**
-     * 根据模型类型获取激活的配置
-     *
-     * @param modelType 模型类型（如 OPENAI, DEEPSEEK）
-     * @return 激活的配置，不存在时返回null
-     */
     AiModelConfig getActiveConfigByType(String modelType);
 
-    /**
-     * 生成分析内容
-     *
-     * @param prompt    提示词
-     * @param modelType 模型类型
-     * @return 模型返回的分析文本
-     */
+    AiModelConfig getActiveConfigByType(String modelType, Long userId);
+
     String generateAnalysis(String prompt, String modelType);
 
-    /**
-     * 流式生成分析内容
-     *
-     * @param prompt    提示词
-     * @param modelType 模型类型
-     * @param onNext    每个token的回调
-     * @param onComplete 完成时的回调，参数为完整内容和总token数
-     * @param onError   错误回调
-     */
-    void generateAnalysisStreaming(String prompt, String modelType,
-                                   Consumer<String> onNext,
-                                   Consumer<AnalysisResult> onComplete,
-                                   Consumer<Throwable> onError);
+    String generateAnalysis(String prompt, String modelType, Long userId);
 
-    /**
-     * 测试模型连接
-     *
-     * @param request 测试请求（模型配置信息）
-     * @return 测试结果（连通性、延迟等）
-     */
+    void generateAnalysisStreaming(String prompt, String modelType,
+                                    Consumer<String> onNext,
+                                    Consumer<AnalysisResult> onComplete,
+                                    Consumer<Throwable> onError);
+
+    boolean hasActiveConfig(Long userId);
+
     AiModelTestResponse testConnection(AiModelTestRequest request);
 }

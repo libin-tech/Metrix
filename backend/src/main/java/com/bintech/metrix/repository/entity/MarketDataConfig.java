@@ -64,4 +64,8 @@ public class MarketDataConfig extends BaseEntity {
      */
     @TableField(value = "remark")
     private String remark;
+
+    /** 用户ID（数据隔离） */
+    @TableField(value = "user_id")
+    private Long userId;
 }

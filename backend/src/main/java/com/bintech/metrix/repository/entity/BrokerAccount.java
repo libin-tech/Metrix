@@ -31,4 +31,8 @@ public class BrokerAccount extends BaseEntity {
     /** 备注 */
     @TableField(value = "remark")
     private String remark;
+
+    /** 用户ID（数据隔离） */
+    @TableField(value = "user_id")
+    private Long userId;
 }

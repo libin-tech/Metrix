@@ -62,6 +62,14 @@ public class ChatServiceImpl implements ChatService {
             用户：%s
             返回：""";
 
+    /**
+     * 发送聊天消息并返回 SSE 事件流，包含以下步骤：
+     * 1. 校验会话归属和消息上限
+     * 2. 识别股票名称（正则 + AI 兜底）
+     * 3. 并行采集实时行情、深度行情、K线、新闻、筹码、股东数据
+     * 4. 构建提示词调用 AI 生成分析报告
+     * 5. 通过 SSE 逐步推送进度和最终结果
+     */
     @Override
     public SseEmitter sendMessage(Long sessionId, Long userId, String content) {
         ChatSession session = chatSessionService.getSessionById(sessionId);
@@ -84,6 +92,7 @@ public class ChatServiceImpl implements ChatService {
             try {
                 ChatMessage userMsg = new ChatMessage();
                 userMsg.setSessionId(sessionId);
+                userMsg.setUserId(userId);
                 userMsg.setRole(ChatRole.USER);
                 userMsg.setContent(content);
                 userMsg.setTokens(content.length() / 2);
@@ -92,7 +101,7 @@ public class ChatServiceImpl implements ChatService {
 
                 long t1 = System.currentTimeMillis();
                 sendStep(emitter, "**Step 1/6** 🔍 解析股票名称...");
-                StockBasic stockBasic = identifyStock(content);
+                StockBasic stockBasic = identifyStock(content, userId);
                 long elapsed1 = System.currentTimeMillis() - t1;
                 if (stockBasic == null) {
                     chatSessionService.updateSessionName(sessionId, "未知任务");
@@ -108,7 +117,7 @@ public class ChatServiceImpl implements ChatService {
                                     + ",\"steps\":" + stepsJson
                                     + "}"));
                     emitter.complete();
-                    saveAssistantMessage(sessionId, NO_STOCK_MSG, tokens, null, null, stepsJson);
+                    saveAssistantMessage(sessionId, userId, NO_STOCK_MSG, tokens, null, null, stepsJson);
                     chatSessionService.updateSessionTokenAndCount(sessionId, tokens);
                     return;
                 }
@@ -132,7 +141,7 @@ public class ChatServiceImpl implements ChatService {
                 long t2 = System.currentTimeMillis();
                 sendStep(emitter, "**Step 2/8** 📊 获取实时行情...");
                 try {
-                    marketData = marketDataService.fetchRealTimeData(stockBasic);
+                    marketData = marketDataService.fetchRealTimeData(stockBasic, userId);
                     sendStep(emitter, "✅ **Step 2/8** 📊 获取实时行情完成");
                     addStepRecord(stepRecords, 2, "获取实时行情", System.currentTimeMillis() - t2, "completed");
                 } catch (Exception e) {
@@ -144,7 +153,7 @@ public class ChatServiceImpl implements ChatService {
                 long t3 = System.currentTimeMillis();
                 sendStep(emitter, "**Step 3/8** 📈 获取深度行情...");
                 try {
-                    depthData = marketDataService.fetchDepthData(stockBasic);
+                    depthData = marketDataService.fetchDepthData(stockBasic, userId);
                     sendStep(emitter, "✅ **Step 3/8** 📈 获取深度行情完成");
                     addStepRecord(stepRecords, 3, "获取深度行情", System.currentTimeMillis() - t3, "completed");
                 } catch (Exception e) {
@@ -156,7 +165,7 @@ public class ChatServiceImpl implements ChatService {
                 long t4 = System.currentTimeMillis();
                 sendStep(emitter, "**Step 4/8** 📉 获取K线数据...");
                 try {
-                    klinesData = marketDataService.fetchKlinesData(stockBasic, 60);
+                    klinesData = marketDataService.fetchKlinesData(stockBasic, 60, userId);
                     sendStep(emitter, "✅ **Step 4/8** 📉 获取K线数据完成");
                     addStepRecord(stepRecords, 4, "获取K线数据", System.currentTimeMillis() - t4, "completed");
                 } catch (Exception e) {
@@ -168,7 +177,7 @@ public class ChatServiceImpl implements ChatService {
                 long t5 = System.currentTimeMillis();
                 sendStep(emitter, "**Step 5/8** 📰 获取新闻舆情...");
                 try {
-                    newsData = newsService.fetchStockNews(stockBasic);
+                    newsData = newsService.fetchStockNews(stockBasic, userId);
                     sendStep(emitter, "✅ **Step 5/8** 📰 获取新闻舆情完成");
                     addStepRecord(stepRecords, 5, "获取新闻舆情", System.currentTimeMillis() - t5, "completed");
                 } catch (Exception e) {
@@ -180,7 +189,7 @@ public class ChatServiceImpl implements ChatService {
                 long t6 = System.currentTimeMillis();
                 sendStep(emitter, "**Step 6/8** 📊 获取筹码分布...");
                 try {
-                    chipData = marketDataService.fetchChipData(stockBasic);
+                    chipData = marketDataService.fetchChipData(stockBasic, userId);
                     sendStep(emitter, "✅ **Step 6/8** 📊 获取筹码分布完成");
                     addStepRecord(stepRecords, 6, "获取筹码分布", System.currentTimeMillis() - t6, "completed");
                 } catch (Exception e) {
@@ -192,7 +201,7 @@ public class ChatServiceImpl implements ChatService {
                 long t7 = System.currentTimeMillis();
                 sendStep(emitter, "**Step 7/8** 👤 获取股东数据...");
                 try {
-                    topFreeShareholdersData = marketDataService.fetchTopFreeShareholdersData(stockBasic);
+                    topFreeShareholdersData = marketDataService.fetchTopFreeShareholdersData(stockBasic, userId);
                     sendStep(emitter, "✅ **Step 7/8** 👤 获取股东数据完成");
                     addStepRecord(stepRecords, 7, "获取股东数据", System.currentTimeMillis() - t7, "completed");
                 } catch (Exception e) {
@@ -208,14 +217,14 @@ public class ChatServiceImpl implements ChatService {
 
                 try {
                     long aiStartTime = System.currentTimeMillis();
-                    String aiContent = aiModelService.generateAnalysis(prompt, modelType);
+                    String aiContent = aiModelService.generateAnalysis(prompt, modelType, userId);
                     long aiElapsed = System.currentTimeMillis() - aiStartTime;
                     int tokens = (int) Math.ceil(aiContent.length() / 2.0);
 
                     addStepRecord(stepRecords, 8, "AI总结分析", aiElapsed, "completed");
                     String stepsJson = JSON_MAPPER.writeValueAsString(stepRecords);
 
-                    saveAssistantMessage(sessionId, aiContent, tokens, stockCode, stockName, stepsJson);
+                    saveAssistantMessage(sessionId, userId, aiContent, tokens, stockCode, stockName, stepsJson);
                     chatSessionService.updateSessionTokenAndCount(sessionId, tokens);
 
                     sendStep(emitter, "✅ **Step 8/8** 🤖 分析完成");
@@ -283,11 +292,16 @@ public class ChatServiceImpl implements ChatService {
         records.add(record);
     }
 
+
+    /**
+     * 持久化 AI 助手的回复消息
+     */
     @Transactional
-    protected void saveAssistantMessage(Long sessionId, String content, int tokens,
+    protected void saveAssistantMessage(Long sessionId, Long userId, String content, int tokens,
                                          String stockCode, String stockName, String steps) {
         ChatMessage msg = new ChatMessage();
         msg.setSessionId(sessionId);
+        msg.setUserId(userId);
         msg.setRole(ChatRole.ASSISTANT);
         msg.setContent(content);
         msg.setTokens(tokens);
@@ -298,7 +312,10 @@ public class ChatServiceImpl implements ChatService {
         messageMapper.insert(msg);
     }
 
-    private StockBasic identifyStock(String content) {
+    /**
+     * 从用户消息中识别股票，优先级：TS代码 > 6位数字代码 > AI识别
+     */
+    private StockBasic identifyStock(String content, Long userId) {
         if (content == null || content.isBlank()) return null;
         String text = content.trim();
 
@@ -321,18 +338,21 @@ public class ChatServiceImpl implements ChatService {
             if (stock != null) return stock;
         }
 
-        StockBasic stock = identifyStockByAi(text);
+        StockBasic stock = identifyStockByAi(text, userId);
         if (stock != null) return stock;
 
         log.info("未找到股票: {}", text);
         return null;
     }
 
-    private StockBasic identifyStockByAi(String text) {
+    /**
+     * 调用 AI 模型识别用户消息中的股票名称，再回数据库匹配
+     */
+    private StockBasic identifyStockByAi(String text, Long userId) {
         String prompt = String.format(STOCK_IDENTIFY_PROMPT, text);
         String aiResult;
         try {
-            aiResult = aiModelService.generateAnalysis(prompt, aiModelService.getActiveModelType());
+            aiResult = aiModelService.generateAnalysis(prompt, aiModelService.getActiveModelType(userId), userId);
         } catch (Exception e) {
             log.warn("AI识别股票失败: {}", e.getMessage());
             return null;
@@ -362,6 +382,9 @@ public class ChatServiceImpl implements ChatService {
         return chatSessionService.getUserSessions(userId);
     }
 
+    /**
+     * 创建新的对话会话
+     */
     @Override
     public ChatSessionVO createSession(Long userId, String sessionName) {
         ChatSession session = chatSessionService.createSession(userId, sessionName);
@@ -376,18 +399,28 @@ public class ChatServiceImpl implements ChatService {
                 .build();
     }
 
+    /**
+     * 删除单个会话
+     */
     @Override
-    public void deleteSession(Long id) {
-        chatSessionService.deleteSession(id);
+    public void deleteSession(Long id, Long userId) {
+        chatSessionService.deleteSession(id, userId);
     }
 
+    /**
+     * 批量删除会话
+     */
     @Override
     public void deleteSessions(List<Long> ids, Long userId) {
         chatSessionService.deleteSessions(ids, userId);
     }
 
+    /**
+     * 获取会话所有消息，按创建时间正序
+     */
     @Override
-    public List<ChatMessageVO> getSessionMessages(Long sessionId) {
+    public List<ChatMessageVO> getSessionMessages(Long sessionId, Long userId) {
+        chatSessionService.getSessionById(sessionId, userId);
         List<ChatMessage> messages = messageMapper.selectList(
                 new LambdaQueryWrapper<ChatMessage>()
                         .eq(ChatMessage::getSessionId, sessionId)

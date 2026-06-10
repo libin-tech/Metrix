@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import cn.dev33.satoken.stp.StpUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -52,9 +53,11 @@ public class NewsServiceImpl implements NewsService {
     @Override
     @Transactional
     public NewsSourceConfig createConfig(NewsSourceConfigRequest request) {
+        Long userId = StpUtil.getLoginIdAsLong();
         if (Boolean.TRUE.equals(request.getIsActive())) {
             configMapper.update(null, new LambdaUpdateWrapper<NewsSourceConfig>()
-                    .set(NewsSourceConfig::getIsActive, false));
+                    .set(NewsSourceConfig::getIsActive, false)
+                    .eq(NewsSourceConfig::getUserId, userId));
         }
 
         NewsSourceConfig config = new NewsSourceConfig();
@@ -65,6 +68,7 @@ public class NewsServiceImpl implements NewsService {
         config.setIsActive(request.getIsActive());
         config.setTimeout(request.getTimeout());
         config.setRemark(request.getRemark());
+        config.setUserId(userId);
         config.setCreateTime(LocalDateTime.now());
         config.setUpdateTime(LocalDateTime.now());
         configMapper.insert(config);
@@ -74,7 +78,11 @@ public class NewsServiceImpl implements NewsService {
     @Override
     @Transactional
     public NewsSourceConfig updateConfig(Long id, NewsSourceConfigRequest request) {
-        NewsSourceConfig config = configMapper.selectById(id);
+        Long userId = StpUtil.getLoginIdAsLong();
+        NewsSourceConfig config = configMapper.selectOne(
+                new LambdaQueryWrapper<NewsSourceConfig>()
+                        .eq(NewsSourceConfig::getId, id)
+                        .eq(NewsSourceConfig::getUserId, userId));
         if (config == null) {
             throw new RuntimeException("News source config not found");
         }
@@ -82,7 +90,8 @@ public class NewsServiceImpl implements NewsService {
         if (Boolean.TRUE.equals(request.getIsActive())) {
             configMapper.update(null, new LambdaUpdateWrapper<NewsSourceConfig>()
                     .set(NewsSourceConfig::getIsActive, false)
-                    .ne(NewsSourceConfig::getId, id));
+                    .ne(NewsSourceConfig::getId, id)
+                    .eq(NewsSourceConfig::getUserId, userId));
         }
 
         config.setSourceName(request.getSourceName());
@@ -99,7 +108,11 @@ public class NewsServiceImpl implements NewsService {
 
     @Override
     public NewsSourceConfig getConfigById(Long id) {
-        NewsSourceConfig config = configMapper.selectById(id);
+        Long userId = StpUtil.getLoginIdAsLong();
+        NewsSourceConfig config = configMapper.selectOne(
+                new LambdaQueryWrapper<NewsSourceConfig>()
+                        .eq(NewsSourceConfig::getId, id)
+                        .eq(NewsSourceConfig::getUserId, userId));
         if (config == null) {
             throw new RuntimeException("News source config not found");
         }
@@ -108,24 +121,53 @@ public class NewsServiceImpl implements NewsService {
 
     @Override
     public List<NewsSourceConfig> getAllConfigs() {
-        return configMapper.selectList(null);
+        Long userId = StpUtil.getLoginIdAsLong();
+        LambdaQueryWrapper<NewsSourceConfig> wrapper = new LambdaQueryWrapper<NewsSourceConfig>()
+                .eq(NewsSourceConfig::getUserId, userId);
+        return configMapper.selectList(wrapper);
     }
 
     @Override
     public List<NewsSourceConfig> getActiveConfigs() {
-        LambdaQueryWrapper<NewsSourceConfig> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(NewsSourceConfig::getIsActive, true);
+        Long userId = StpUtil.getLoginIdAsLong();
+        LambdaQueryWrapper<NewsSourceConfig> queryWrapper = new LambdaQueryWrapper<NewsSourceConfig>()
+                .eq(NewsSourceConfig::getIsActive, true)
+                .eq(NewsSourceConfig::getUserId, userId);
         return configMapper.selectList(queryWrapper);
     }
 
     @Override
     @Transactional
     public void deleteConfig(Long id) {
+        Long userId = StpUtil.getLoginIdAsLong();
+        Long count = configMapper.selectCount(
+                new LambdaQueryWrapper<NewsSourceConfig>()
+                        .eq(NewsSourceConfig::getId, id)
+                        .eq(NewsSourceConfig::getUserId, userId));
+        if (count == 0) {
+            throw new RuntimeException("News source config not found");
+        }
         configMapper.deleteById(id);
     }
 
     @Override
+    public boolean hasActiveNewsSource(Long userId) {
+        LambdaQueryWrapper<NewsSourceConfig> queryWrapper = new LambdaQueryWrapper<NewsSourceConfig>()
+                .eq(NewsSourceConfig::getIsActive, true);
+        if (userId != null) {
+            queryWrapper.eq(NewsSourceConfig::getUserId, userId);
+        }
+        return configMapper.selectCount(queryWrapper) > 0;
+    }
+
+    @Override
     public Map<String, Object> fetchStockNews(StockBasic stockBasic) {
+        Long userId = StpUtil.getLoginIdAsLong();
+        return fetchStockNews(stockBasic, userId);
+    }
+
+    @Override
+    public Map<String, Object> fetchStockNews(StockBasic stockBasic, Long userId) {
         log.info("开始获取股票新闻: stockCode={}", stockBasic.getTsCode());
 
         Map<String, Object> result = tryAkShareNews(stockBasic);
@@ -134,7 +176,7 @@ public class NewsServiceImpl implements NewsService {
         }
 
         log.info("AKShare新闻获取失败，使用Bocha兜底: stockCode={}", stockBasic.getTsCode());
-        return fetchBochaNews(stockBasic);
+        return fetchBochaNews(stockBasic, userId);
     }
 
     private Map<String, Object> tryAkShareNews(StockBasic stockBasic) {
@@ -203,9 +245,12 @@ public class NewsServiceImpl implements NewsService {
         }
     }
 
-    private Map<String, Object> fetchBochaNews(StockBasic stockBasic) {
-        LambdaQueryWrapper<NewsSourceConfig> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(NewsSourceConfig::getSourceName, BusinessConstants.SOURCE_NAME_BOCHA);
+    private Map<String, Object> fetchBochaNews(StockBasic stockBasic, Long userId) {
+        LambdaQueryWrapper<NewsSourceConfig> queryWrapper = new LambdaQueryWrapper<NewsSourceConfig>()
+                .eq(NewsSourceConfig::getSourceName, BusinessConstants.SOURCE_NAME_BOCHA);
+        if (userId != null) {
+            queryWrapper.eq(NewsSourceConfig::getUserId, userId);
+        }
         NewsSourceConfig config = configMapper.selectOne(queryWrapper);
         if (config == null) {
             String errorMsg = "Bocha新闻源配置不存在";
@@ -325,7 +370,7 @@ public class NewsServiceImpl implements NewsService {
         }
 
         String prompt = String.format(BusinessConstants.SUMMARIZE_PROMPT, newsText);
-        
+
         try {
             return aiModelService.generateAnalysis(prompt, modelType);
         } catch (Exception e) {

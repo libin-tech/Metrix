@@ -39,7 +39,7 @@ public class ChatSessionServiceImpl implements ChatSessionService {
                             .orderByAsc(ChatSession::getUpdateTime)
                             .last("LIMIT 1"));
             if (oldest != null) {
-                deleteSession(oldest.getId());
+                deleteSession(oldest.getId(), userId);
             }
         }
 
@@ -58,6 +58,18 @@ public class ChatSessionServiceImpl implements ChatSessionService {
     @Override
     public ChatSession getSessionById(Long id) {
         ChatSession session = sessionMapper.selectById(id);
+        if (session == null) {
+            throw new RuntimeException("对话会话不存在");
+        }
+        return session;
+    }
+
+    @Override
+    public ChatSession getSessionById(Long id, Long userId) {
+        ChatSession session = sessionMapper.selectOne(
+                new LambdaQueryWrapper<ChatSession>()
+                        .eq(ChatSession::getId, id)
+                        .eq(ChatSession::getUserId, userId));
         if (session == null) {
             throw new RuntimeException("对话会话不存在");
         }
@@ -85,11 +97,18 @@ public class ChatSessionServiceImpl implements ChatSessionService {
 
     @Override
     @Transactional
-    public void deleteSession(Long id) {
+    public void deleteSession(Long id, Long userId) {
+        ChatSession session = sessionMapper.selectOne(
+                new LambdaQueryWrapper<ChatSession>()
+                        .eq(ChatSession::getId, id)
+                        .eq(ChatSession::getUserId, userId));
+        if (session == null) {
+            throw new RuntimeException("对话会话不存在");
+        }
         messageMapper.delete(new LambdaQueryWrapper<ChatMessage>()
                 .eq(ChatMessage::getSessionId, id));
         sessionMapper.deleteById(id);
-        log.info("删除对话会话及其消息: sessionId={}", id);
+        log.info("删除对话会话及其消息: sessionId={}, userId={}", id, userId);
     }
 
     @Override

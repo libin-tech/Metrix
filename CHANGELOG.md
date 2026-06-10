@@ -1,5 +1,33 @@
 # 变更记录
 
+## 1.6.0 (2026-06-10)
+### SaaS 多租户隔离
+- 为 BrokerAccount、PortfolioHolding、MarketReview、AiModelConfig、MarketDataConfig、NewsSourceConfig、NotificationConfig、ChatMessage 新增 `user_id` 字段做数据隔离
+- 所有 service 接口增加 userId 重载，异步任务显式传递 userId 避免虚拟线程丢失 ThreadLocal
+- Chat 模块全面隔离：会话/消息操作校验所属权
+
+### 组合持仓价格缓存
+- PortfolioHolding 新增 `cached_price` / `cached_price_time` 字段，列表页即时展示无需等待刷新
+
+### AOP 配置完整性检查
+- 新增 `@CheckConfig` 注解和 `ConfigCheckAspect`，替代控制器内联 if 判断
+- StockAnalysisController、ChatController、PortfolioController、MarketReviewController 统一使用注解
+
+### 移除日限额 & UsageStats
+- 删除 `usage_stats` 表及全部后端代码（entity、mapper、service、controller）
+- 前端删除 Stats.vue、路由、菜单、API 调用、i18n 条目
+
+### 移除审计日志模块
+- 删除 `audit_log` 表相关 DDL/DML 及全部后端代码（entity、mapper、service、controller、annotation、aop）
+- 前端删除 AuditLog.vue、路由、菜单、API 调用、i18n 条目
+- 更新 `system_api.sql` 和 `system_menu.sql` 移除审计相关注册数据
+
+### 代码清理
+- 删除未使用的 `UsageStatsVO`、`AuditLogVO`、`MenuTypeEnum`
+- 删除前端遗留的 `Stats.vue` 页面及关联引用
+- 清理冗余模型类（`CheckList`、`PositionAdvice`）
+
+
 ## 1.5.0 (2026-05-29)
 ### 首页重构
 - 重构 Home 页面布局：顶部三栏（大盘行情 + 赚钱效应 + 数据看板）置于同一 flex 行等高对齐

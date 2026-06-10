@@ -2,11 +2,13 @@ package com.bintech.metrix.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import com.bintech.metrix.annotation.Audit;
+import com.bintech.metrix.annotation.CheckConfig;
 import com.bintech.metrix.dto.request.BrokerAccountRequest;
 import com.bintech.metrix.dto.request.PortfolioHoldingRequest;
 import com.bintech.metrix.dto.response.ApiResponse;
+import com.bintech.metrix.dto.response.PortfolioHoldingListResponse;
 import com.bintech.metrix.dto.response.PortfolioHoldingVO;
+import com.bintech.metrix.enums.ConfigType;
 import com.bintech.metrix.repository.entity.BrokerAccount;
 import com.bintech.metrix.service.BrokerAccountService;
 import com.bintech.metrix.service.PortfolioHoldingService;
@@ -23,7 +25,6 @@ import java.util.Map;
  * <p>提供券商账户和持仓标的的CRUD、行情异步刷新（轮询）REST API。
  * 所有接口均需登录认证（{@code @SaCheckLogin}）。
  */
-@Audit(resourceType = "持仓管理")
 @RestController
 @RequestMapping("/api/portfolio")
 @RequiredArgsConstructor
@@ -88,11 +89,11 @@ public class PortfolioController {
      *
      * @param keyword   搜索关键字（券商名称/标的代码/标的名称）
      * @param accountId 账户ID（为空查全部）
-     * @return 持仓VO列表（不含实时行情）
+     * @return 持仓列表响应（含持仓VO列表和汇总信息）
      */
     @GetMapping("/holdings")
     @SaCheckPermission("portfolio:holding:list")
-    public ApiResponse<List<PortfolioHoldingVO>> getHoldings(
+    public ApiResponse<PortfolioHoldingListResponse> getHoldings(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long accountId) {
         return ApiResponse.success(portfolioHoldingService.getHoldings(keyword, accountId));
@@ -135,6 +136,7 @@ public class PortfolioController {
      */
     @PostMapping("/holdings/refresh-prices")
     @SaCheckPermission("portfolio:holding:refresh")
+    @CheckConfig(required = ConfigType.MARKET_DATA)
     public ApiResponse<List<PortfolioHoldingVO>> refreshPrices() {
         return ApiResponse.success(portfolioHoldingService.refreshPrices());
     }

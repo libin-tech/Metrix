@@ -51,4 +51,8 @@ public class MarketReview extends BaseEntity {
     /** 错误信息 */
     @TableField(value = "error_message")
     private String errorMessage;
+
+    /** 用户ID（数据隔离，NULL表示系统生成） */
+    @TableField(value = "user_id")
+    private Long userId;
 }

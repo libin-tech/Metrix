@@ -6,10 +6,7 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.bintech.metrix.annotation.Audit;
 import com.bintech.metrix.dto.response.ApiResponse;
-import com.bintech.metrix.dto.response.AuditLogVO;
-import com.bintech.metrix.dto.response.UsageStatsVO;
 import com.bintech.metrix.enums.UserRole;
 import com.bintech.metrix.enums.UserStatus;
 import com.bintech.metrix.repository.entity.SystemRole;
@@ -18,8 +15,6 @@ import com.bintech.metrix.repository.entity.User;
 import com.bintech.metrix.repository.mapper.SystemRoleMapper;
 import com.bintech.metrix.repository.mapper.SystemUserRoleMapper;
 import com.bintech.metrix.repository.mapper.UserMapper;
-import com.bintech.metrix.service.AuditLogService;
-import com.bintech.metrix.service.UsageStatsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,14 +25,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-@Audit(resourceType = "管理")
 @Slf4j
 @RestController
 @RequestMapping("/api/admin")
@@ -45,8 +38,6 @@ import java.util.stream.Collectors;
 @SaCheckLogin
 public class AdminController {
 
-    private final UsageStatsService usageStatsService;
-    private final AuditLogService auditLogService;
     private final UserMapper userMapper;
     private final SystemUserRoleMapper systemUserRoleMapper;
     private final SystemRoleMapper systemRoleMapper;
@@ -130,37 +121,6 @@ public class AdminController {
         userMapper.updateById(user);
         log.info("管理员解冻用户: userId={}, operatorId={}", id, StpUtil.getLoginIdAsLong());
         return ApiResponse.success(null);
-    }
-
-    @GetMapping("/usage-stats/today")
-    @SaCheckPermission("system:stats:view")
-    public ApiResponse<List<UsageStatsVO>> getTodayStats() {
-        List<UsageStatsVO> stats = usageStatsService.getAllUsersTodayStats();
-        return ApiResponse.success(stats);
-    }
-
-    @GetMapping("/usage-stats/range")
-    @SaCheckPermission("system:stats:view")
-    public ApiResponse<List<UsageStatsVO>> getStatsByRange(
-            @RequestParam String startDate,
-            @RequestParam String endDate) {
-        LocalDate start = LocalDate.parse(startDate);
-        LocalDate end = LocalDate.parse(endDate);
-        List<UsageStatsVO> stats = usageStatsService.getStatsByDateRange(start, end);
-        return ApiResponse.success(stats);
-    }
-
-    @GetMapping("/audit-logs")
-    @SaCheckPermission("system:audit:view")
-    public ApiResponse<IPage<AuditLogVO>> getAuditLogs(
-            @RequestParam(defaultValue = "1") Integer page,
-            @RequestParam(defaultValue = "20") Integer size,
-            @RequestParam(required = false) Long userId,
-            @RequestParam(required = false) String action,
-            @RequestParam(required = false) String startTime,
-            @RequestParam(required = false) String endTime) {
-        IPage<AuditLogVO> result = auditLogService.pageQuery(page, size, userId, action, startTime, endTime);
-        return ApiResponse.success(result);
     }
 
 }

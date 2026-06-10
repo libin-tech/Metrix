@@ -55,6 +55,9 @@ public class WechatAuthServiceImpl implements WechatAuthService {
         LOGIN_CACHE.schedulePrune(1_000);
     }
 
+    /**
+     * 微信验证码登录：校验验证码、自动注册新用户、校验冻结状态、颁发Sa-Token
+     */
     @Override
     @Transactional
     public UserLoginResponse loginByCode(String code) {

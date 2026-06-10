@@ -1,6 +1,7 @@
 package com.bintech.metrix.service;
 
 import com.bintech.metrix.dto.request.PortfolioHoldingRequest;
+import com.bintech.metrix.dto.response.PortfolioHoldingListResponse;
 import com.bintech.metrix.dto.response.PortfolioHoldingVO;
 
 import java.util.List;
@@ -19,9 +20,9 @@ public interface PortfolioHoldingService {
      *
      * @param keyword   搜索关键字，匹配券商名称、标的代码、标的名称
      * @param accountId 账户ID，为空则查询所有账户
-     * @return 持仓VO列表
+     * @return 持仓列表响应（含持仓VO列表和汇总信息）
      */
-    List<PortfolioHoldingVO> getHoldings(String keyword, Long accountId);
+    PortfolioHoldingListResponse getHoldings(String keyword, Long accountId);
 
     /**
      * 刷新实时行情（异步）

@@ -25,28 +25,25 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.bintech.metrix.annotation.Audit;
+import com.bintech.metrix.annotation.CheckConfig;
 import com.bintech.metrix.core.queue.AnalysisTask;
 import com.bintech.metrix.core.queue.AnalysisTaskQueue;
 import com.bintech.metrix.dto.request.StockAnalysisRequest;
 import com.bintech.metrix.dto.response.ApiResponse;
 import com.bintech.metrix.dto.response.CursorPageResult;
 import com.bintech.metrix.dto.response.StockAnalysisDetailResponse;
+import com.bintech.metrix.enums.ConfigType;
 import com.bintech.metrix.enums.StockAnalysisStatus;
-import com.bintech.metrix.enums.UserRole;
 import com.bintech.metrix.repository.entity.StockAnalysisRecord;
 import com.bintech.metrix.repository.entity.StockBasic;
-import com.bintech.metrix.repository.entity.User;
 import com.bintech.metrix.repository.mapper.StockAnalysisRecordMapper;
 import com.bintech.metrix.service.PdfExportService;
 import com.bintech.metrix.service.PortfolioHoldingService;
 import com.bintech.metrix.service.StockAnalysisService;
 import com.bintech.metrix.service.StockBasicService;
-import com.bintech.metrix.service.UserService;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.stp.StpUtil;
-import com.bintech.metrix.service.UsageStatsService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -64,7 +61,6 @@ import lombok.extern.slf4j.Slf4j;
  * 
  * <p>所有接口均需要登录认证（@SaCheckLogin）。
  */
-@Audit(resourceType = "股票分析")
 @Slf4j
 @RestController
 @RequestMapping("/api/analysis")
@@ -78,8 +74,6 @@ public class StockAnalysisController {
     private final AnalysisTaskQueue analysisTaskQueue;
     private final PdfExportService pdfExportService;
     private final PortfolioHoldingService portfolioHoldingService;
-    private final UsageStatsService usageStatsService;
-    private final UserService userService;
 
     /**
      * 异步执行股票分析
@@ -92,16 +86,11 @@ public class StockAnalysisController {
      */
     @PostMapping
     @SaCheckPermission("analysis:record:create")
+    @CheckConfig(required = {ConfigType.AI_MODEL, ConfigType.MARKET_DATA, ConfigType.NEWS_SOURCE})
     public ApiResponse<Map<String, Object>> analyzeStockAsync(@Valid @RequestBody StockAnalysisRequest request) {
         String stockCode = request.getStockCode();
 
         Long userId = StpUtil.getLoginIdAsLong();
-        User user = userService.getUserById(userId);
-        boolean isAdmin = UserRole.ADMIN == user.getRole();
-
-        if (!isAdmin && !usageStatsService.checkAndIncrementAnalysis(userId)) {
-            return ApiResponse.error("每日标的评估次数限制（2次）已用完，请明天再试。因成本原因，每天仅限评估2次。");
-        }
 
         if (!analysisTaskQueue.canSubmit()) {
             return ApiResponse.error("当前任务队列已满，请稍后再试");
@@ -136,7 +125,7 @@ public class StockAnalysisController {
             recordMapper.insert(record);
             
             // 构建任务并提交到队列，由后台worker异步执行
-            AnalysisTask task = new AnalysisTask(record.getId(), request, stockBasic.getName());
+            AnalysisTask task = new AnalysisTask(record.getId(), request, stockBasic.getName(), userId);
             analysisTaskQueue.submit(task);
             
             // 返回任务创建结果给前端轮询

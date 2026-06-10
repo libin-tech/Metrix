@@ -67,7 +67,7 @@ psql -h 127.0.0.1 -U postgres -d stock_analysis -f .doc/db/dml-init.sql
 
 # 3. Start backend
 mvn clean package -DskipTests
-java -jar target/stock-analysis-1.0.0.jar
+java -jar target/stock-analysis-1.6.0.jar
 
 # 4. Start frontend (new terminal)
 cd frontend
@@ -207,8 +207,6 @@ All APIs are prefixed with `/api`. Some endpoints require authentication (Sa-Tok
 | `GET  /api/admin/menus/tree` | Menu tree | `system:menu:list` |
 | `POST /api/admin/menus` | Create menu | `system:menu:create` |
 | `GET  /api/admin/apis` | API list | `system:api:list` |
-| `GET  /api/admin/usage-stats/today` | Today's stats | `system:stats:today` |
-| `GET  /api/admin/audit-logs` | Audit logs | `system:audit:view` |
 
 ## Development Guide
 

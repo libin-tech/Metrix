@@ -2,7 +2,6 @@ package com.bintech.metrix.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import com.bintech.metrix.annotation.Audit;
 import com.bintech.metrix.dto.request.NewsSourceConfigRequest;
 import com.bintech.metrix.dto.response.ApiResponse;
 import com.bintech.metrix.repository.entity.NewsSourceConfig;
@@ -18,7 +17,6 @@ import java.util.List;
  *
  * <p>提供新闻数据源的CRUD管理，支持多种新闻源切换。
  */
-@Audit(resourceType = "新闻源配置")
 @RestController
 @RequestMapping("/api/news-source")
 @RequiredArgsConstructor

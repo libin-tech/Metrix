@@ -65,6 +65,46 @@
       </a-space>
     </div>
 
+    <!-- Portfolio Summary -->
+    <div v-if="summary" class="summary-section">
+      <a-row :gutter="16">
+        <a-col :span="6">
+          <div class="summary-card">
+            <div class="summary-label">{{ $t('portfolio.totalMarketValue') }}</div>
+            <div class="summary-value" :class="{ 'sensitive-hidden-text': !showSensitiveInfo }">
+              <template v-if="showSensitiveInfo">{{ formatPrice(summary.totalMarketValue) }}</template>
+              <template v-else>***</template>
+            </div>
+          </div>
+        </a-col>
+        <a-col :span="6">
+          <div class="summary-card">
+            <div class="summary-label">{{ $t('portfolio.totalProfitLossPct') }}</div>
+            <div class="summary-value" :class="getProfitClass(summary.totalProfitLossPercent)">
+              {{ formatSignedPercent(summary.totalProfitLossPercent) }}
+            </div>
+          </div>
+        </a-col>
+        <a-col :span="6">
+          <div class="summary-card">
+            <div class="summary-label">{{ $t('portfolio.totalProfitLossAmt') }}</div>
+            <div class="summary-value" :class="getProfitClass(summary.totalProfitLossAmount)">
+              <template v-if="showSensitiveInfo">{{ formatSignedPrice(summary.totalProfitLossAmount) }}</template>
+              <template v-else>***</template>
+            </div>
+          </div>
+        </a-col>
+        <a-col :span="6">
+          <div class="summary-card">
+            <div class="summary-label">{{ $t('portfolio.lastRefreshTime') }}</div>
+            <div class="summary-value summary-time">
+              {{ summary.refreshTime ? formatTime(summary.refreshTime) : '-' }}
+            </div>
+          </div>
+        </a-col>
+      </a-row>
+    </div>
+
     <!-- Loading State -->
     <div v-if="loading" class="loading-container">
       <a-spin :tip="$t('portfolio.loading')" size="large" />
@@ -257,6 +297,7 @@ const router = useRouter()
 const { t } = useI18n()
 
 const holdings = ref([])
+const summary = ref(null)
 const accounts = ref([])
 const loading = ref(false)
 const searchKeyword = ref('')
@@ -371,6 +412,11 @@ const formatSignedPrice = (val) => {
   return `${sign}${num.toFixed(3)}`
 }
 
+const formatTime = (time) => {
+  if (!time) return '-'
+  return new Date(time).toLocaleString()
+}
+
 // 现价列颜色：现价高于成本 → 红色，低于 → 绿色
 const getPriceClass = (record) => {
   if (!record.currentPrice || !record.cost) return ''
@@ -381,13 +427,13 @@ const getPriceClass = (record) => {
   return ''
 }
 
-// 成本列颜色：成本低于现价 → 绿色（低成本），高于 → 红色
+// 成本列颜色：成本低于现价 → 红色（盈利），高于 → 绿色（亏损）
 const getCostClass = (record) => {
   if (!record.currentPrice || !record.cost) return ''
   const price = parseFloat(record.currentPrice)
   const cost = parseFloat(record.cost)
-  if (cost < price) return 'profit-down'
-  if (cost > price) return 'profit-up'
+  if (cost < price) return 'profit-up'
+  if (cost > price) return 'profit-down'
   return ''
 }
 
@@ -449,9 +495,11 @@ const loadHoldings = async () => {
   loading.value = true
   try {
     const response = await getPortfolioHoldings(searchKeyword.value, searchAccountId.value)
-    holdings.value = response.data || []
+    holdings.value = response.data?.holdings || []
+    summary.value = response.data?.summary || null
   } catch {
     holdings.value = []
+    summary.value = null
     message.error(t('portfolio.loadFailed'))
   } finally {
     loading.value = false
@@ -590,10 +638,11 @@ const startRefreshPolling = () => {
       holdings.value = holdings.value.map(h => {
         const updated = priceMap[String(h.id)]
         if (updated) {
-          return { ...h, currentPrice: updated.currentPrice, profitLossPercent: updated.profitLossPercent, profitLossAmount: updated.profitLossAmount }
+          return { ...h, ...updated }
         }
         return h
       })
+      updateClientSummary()
     } catch (e) {
       console.warn('行情轮询异常:', e)
     }
@@ -603,6 +652,31 @@ const startRefreshPolling = () => {
       refreshing.value = false
     }
   }, 2000)
+}
+
+const updateClientSummary = () => {
+  const h = holdings.value
+  let totalMarketValue = 0
+  let totalCostValue = 0
+  let latestRefresh = null
+  for (const item of h) {
+    if (item.currentPrice && item.quantity && item.cost) {
+      totalMarketValue += parseFloat(item.currentPrice) * parseFloat(item.quantity)
+      totalCostValue += parseFloat(item.cost) * parseFloat(item.quantity)
+    }
+    if (item.cachedPriceTime) {
+      const t = new Date(item.cachedPriceTime).getTime()
+      if (!latestRefresh || t > latestRefresh) latestRefresh = t
+    }
+  }
+  const plAmount = totalMarketValue - totalCostValue
+  const plPercent = totalCostValue > 0 ? (plAmount / totalCostValue) * 100 : 0
+  summary.value = {
+    totalMarketValue,
+    totalProfitLossPercent: plPercent,
+    totalProfitLossAmount: plAmount,
+    refreshTime: latestRefresh ? new Date(latestRefresh).toISOString() : null
+  }
 }
 
 /** 刷新行情：异步提交+立即展示，启动轮询逐行补充实时数据 */
@@ -616,10 +690,11 @@ const handleRefreshPrices = async () => {
     holdings.value = holdings.value.map(h => {
       const updated = priceMap.get(h.id)
       if (updated) {
-        return { ...h, currentPrice: updated.currentPrice, profitLossPercent: updated.profitLossPercent, profitLossAmount: updated.profitLossAmount }
+        return { ...h, ...updated }
       }
       return h
     })
+    updateClientSummary()
     if (refreshingIds.value.size > 0) {
       startRefreshPolling()
     } else {
@@ -784,6 +859,43 @@ onMounted(async () => {
   color: #d9d9d9;
   font-size: 14px;
   letter-spacing: 2px;
+}
+
+.sensitive-hidden-text {
+  color: #d9d9d9;
+  font-size: 14px;
+  letter-spacing: 2px;
+}
+
+/* Summary Section */
+.summary-section {
+  margin-bottom: 16px;
+}
+
+.summary-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px 20px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  text-align: center;
+}
+
+.summary-label {
+  font-size: 13px;
+  color: #999;
+  margin-bottom: 8px;
+}
+
+.summary-value {
+  font-size: 20px;
+  font-weight: 700;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace;
+}
+
+.summary-time {
+  font-size: 13px;
+  font-weight: 400;
+  color: #666;
 }
 
 .loading-container {

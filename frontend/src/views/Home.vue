@@ -377,7 +377,7 @@ const loadData = async () => {
 
     accountCount.value = accountsResponse.data?.length || 0
 
-    holdingCount.value = holdingsResponse.data?.length || 0
+    holdingCount.value = holdingsResponse.data?.holdings?.length || 0
 
     recentReviews.value = reviewResponse.data.items || []
   } catch (error) {

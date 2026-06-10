@@ -46,6 +46,9 @@ public class UserServiceImpl implements UserService {
         }
     }
 
+    /**
+     * 用户名密码登录，校验密码和账号状态后颁发Sa-Token
+     */
     @Override
     public UserLoginResponse login(UserLoginRequest request) {
         LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();

@@ -46,4 +46,8 @@ public class ChatMessage extends BaseEntity {
     @TableField(value = "steps")
     private String steps;
 
+    /** 用户ID */
+    @TableField(value = "user_id")
+    private Long userId;
+
 }

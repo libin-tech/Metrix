@@ -1,5 +1,6 @@
 package com.bintech.metrix.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bintech.metrix.dto.request.BrokerAccountRequest;
 import com.bintech.metrix.repository.entity.BrokerAccount;
@@ -25,16 +26,21 @@ public class BrokerAccountServiceImpl implements BrokerAccountService {
 
     @Override
     public List<BrokerAccount> getAllAccounts() {
-        return brokerAccountMapper.selectList(null);
+        Long userId = StpUtil.getLoginIdAsLong();
+        LambdaQueryWrapper<BrokerAccount> wrapper = new LambdaQueryWrapper<BrokerAccount>()
+                .eq(BrokerAccount::getUserId, userId);
+        return brokerAccountMapper.selectList(wrapper);
     }
 
     @Override
     @Transactional
     public BrokerAccount createAccount(BrokerAccountRequest request) {
+        Long userId = StpUtil.getLoginIdAsLong();
         BrokerAccount account = new BrokerAccount();
         account.setBrokerName(request.getBrokerName());
         account.setAccountNumber(request.getAccountNumber());
         account.setRemark(request.getRemark());
+        account.setUserId(userId);
         account.setCreateTime(LocalDateTime.now());
         account.setUpdateTime(LocalDateTime.now());
         brokerAccountMapper.insert(account);
@@ -44,7 +50,11 @@ public class BrokerAccountServiceImpl implements BrokerAccountService {
     @Override
     @Transactional
     public BrokerAccount updateAccount(Long id, BrokerAccountRequest request) {
-        BrokerAccount account = brokerAccountMapper.selectById(id);
+        Long userId = StpUtil.getLoginIdAsLong();
+        BrokerAccount account = brokerAccountMapper.selectOne(
+                new LambdaQueryWrapper<BrokerAccount>()
+                        .eq(BrokerAccount::getId, id)
+                        .eq(BrokerAccount::getUserId, userId));
         if (account == null) {
             throw new RuntimeException("券商账户不存在");
         }
@@ -59,8 +69,17 @@ public class BrokerAccountServiceImpl implements BrokerAccountService {
     @Override
     @Transactional
     public void deleteAccount(Long id) {
+        Long userId = StpUtil.getLoginIdAsLong();
+        BrokerAccount account = brokerAccountMapper.selectOne(
+                new LambdaQueryWrapper<BrokerAccount>()
+                        .eq(BrokerAccount::getId, id)
+                        .eq(BrokerAccount::getUserId, userId));
+        if (account == null) {
+            throw new RuntimeException("券商账户不存在");
+        }
         LambdaQueryWrapper<PortfolioHolding> wrapper = new LambdaQueryWrapper<PortfolioHolding>()
-                .eq(PortfolioHolding::getAccountId, id);
+                .eq(PortfolioHolding::getAccountId, id)
+                .eq(PortfolioHolding::getUserId, userId);
         List<PortfolioHolding> holdings = portfolioHoldingMapper.selectList(wrapper);
         if (!holdings.isEmpty()) {
             portfolioHoldingMapper.delete(wrapper);

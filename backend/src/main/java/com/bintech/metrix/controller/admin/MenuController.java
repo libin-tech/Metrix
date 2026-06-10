@@ -2,7 +2,6 @@ package com.bintech.metrix.controller.admin;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import com.bintech.metrix.annotation.Audit;
 import com.bintech.metrix.dto.request.MenuAssignApiRequest;
 import com.bintech.metrix.dto.request.MenuCreateRequest;
 import com.bintech.metrix.dto.request.MenuUpdateRequest;
@@ -23,7 +22,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-@Audit(resourceType = "系统菜单")
 @RestController
 @RequestMapping("/api/admin/menus")
 @RequiredArgsConstructor

@@ -17,6 +17,11 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * 大盘复盘任务队列 — 自研轻量级消息队列
+ * <p>基于 {@link BlockingQueue} 实现，启动2个虚拟线程消费复盘任务，
+ * 支持队列饱和拒绝和失败状态自动回写。</p>
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -51,6 +56,9 @@ public class MarketReviewTaskQueue {
         log.info("大盘复盘任务队列已关闭");
     }
 
+    /**
+     * 提交复盘任务到队列，队列满时返回false
+     */
     public boolean submit(MarketReviewTask task) {
         boolean offered = queue.offer(task);
         if (offered) {
@@ -79,7 +87,7 @@ public class MarketReviewTaskQueue {
         long start = System.currentTimeMillis();
         try {
             log.info("开始执行大盘复盘任务: reviewId={}, reviewDate={}", task.getReviewId(), task.getReviewDate());
-            marketReviewService.processReview(task.getReviewId(), task.getReviewDate());
+            marketReviewService.processReview(task.getReviewId(), task.getReviewDate(), task.getUserId());
             long elapsed = System.currentTimeMillis() - start;
             log.info("大盘复盘任务完成: reviewId={}, reviewDate={}, 耗时={}ms", task.getReviewId(), task.getReviewDate(), elapsed);
         } catch (Exception e) {

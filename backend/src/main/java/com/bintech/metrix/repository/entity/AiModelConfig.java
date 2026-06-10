@@ -58,4 +58,8 @@ public class AiModelConfig extends BaseEntity {
      */
     @TableField(value = "timeout")
     private Integer timeout;
+
+    /** 用户ID（数据隔离） */
+    @TableField(value = "user_id")
+    private Long userId;
 }

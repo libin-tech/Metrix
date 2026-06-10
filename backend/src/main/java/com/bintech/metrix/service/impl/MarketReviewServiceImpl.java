@@ -1,5 +1,6 @@
 package com.bintech.metrix.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bintech.metrix.core.analysis.MarketReviewDataFetcher;
 import com.bintech.metrix.core.analysis.MarketReviewPromptBuilder;
@@ -58,16 +59,26 @@ public class MarketReviewServiceImpl implements MarketReviewService {
     @Lazy
     private MarketReviewTaskQueue marketReviewTaskQueue;
 
+    /**
+     * 获取当前用户的所有大盘复盘记录，按复盘日期倒序
+     */
     @Override
     public List<MarketReview> getAllReviews() {
-        LambdaQueryWrapper<MarketReview> wrapper = new LambdaQueryWrapper<>();
+        Long userId = StpUtil.getLoginIdAsLong();
+        LambdaQueryWrapper<MarketReview> wrapper = new LambdaQueryWrapper<MarketReview>()
+                .eq(MarketReview::getUserId, userId);
         wrapper.orderByDesc(MarketReview::getReviewDate);
         return marketReviewMapper.selectList(wrapper);
     }
 
+    /**
+     * 游标分页查询当前用户的复盘记录
+     */
     @Override
     public CursorPageResult<MarketReview> cursorQuery(Long cursor, int limit) {
-        LambdaQueryWrapper<MarketReview> wrapper = new LambdaQueryWrapper<>();
+        Long userId = StpUtil.getLoginIdAsLong();
+        LambdaQueryWrapper<MarketReview> wrapper = new LambdaQueryWrapper<MarketReview>()
+                .eq(MarketReview::getUserId, userId);
         if (cursor != null && cursor > 0) {
             wrapper.lt(MarketReview::getId, cursor);
         }
@@ -86,9 +97,16 @@ public class MarketReviewServiceImpl implements MarketReviewService {
                 .build();
     }
 
+    /**
+     * 查询单条复盘记录（含用户隔离校验）
+     */
     @Override
     public MarketReview getReviewById(Long id) {
-        MarketReview review = marketReviewMapper.selectById(id);
+        Long userId = StpUtil.getLoginIdAsLong();
+        MarketReview review = marketReviewMapper.selectOne(
+                new LambdaQueryWrapper<MarketReview>()
+                        .eq(MarketReview::getId, id)
+                        .eq(MarketReview::getUserId, userId));
         if (review == null) {
             throw new RuntimeException("复盘记录不存在");
         }
@@ -98,7 +116,11 @@ public class MarketReviewServiceImpl implements MarketReviewService {
     @Override
     @Transactional
     public void deleteReview(Long id) {
-        MarketReview review = marketReviewMapper.selectById(id);
+        Long userId = StpUtil.getLoginIdAsLong();
+        MarketReview review = marketReviewMapper.selectOne(
+                new LambdaQueryWrapper<MarketReview>()
+                        .eq(MarketReview::getId, id)
+                        .eq(MarketReview::getUserId, userId));
         if (review == null) {
             throw new RuntimeException("复盘记录不存在");
         }
@@ -106,6 +128,10 @@ public class MarketReviewServiceImpl implements MarketReviewService {
         log.info("大盘复盘记录删除成功，ID: {}", id);
     }
 
+    /**
+     * 触发大盘复盘：根据当前时间判断目标交易日，
+     * 周末或15:00前取前一个交易日，否则取今日
+     */
     @Override
     public Map<String, Object> triggerReview() {
         LocalDate today = LocalDate.now();
@@ -124,27 +150,38 @@ public class MarketReviewServiceImpl implements MarketReviewService {
         String dateStr = targetDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         String reviewName = dateStr + "A股复盘报告";
 
-        MarketReview existing = marketReviewMapper.selectOne(
-                new LambdaQueryWrapper<MarketReview>()
-                        .eq(MarketReview::getReviewDate, dateStr));
-
         Map<String, Object> result = new HashMap<>();
         result.put("action", isBeforeClose && !isWeekend ? "NOT_CLOSED" : "REVIEW_TODAY");
         result.put("targetDate", dateStr);
         result.put("reviewName", reviewName);
-        result.put("existingReview", existing);
         result.put("notClosed", isWeekend || isBeforeClose);
         return result;
     }
 
+    /**
+     * 创建大盘复盘记录并提交到任务队列异步执行
+     * 若已存在同日期记录则先删除再创建
+     */
     @Override
     @Transactional
     public MarketReview createReview(String reviewDate) {
-        log.info("创建大盘复盘记录: reviewDate={}", reviewDate);
+        Long userId = StpUtil.getLoginIdAsLong();
+        return doCreateReview(reviewDate, userId);
+    }
+
+    @Override
+    @Transactional
+    public MarketReview createReview(String reviewDate, Long userId) {
+        return doCreateReview(reviewDate, userId);
+    }
+
+    private MarketReview doCreateReview(String reviewDate, Long userId) {
+        log.info("创建大盘复盘记录: reviewDate={}, userId={}", reviewDate, userId);
 
         MarketReview existing = marketReviewMapper.selectOne(
                 new LambdaQueryWrapper<MarketReview>()
-                        .eq(MarketReview::getReviewDate, reviewDate));
+                        .eq(MarketReview::getReviewDate, reviewDate)
+                        .eq(MarketReview::getUserId, userId));
 
         if (existing != null) {
             marketReviewMapper.deleteById(existing.getId());
@@ -158,13 +195,14 @@ public class MarketReviewServiceImpl implements MarketReviewService {
         review.setReviewName(reviewName);
         review.setReviewTime(now);
         review.setStatus(MarketReviewStatus.REVIEWING);
+        review.setUserId(userId);
         review.setCreateTime(now);
         review.setUpdateTime(now);
         marketReviewMapper.insert(review);
 
-        cleanupExcessRecords();
+        cleanupExcessRecords(userId);
 
-        MarketReviewTask task = new MarketReviewTask(review.getId(), reviewDate);
+        MarketReviewTask task = new MarketReviewTask(review.getId(), reviewDate, userId);
         boolean submitted = marketReviewTaskQueue.submit(task);
         if (!submitted) {
             review.setStatus(MarketReviewStatus.FAILED);
@@ -179,7 +217,20 @@ public class MarketReviewServiceImpl implements MarketReviewService {
     @Override
     @Transactional
     public void processReview(Long reviewId, String reviewDate) {
-        log.info("开始执行大盘复盘: reviewId={}, reviewDate={}", reviewId, reviewDate);
+        processReview(reviewId, reviewDate, null);
+    }
+
+    /**
+     * 执行大盘复盘核心流程：
+     * 1. 获取四大指数行情和K线数据
+     * 2. 构建提示词调用AI生成复盘报告
+     * 3. 计算涨跌幅均值并生成摘要标签
+     * 4. 提取核心总结并推送飞书
+     */
+    @Override
+    @Transactional
+    public void processReview(Long reviewId, String reviewDate, Long userId) {
+        log.info("开始执行大盘复盘: reviewId={}, reviewDate={}, userId={}", reviewId, reviewDate, userId);
 
         Map<String, Object> indexData;
         try {
@@ -193,11 +244,11 @@ public class MarketReviewServiceImpl implements MarketReviewService {
         }
 
         String prompt = marketReviewPromptBuilder.build(indexData, reviewDate);
-        String modelType = aiModelService.getActiveModelType();
+        String modelType = aiModelService.getActiveModelType(userId);
 
         String content;
         try {
-            content = aiModelService.generateAnalysis(prompt, modelType);
+            content = aiModelService.generateAnalysis(prompt, modelType, userId);
         } catch (Exception e) {
             failReview(reviewId, "AI分析失败: " + e.getMessage());
             return;
@@ -222,7 +273,7 @@ public class MarketReviewServiceImpl implements MarketReviewService {
         marketReviewMapper.updateById(review);
 
         try {
-            sendFeishuReview(review, avgChangePct);
+            sendFeishuReview(review, avgChangePct, userId);
         } catch (Exception e) {
             log.warn("大盘复盘飞书推送失败: {}", e.getMessage());
         }
@@ -230,6 +281,9 @@ public class MarketReviewServiceImpl implements MarketReviewService {
         log.info("大盘复盘执行完成: reviewId={}, reviewDate={}, summary={}", reviewId, reviewDate, summary);
     }
 
+    /**
+     * 获取前一个交易日（跳过周末）
+     */
     private LocalDate getPreviousTradingDay(LocalDate date) {
         LocalDate prev = date.minusDays(1);
         while (prev.getDayOfWeek() == DayOfWeek.SATURDAY || prev.getDayOfWeek() == DayOfWeek.SUNDAY) {
@@ -251,6 +305,9 @@ public class MarketReviewServiceImpl implements MarketReviewService {
         }
     }
 
+    /**
+     * 计算四大指数的平均涨跌幅，用于生成概要标签
+     */
     private double calcAvgChangePct(Map<String, Object> indexData) {
         double sum = 0;
         int count = 0;
@@ -266,14 +323,7 @@ public class MarketReviewServiceImpl implements MarketReviewService {
     }
 
     /**
-     * 根据平均涨跌幅计算市场走势总结描述
-     * <p>
-     * 根据预设的阈值（微幅0.5%、小幅1.5%、大幅3.5%）判断市场涨跌程度，
-     * 返回对应的中文描述，包括：微涨/微跌、小涨/小跌、大涨/大跌、暴涨/暴跌
-     * </p>
-     *
-     * @param avgChangePct 平均涨跌幅百分比值，正数表示上涨，负数表示下跌
-     * @return 市场走势总结描述字符串，如"微涨"、"大涨"、"暴跌"等
+     * 根据涨跌幅映射为文本标签：微涨/微跌/小涨/小跌/大涨/大跌/暴涨/暴跌
      */
     private String calcSummary(double avgChangePct) {
         double abs = Math.abs(avgChangePct);
@@ -290,21 +340,28 @@ public class MarketReviewServiceImpl implements MarketReviewService {
         }
     }
 
-    private void cleanupExcessRecords() {
-        long total = marketReviewMapper.selectCount(new LambdaQueryWrapper<>());
+    private void cleanupExcessRecords(Long userId) {
+        LambdaQueryWrapper<MarketReview> baseQuery = new LambdaQueryWrapper<MarketReview>()
+                .eq(MarketReview::getUserId, userId);
+        long total = marketReviewMapper.selectCount(baseQuery);
         if (total <= MAX_RECORD_KEEP_COUNT) return;
 
         List<MarketReview> latestRecords = marketReviewMapper.selectList(
                 new LambdaQueryWrapper<MarketReview>()
+                        .eq(MarketReview::getUserId, userId)
                         .orderByDesc(MarketReview::getReviewDate)
                         .last("LIMIT " + MAX_RECORD_KEEP_COUNT));
         List<Long> keepIds = latestRecords.stream()
                 .map(MarketReview::getId)
                 .toList();
         marketReviewMapper.delete(new LambdaQueryWrapper<MarketReview>()
+                .eq(MarketReview::getUserId, userId)
                 .notIn(MarketReview::getId, keepIds));
     }
 
+    /**
+     * 从AI生成的复盘中提取【核心总结】段落，限500字
+     */
     private String extractCoreSummary(String detail) {
         if (detail == null || detail.isBlank()) {
             return "";
@@ -320,13 +377,13 @@ public class MarketReviewServiceImpl implements MarketReviewService {
         return detail.substring(0, Math.min(detail.length(), CORE_SUMMARY_MAX_LENGTH));
     }
 
-    private void sendFeishuReview(MarketReview review, double avgChangePct) {
+    private void sendFeishuReview(MarketReview review, double avgChangePct, Long userId) {
         String coreSummary = review.getCoreSummary();
         if (coreSummary == null || coreSummary.isBlank()) {
             coreSummary = "暂无核心总结";
         }
         String reviewTime = review.getReviewTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
         notificationService.sendFeishuMarketReviewCard(
-                review.getReviewName(), reviewTime, review.getSummary(), avgChangePct, coreSummary);
+                review.getReviewName(), reviewTime, review.getSummary(), avgChangePct, coreSummary, userId);
     }
 }

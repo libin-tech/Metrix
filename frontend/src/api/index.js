@@ -210,8 +210,6 @@ export const getPermissions = () => service.get('/auth/permissions')
 
 export const getCurrentUser = () => service.get('/auth/me')
 
-export const getTodayStats = () => service.get('/admin/usage-stats/today')
-export const getStatsByRange = (startDate, endDate) => service.get('/admin/usage-stats/range', { params: { startDate, endDate } })
 
 export const getAuditLogs = (page, size, userId, action, startTime, endTime) =>
   service.get('/admin/audit-logs', { params: { page, size, userId, action, startTime, endTime } })

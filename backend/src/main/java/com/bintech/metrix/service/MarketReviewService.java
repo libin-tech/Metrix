@@ -23,5 +23,9 @@ public interface MarketReviewService {
 
     MarketReview createReview(String reviewDate);
 
+    MarketReview createReview(String reviewDate, Long userId);
+
     void processReview(Long reviewId, String reviewDate);
+
+    void processReview(Long reviewId, String reviewDate, Long userId);
 }

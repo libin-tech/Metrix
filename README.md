@@ -70,7 +70,7 @@ psql -h 127.0.0.1 -U postgres -d stock_analysis -f .doc/db/dml-init.sql
 
 # 3. 启动后端
 mvn clean package -DskipTests
-java -jar target/stock-analysis-1.0.0.jar
+java -jar target/stock-analysis-1.6.0.jar
 
 # 4. 启动前端（新终端）
 cd frontend
@@ -210,8 +210,6 @@ Metrix/
 | `GET  /api/admin/menus/tree` | 菜单树 | `system:menu:list` |
 | `POST /api/admin/menus` | 创建菜单 | `system:menu:create` |
 | `GET  /api/admin/apis` | 接口列表 | `system:api:list` |
-| `GET  /api/admin/usage-stats/today` | 今日统计 | `system:stats:today` |
-| `GET  /api/admin/audit-logs` | 审计日志 | `system:audit:view` |
 
 ## 开发指南
 

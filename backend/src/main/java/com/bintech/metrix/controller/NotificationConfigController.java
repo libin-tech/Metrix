@@ -2,7 +2,6 @@ package com.bintech.metrix.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import com.bintech.metrix.annotation.Audit;
 import com.bintech.metrix.dto.request.NotificationConfigRequest;
 import com.bintech.metrix.dto.response.ApiResponse;
 import com.bintech.metrix.repository.entity.NotificationConfig;
@@ -18,7 +17,6 @@ import java.util.List;
  *
  * <p>提供飞书等通知渠道的配置管理功能。
  */
-@Audit(resourceType = "通知配置")
 @RestController
 @RequestMapping("/api/notification")
 @RequiredArgsConstructor

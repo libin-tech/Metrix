@@ -8,6 +8,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 /**
  * 持仓标的实体
@@ -41,4 +42,16 @@ public class PortfolioHolding extends BaseEntity {
     /** 持有数量 */
     @TableField(value = "quantity")
     private BigDecimal quantity;
+
+    /** 用户ID（数据隔离） */
+    @TableField(value = "user_id")
+    private Long userId;
+
+    /** 缓存的最新行情价格 */
+    @TableField(value = "cached_price")
+    private BigDecimal cachedPrice;
+
+    /** 行情缓存时间 */
+    @TableField(value = "cached_price_time")
+    private LocalDateTime cachedPriceTime;
 }

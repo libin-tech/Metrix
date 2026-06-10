@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-
+import cn.dev33.satoken.stp.StpUtil;
 import com.bintech.metrix.constants.ApiConstants;
 import com.bintech.metrix.constants.SystemConstants;
 import com.bintech.metrix.repository.entity.StockBasic;
@@ -44,12 +44,17 @@ public class MarketDataServiceImpl implements MarketDataService {
     @Value("${python.akshare-script-path:python-service/akshare.py}")
     private String akshareScriptPath;
 
-    /**
-     * 获取TickFlow数据源配置
-     */
     private MarketDataConfig getTickFlowConfig() {
-        LambdaQueryWrapper<MarketDataConfig> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(MarketDataConfig::getIsActive, true);
+        Long userId = StpUtil.getLoginIdAsLong();
+        return getTickFlowConfig(userId);
+    }
+
+    private MarketDataConfig getTickFlowConfig(Long userId) {
+        LambdaQueryWrapper<MarketDataConfig> queryWrapper = new LambdaQueryWrapper<MarketDataConfig>()
+                .eq(MarketDataConfig::getIsActive, true);
+        if (userId != null) {
+            queryWrapper.eq(MarketDataConfig::getUserId, userId);
+        }
         MarketDataConfig config = configMapper.selectOne(queryWrapper);
 
         if (config == null) {
@@ -62,18 +67,13 @@ public class MarketDataServiceImpl implements MarketDataService {
         return config;
     }
 
-    /**
-     * 执行TickFlow Python脚本获取市场数据
-     * <p>
-     * 根据子命令名自动映射到独立的脚本文件，命名规约：
-     * <code>tickflow_{subcommand}.py</code>，例如 klines → tickflow_klines.py。
-     *
-     * @param scriptName 脚本标识（quotes/depth/klines）
-     * @param scriptArgs 脚本参数
-     * @return 解析后的JSON结果Map
-     */
     private Map<String, Object> runPythonScript(String scriptName, String... scriptArgs) {
-        MarketDataConfig config = getTickFlowConfig();
+        Long userId = StpUtil.getLoginIdAsLong();
+        return runPythonScript(scriptName, userId, scriptArgs);
+    }
+
+    private Map<String, Object> runPythonScript(String scriptName, Long userId, String... scriptArgs) {
+        MarketDataConfig config = getTickFlowConfig(userId);
         int timeoutSeconds = config.getTimeout() != null ? config.getTimeout() : SystemConstants.DEFAULT_TIMEOUT_SECONDS;
 
         String scriptPath = tickflowScriptPath.replace("tickflow.py", "tickflow_" + scriptName + ".py");
@@ -93,11 +93,13 @@ public class MarketDataServiceImpl implements MarketDataService {
     @Override
     @Transactional
     public MarketDataConfig createConfig(MarketDataConfigRequest request) {
-        log.info("开始创建市场数据配置: sourceName={}", request.getSourceName());
+        Long userId = StpUtil.getLoginIdAsLong();
+        log.info("开始创建市场数据配置: sourceName={}, userId={}", request.getSourceName(), userId);
 
         if (Boolean.TRUE.equals(request.getIsActive())) {
             configMapper.update(null, new LambdaUpdateWrapper<MarketDataConfig>()
-                    .set(MarketDataConfig::getIsActive, false));
+                    .set(MarketDataConfig::getIsActive, false)
+                    .eq(MarketDataConfig::getUserId, userId));
         }
 
         MarketDataConfig config = new MarketDataConfig();
@@ -109,6 +111,7 @@ public class MarketDataServiceImpl implements MarketDataService {
         config.setIsActive(request.getIsActive());
         config.setTimeout(request.getTimeout());
         config.setRemark(request.getRemark());
+        config.setUserId(userId);
         config.setCreateTime(LocalDateTime.now());
         config.setUpdateTime(LocalDateTime.now());
 
@@ -121,19 +124,22 @@ public class MarketDataServiceImpl implements MarketDataService {
     @Override
     @Transactional
     public MarketDataConfig updateConfig(Long id, MarketDataConfigRequest request) {
+        Long userId = StpUtil.getLoginIdAsLong();
         log.info("开始更新市场数据配置: id={}", id);
 
-        MarketDataConfig config = configMapper.selectById(id);
+        MarketDataConfig config = configMapper.selectOne(
+                new LambdaQueryWrapper<MarketDataConfig>()
+                        .eq(MarketDataConfig::getId, id)
+                        .eq(MarketDataConfig::getUserId, userId));
         if (config == null) {
-            String errorMsg = String.format("市场数据配置不存在: id=%d", id);
-            log.error(errorMsg);
-            throw new RuntimeException(errorMsg);
+            throw new RuntimeException("市场数据配置不存在");
         }
 
         if (Boolean.TRUE.equals(request.getIsActive())) {
             configMapper.update(null, new LambdaUpdateWrapper<MarketDataConfig>()
                     .set(MarketDataConfig::getIsActive, false)
-                    .ne(MarketDataConfig::getId, id));
+                    .ne(MarketDataConfig::getId, id)
+                    .eq(MarketDataConfig::getUserId, userId));
         }
 
         config.setSourceName(request.getSourceName());
@@ -154,13 +160,15 @@ public class MarketDataServiceImpl implements MarketDataService {
 
     @Override
     public MarketDataConfig getConfigById(Long id) {
+        Long userId = StpUtil.getLoginIdAsLong();
         log.debug("查询市场数据配置: id={}", id);
-        MarketDataConfig config = configMapper.selectById(id);
+        MarketDataConfig config = configMapper.selectOne(
+                new LambdaQueryWrapper<MarketDataConfig>()
+                        .eq(MarketDataConfig::getId, id)
+                        .eq(MarketDataConfig::getUserId, userId));
 
         if (config == null) {
             log.warn("市场数据配置不存在: id={}", id);
-        } else {
-            log.debug("查询到市场数据配置: id={}, sourceName={}", id, config.getSourceName());
         }
 
         return config;
@@ -168,18 +176,23 @@ public class MarketDataServiceImpl implements MarketDataService {
 
     @Override
     public List<MarketDataConfig> getAllConfigs() {
-        log.debug("查询所有市场数据配置");
-        List<MarketDataConfig> configs = configMapper.selectList(null);
+        Long userId = StpUtil.getLoginIdAsLong();
+        log.debug("查询所有市场数据配置, userId={}", userId);
+        List<MarketDataConfig> configs = configMapper.selectList(
+                new LambdaQueryWrapper<MarketDataConfig>()
+                        .eq(MarketDataConfig::getUserId, userId));
         log.debug("查询到{}条市场数据配置", configs.size());
         return configs;
     }
 
     @Override
     public List<MarketDataConfig> getActiveConfigs() {
-        log.debug("查询所有启用的市场数据配置");
+        Long userId = StpUtil.getLoginIdAsLong();
+        log.debug("查询所有启用的市场数据配置, userId={}", userId);
 
-        LambdaQueryWrapper<MarketDataConfig> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(MarketDataConfig::getIsActive, true);
+        LambdaQueryWrapper<MarketDataConfig> wrapper = new LambdaQueryWrapper<MarketDataConfig>()
+                .eq(MarketDataConfig::getIsActive, true)
+                .eq(MarketDataConfig::getUserId, userId);
 
         List<MarketDataConfig> configs = configMapper.selectList(wrapper);
         log.debug("查询到{}条启用的市场数据配置", configs.size());
@@ -190,9 +203,13 @@ public class MarketDataServiceImpl implements MarketDataService {
     @Override
     @Transactional
     public void deleteConfig(Long id) {
+        Long userId = StpUtil.getLoginIdAsLong();
         log.info("开始删除市场数据配置: id={}", id);
 
-        MarketDataConfig config = configMapper.selectById(id);
+        MarketDataConfig config = configMapper.selectOne(
+                new LambdaQueryWrapper<MarketDataConfig>()
+                        .eq(MarketDataConfig::getId, id)
+                        .eq(MarketDataConfig::getUserId, userId));
         if (config == null) {
             log.warn("市场数据配置不存在，无需删除: id={}", id);
             return;
@@ -203,15 +220,37 @@ public class MarketDataServiceImpl implements MarketDataService {
     }
 
     @Override
+    public boolean hasActiveConfig(Long userId) {
+        LambdaQueryWrapper<MarketDataConfig> queryWrapper = new LambdaQueryWrapper<MarketDataConfig>()
+                .eq(MarketDataConfig::getIsActive, true);
+        if (userId != null) {
+            queryWrapper.eq(MarketDataConfig::getUserId, userId);
+        }
+        return configMapper.selectCount(queryWrapper) > 0;
+    }
+
+    @Override
     public Map<String, Object> fetchRealTimeData(StockBasic stockBasic) {
+        Long userId = StpUtil.getLoginIdAsLong();
+        return fetchRealTimeData(stockBasic, userId);
+    }
+
+    @Override
+    public Map<String, Object> fetchRealTimeData(StockBasic stockBasic, Long userId) {
         log.info("开始获取实时行情: stockCode={}", stockBasic.getTsCode());
-        return runPythonScript("quotes", "--symbols", stockBasic.getTsCode());
+        return runPythonScript("quotes", userId, "--symbols", stockBasic.getTsCode());
     }
 
     @Override
     public Map<String, Object> fetchChipData(StockBasic stockBasic) {
+        Long userId = StpUtil.getLoginIdAsLong();
+        return fetchChipData(stockBasic, userId);
+    }
+
+    @Override
+    public Map<String, Object> fetchChipData(StockBasic stockBasic, Long userId) {
         log.info("开始查询筹码分布: stockCode={}", stockBasic.getTsCode());
-        return runPythonScript("chip", "--symbols", stockBasic.getTsCode());
+        return runPythonScript("chip", userId, "--symbols", stockBasic.getTsCode());
     }
 
     private Map<String, Object> runAkShareScript(String scriptName, String... scriptArgs) {
@@ -228,17 +267,6 @@ public class MarketDataServiceImpl implements MarketDataService {
         return runScript(command, "AKShare", defaultTimeout);
     }
 
-    /**
-     * 通用Python脚本执行器，带超时
-     * <p>
-     * 使用后台线程读取进程输出以防止管道缓冲区死锁（先 waitFor 再 read 时，
-     * 如果子进程输出填满管道缓冲区会导致双方互相等待）。
-     *
-     * @param command        完整命令行
-     * @param sourceName     数据源名称（用于日志）
-     * @param timeoutSeconds 超时时间（秒）
-     * @return 解析后的JSON结果Map
-     */
     private Map<String, Object> runScript(List<String> command, String sourceName, int timeoutSeconds) {
         String timeoutMsg = sourceName + "脚本执行超时（" + timeoutSeconds + "秒）";
 
@@ -246,10 +274,8 @@ public class MarketDataServiceImpl implements MarketDataService {
             ProcessBuilder pb = new ProcessBuilder(command);
             pb.redirectErrorStream(true);
 
-
             Process process = pb.start();
 
-            // 在后台线程中持续读取输出，避免管道缓冲区写满导致子进程阻塞
             StringBuilder outputBuilder = new StringBuilder();
             Thread reader = Thread.ofVirtual()
                     .name("market-data-reader")
@@ -300,18 +326,36 @@ public class MarketDataServiceImpl implements MarketDataService {
 
     @Override
     public Map<String, Object> fetchDepthData(StockBasic stockBasic) {
+        Long userId = StpUtil.getLoginIdAsLong();
+        return fetchDepthData(stockBasic, userId);
+    }
+
+    @Override
+    public Map<String, Object> fetchDepthData(StockBasic stockBasic, Long userId) {
         log.info("开始查询市场深度（五档行情）: stockCode={}", stockBasic.getTsCode());
-        return runPythonScript("depth", "--symbol", stockBasic.getTsCode());
+        return runPythonScript("depth", userId, "--symbol", stockBasic.getTsCode());
     }
 
     @Override
     public Map<String, Object> fetchKlinesData(StockBasic stockBasic, int limit) {
+        Long userId = StpUtil.getLoginIdAsLong();
+        return fetchKlinesData(stockBasic, limit, userId);
+    }
+
+    @Override
+    public Map<String, Object> fetchKlinesData(StockBasic stockBasic, int limit, Long userId) {
         log.info("开始查询K线数据: stockCode={}, limit={}", stockBasic.getTsCode(), limit);
-        return runPythonScript("klines", "--symbol", stockBasic.getTsCode(), "--count", String.valueOf(limit), "--period", SystemConstants.KLINE_PERIOD_DAY);
+        return runPythonScript("klines", userId, "--symbol", stockBasic.getTsCode(), "--count", String.valueOf(limit), "--period", SystemConstants.KLINE_PERIOD_DAY);
     }
 
     @Override
     public Map<String, Object> fetchTopFreeShareholdersData(StockBasic stockBasic) {
+        Long userId = StpUtil.getLoginIdAsLong();
+        return fetchTopFreeShareholdersData(stockBasic, userId);
+    }
+
+    @Override
+    public Map<String, Object> fetchTopFreeShareholdersData(StockBasic stockBasic, Long userId) {
         log.info("开始查询十大流通股东: stockCode={}", stockBasic.getTsCode());
         return runAkShareScript("gdfx", "--symbol", stockBasic.getSymbol());
     }

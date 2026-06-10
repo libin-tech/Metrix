@@ -2,7 +2,6 @@ package com.bintech.metrix.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import com.bintech.metrix.annotation.Audit;
 import com.bintech.metrix.dto.response.ApiResponse;
 import com.bintech.metrix.dto.response.StockInfo;
 import com.bintech.metrix.service.StockSearchService;
@@ -19,7 +18,6 @@ import java.util.List;
  *
  * <p>提供股票关键字搜索能力，支持代码和名称的模糊匹配，用于前端自动补全。
  */
-@Audit(resourceType = "股票搜索")
 @RestController
 @RequestMapping("/api/stocks")
 @RequiredArgsConstructor

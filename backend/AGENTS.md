@@ -49,6 +49,13 @@
 - 涉及到日志打印的使用 `@Slf4j` 注解。
 - 禁止使用线程池，必须使用JDK21的虚拟线程。
 - 禁止出现硬编码，使用常量代替。常量类存放路径：`com.bintech.metrix.constants`
+- 禁止出现冗余代码，相同的代码需要封装为函数。
+- 禁止把 `@Value` 散落在 Service 中，配置集中到 `@ConfigurationProperties`。
+- 禁止内联全限定类名，使用 import。
+- 不要同类内部调用 `@Transactional` 方法。
+- 不要 `catch (Exception e) {}` 静默忽略。
+- 不要循环调用 DB，优先批量操作。
+- 不要硬编码密钥。
 
 ## 7. 数据库规范
 - 脚本存放路径：`.doc/db/V{version}_{description}.sql`

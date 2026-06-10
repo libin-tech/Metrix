@@ -2,7 +2,6 @@ package com.bintech.metrix.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import com.bintech.metrix.annotation.Audit;
 import com.bintech.metrix.constants.ApiConstants;
 import com.bintech.metrix.dto.response.ApiResponse;
 import com.bintech.metrix.dto.response.PageResult;
@@ -17,7 +16,6 @@ import org.springframework.web.multipart.MultipartFile;
  *
  * <p>提供股票基础数据的分页查询和CSV导入功能。
  */
-@Audit(resourceType = "股票基础")
 @RestController
 @RequestMapping("/api/stock-basic")
 @RequiredArgsConstructor

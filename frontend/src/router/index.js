@@ -107,12 +107,6 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/admin/stats',
-    name: 'Stats',
-    component: () => import('../views/admin/Stats.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
     path: '/admin/audit-log',
     name: 'AuditLog',
     component: () => import('../views/admin/AuditLog.vue'),

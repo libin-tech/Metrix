@@ -2,17 +2,13 @@ package com.bintech.metrix.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import cn.dev33.satoken.stp.StpUtil;
-import com.bintech.metrix.annotation.Audit;
+import com.bintech.metrix.annotation.CheckConfig;
 import com.bintech.metrix.dto.response.ApiResponse;
 import com.bintech.metrix.dto.response.CursorPageResult;
+import com.bintech.metrix.enums.ConfigType;
 import com.bintech.metrix.enums.MarketReviewStatus;
-import com.bintech.metrix.enums.UserRole;
 import com.bintech.metrix.repository.entity.MarketReview;
-import com.bintech.metrix.repository.entity.User;
 import com.bintech.metrix.service.MarketReviewService;
-import com.bintech.metrix.service.UsageStatsService;
-import com.bintech.metrix.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,7 +18,6 @@ import java.util.Map;
 /**
  * 大盘复盘控制器
  */
-@Audit(resourceType = "大盘复盘")
 @RestController
 @RequestMapping("/api/market-review")
 @RequiredArgsConstructor
@@ -30,8 +25,6 @@ import java.util.Map;
 public class MarketReviewController {
 
     private final MarketReviewService marketReviewService;
-    private final UsageStatsService usageStatsService;
-    private final UserService userService;
 
     @GetMapping
     @SaCheckPermission("review:record:list")
@@ -72,13 +65,8 @@ public class MarketReviewController {
 
     @PostMapping("/create")
     @SaCheckPermission("review:record:create")
+    @CheckConfig(required = ConfigType.AI_MODEL)
     public ApiResponse<MarketReview> createReview(@RequestParam String reviewDate) {
-        Long userId = StpUtil.getLoginIdAsLong();
-        User user = userService.getUserById(userId);
-        boolean isAdmin = UserRole.ADMIN == user.getRole();
-        if (!isAdmin && !usageStatsService.checkAndIncrementReview(userId)) {
-            return ApiResponse.error("每日大盘复盘次数限制（5次）已用完，请明天再试");
-        }
         MarketReview review = marketReviewService.createReview(reviewDate);
         return ApiResponse.success("大盘复盘任务已创建", review);
     }

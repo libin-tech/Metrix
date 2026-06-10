@@ -1,11 +1,14 @@
 package com.bintech.metrix.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bintech.metrix.dto.request.PortfolioHoldingRequest;
+import com.bintech.metrix.dto.response.PortfolioHoldingListResponse;
 import com.bintech.metrix.dto.response.PortfolioHoldingVO;
+import com.bintech.metrix.dto.response.PortfolioSummary;
 import com.bintech.metrix.repository.entity.BrokerAccount;
 import com.bintech.metrix.repository.entity.PortfolioHolding;
 import com.bintech.metrix.repository.entity.StockBasic;
@@ -44,13 +47,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
 
-    /** 每次刷新行情最多处理前10只 */
     private static final int MAX_REFRESH_COUNT = 10;
-    /** 持仓总数上限 */
     private static final int MAX_HOLDING_COUNT = 100;
-    /** 盈亏百分比计算精度（4位小数） */
     private static final int PROFIT_LOSS_SCALE = 4;
-    /** 金额统一保留3位小数 */
     private static final int PRICE_SCALE = 3;
 
     private final PortfolioHoldingMapper holdingMapper;
@@ -58,9 +57,7 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
     private final StockBasicService stockBasicService;
     private final MarketDataService marketDataService;
 
-    /** 异步行情刷新缓存 — key=持仓ID, value=已刷新的VO（含实时行情） */
     private final ConcurrentHashMap<Long, PortfolioHoldingVO> priceRefreshCache = new ConcurrentHashMap<>();
-    /** 虚拟线程池，异步执行行情拉取，避免阻塞HTTP响应 */
     private final ExecutorService refreshExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
     @PreDestroy
@@ -69,30 +66,29 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
     }
 
     /**
-     * 查询持仓列表
-     *
-     * <ol>
-     *   <li>按 {@code accountId} 过滤（为空查全部）</li>
-     *   <li>跳过成本或数量为空的记录</li>
-     *   <li>按 {@code keyword} 匹配券商/代码/名称（模糊）</li>
-     * </ol>
+     * 查询持仓列表，支持按券商名称/标的代码/名称模糊搜索
      */
     @Override
-    public List<PortfolioHoldingVO> getHoldings(String keyword, Long accountId) {
-        LambdaQueryWrapper<PortfolioHolding> queryWrapper = new LambdaQueryWrapper<>();
+    public PortfolioHoldingListResponse getHoldings(String keyword, Long accountId) {
+        Long userId = StpUtil.getLoginIdAsLong();
+        LambdaQueryWrapper<PortfolioHolding> queryWrapper = new LambdaQueryWrapper<PortfolioHolding>()
+                .eq(PortfolioHolding::getUserId, userId);
         if (accountId != null) {
             queryWrapper.eq(PortfolioHolding::getAccountId, accountId);
         }
         List<PortfolioHolding> holdings = holdingMapper.selectList(queryWrapper);
         if (holdings.isEmpty()) {
-            return List.of();
+            return new PortfolioHoldingListResponse(List.of(), new PortfolioSummary(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, null));
         }
 
-        List<BrokerAccount> accounts = accountMapper.selectList(null);
+        List<BrokerAccount> accounts = accountMapper.selectList(
+                new LambdaQueryWrapper<BrokerAccount>()
+                        .eq(BrokerAccount::getUserId, userId));
         Map<Long, BrokerAccount> accountMap = accounts.stream()
                 .collect(Collectors.toMap(BrokerAccount::getId, a -> a));
 
         List<PortfolioHoldingVO> vos = new ArrayList<>();
+        LocalDateTime latestRefresh = null;
         for (PortfolioHolding h : holdings) {
             if (h.getCost() == null || h.getQuantity() == null) {
                 continue;
@@ -100,6 +96,11 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
 
             PortfolioHoldingVO vo = buildBaseVO(h, accountMap);
             vos.add(vo);
+
+            if (vo.getCachedPriceTime() != null
+                    && (latestRefresh == null || vo.getCachedPriceTime().isAfter(latestRefresh))) {
+                latestRefresh = vo.getCachedPriceTime();
+            }
         }
 
         if (StrUtil.isNotBlank(keyword)) {
@@ -111,20 +112,23 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
                     .collect(Collectors.toList());
         }
 
-        return vos;
+        PortfolioSummary summary = calculateSummary(vos, latestRefresh);
+        return new PortfolioHoldingListResponse(vos, summary);
     }
 
     /**
-     * 刷新实时行情（异步）
-     *
-     * <p>最多取前10条有成本&数量的记录，为每只标的创建异步任务提交到虚拟线程池，
-     * 任务完成后的VO会写入 {@link #priceRefreshCache}，供 {@link #pollRefreshedPrices} 轮询消费。
-     * 方法立即返回不含行情字段的VO列表。
+     * 异步刷新持仓实时行情，使用虚拟线程并行获取，结果通过轮询接口获取
      */
     @Override
     public List<PortfolioHoldingVO> refreshPrices() {
+        Long userId = StpUtil.getLoginIdAsLong();
+        return doRefreshPrices(userId);
+    }
+
+    private List<PortfolioHoldingVO> doRefreshPrices(Long userId) {
         List<PortfolioHolding> holdings = holdingMapper.selectList(
                 new LambdaQueryWrapper<PortfolioHolding>()
+                        .eq(PortfolioHolding::getUserId, userId)
                         .isNotNull(PortfolioHolding::getCost)
                         .isNotNull(PortfolioHolding::getQuantity)
                         .last("LIMIT " + MAX_REFRESH_COUNT));
@@ -132,7 +136,9 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
             return List.of();
         }
 
-        List<BrokerAccount> accounts = accountMapper.selectList(null);
+        List<BrokerAccount> accounts = accountMapper.selectList(
+                new LambdaQueryWrapper<BrokerAccount>()
+                        .eq(BrokerAccount::getUserId, userId));
         Map<Long, BrokerAccount> accountMap = accounts.stream()
                 .collect(Collectors.toMap(BrokerAccount::getId, a -> a));
 
@@ -140,9 +146,12 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
         for (PortfolioHolding h : holdings) {
             PortfolioHoldingVO vo = buildBaseVO(h, accountMap);
             vos.add(vo);
+            Long capturedUserId = userId;
+            Long holdingId = h.getId();
             refreshExecutor.submit(() -> {
                 try {
-                    fetchCurrentPrice(vo);
+                    fetchCurrentPrice(vo, capturedUserId);
+                    persistCachedPrice(holdingId, vo.getCurrentPrice());
                     priceRefreshCache.put(vo.getId(), vo);
                 } catch (Exception e) {
                     log.warn("异步刷新 {} 行情失败: {}", vo.getStockCode(), e.getMessage());
@@ -153,13 +162,7 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
     }
 
     /**
-     * 轮询已刷新完成的实时行情
-     *
-     * <p>前端定时调用（2s间隔），从 {@link #priceRefreshCache} 中取出已完成的任务。
-     * 取出即删除（一次性消费），未被取到的说明仍在处理中。
-     *
-     * @param ids 待轮询的持仓ID列表
-     * @return 已完成刷新的VO映射；key=持仓ID, value=含实时行情的VO
+     * 轮询获取已刷新完成的实时行情（消费缓存中的刷新结果）
      */
     @Override
     public Map<Long, PortfolioHoldingVO> pollRefreshedPrices(List<Long> ids) {
@@ -173,13 +176,6 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
         return result;
     }
 
-    /**
-     * 构建基础VO（不含行情字段）
-     *
-     * @param h          持仓实体
-     * @param accountMap 账户ID → 账户实体 映射
-     * @return 基础VO
-     */
     private PortfolioHoldingVO buildBaseVO(PortfolioHolding h, Map<Long, BrokerAccount> accountMap) {
         PortfolioHoldingVO vo = new PortfolioHoldingVO();
         vo.setId(h.getId());
@@ -194,24 +190,29 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
             vo.setBrokerName(account.getBrokerName());
             vo.setAccountNumber(account.getAccountNumber());
         }
+
+        if (h.getCachedPrice() != null) {
+            BigDecimal cachedPrice = h.getCachedPrice().setScale(PRICE_SCALE, RoundingMode.HALF_UP);
+            vo.setCachedPrice(cachedPrice);
+            vo.setCachedPriceTime(h.getCachedPriceTime());
+            vo.setCurrentPrice(cachedPrice);
+            BigDecimal costTotal = h.getCost().multiply(h.getQuantity());
+            BigDecimal currentTotal = cachedPrice.multiply(h.getQuantity());
+            BigDecimal plAmount = currentTotal.subtract(costTotal);
+            vo.setProfitLossAmount(plAmount);
+            calcProfitLossPercent(vo, costTotal, plAmount);
+        }
+
         return vo;
     }
 
-    /**
-     * 获取实时行情并计算盈亏
-     *
-     * <p>通过 {@link StockBasicService} 获取股票基础信息，再调用 {@link MarketDataService}
-     * 获取实时行情，解析出最新价后设置到VO中，同时计算盈亏金额和盈亏百分比。
-     *
-     * @param vo 待填充的持仓VO（会被原地修改）
-     */
-    private void fetchCurrentPrice(PortfolioHoldingVO vo) {
+    private void fetchCurrentPrice(PortfolioHoldingVO vo, Long userId) {
         try {
             StockBasic stockBasic = stockBasicService.getByTsCode(vo.getStockCode());
             if (stockBasic == null) {
                 return;
             }
-            Map<String, Object> marketData = marketDataService.fetchRealTimeData(stockBasic);
+            Map<String, Object> marketData = marketDataService.fetchRealTimeData(stockBasic, userId);
             BigDecimal currentPrice = extractCurrentPrice(marketData);
             if (currentPrice == null) {
                 return;
@@ -227,9 +228,6 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
         }
     }
 
-    /**
-     * 计算盈亏百分比（成本总额大于0时）
-     */
     private void calcProfitLossPercent(PortfolioHoldingVO vo, BigDecimal costTotal, BigDecimal plAmount) {
         if (costTotal.compareTo(BigDecimal.ZERO) <= 0) {
             return;
@@ -240,14 +238,6 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
         vo.setProfitLossPercent(plPercent);
     }
 
-    /**
-     * 从市场数据中提取最新价
-     *
-     * <p>市场数据JSON结构：{ status: "success", data: [{ last_price: "xx.xx" }, ...] }
-     *
-     * @param marketData 原始市场数据
-     * @return 最新价（BigDecimal），解析失败返回 null
-     */
     private BigDecimal extractCurrentPrice(Map<String, Object> marketData) {
         if (marketData == null) {
             return null;
@@ -266,24 +256,52 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
         return null;
     }
 
+    private void persistCachedPrice(Long holdingId, BigDecimal currentPrice) {
+        if (holdingId == null || currentPrice == null) {
+            return;
+        }
+        PortfolioHolding entity = new PortfolioHolding();
+        entity.setId(holdingId);
+        entity.setCachedPrice(currentPrice);
+        entity.setCachedPriceTime(LocalDateTime.now());
+        holdingMapper.updateById(entity);
+    }
+
+    private PortfolioSummary calculateSummary(List<PortfolioHoldingVO> vos, LocalDateTime latestRefresh) {
+        BigDecimal totalMarketValue = BigDecimal.ZERO;
+        BigDecimal totalCostValue = BigDecimal.ZERO;
+        for (PortfolioHoldingVO vo : vos) {
+            if (vo.getCurrentPrice() != null && vo.getQuantity() != null && vo.getCost() != null) {
+                totalMarketValue = totalMarketValue.add(vo.getCurrentPrice().multiply(vo.getQuantity()));
+                totalCostValue = totalCostValue.add(vo.getCost().multiply(vo.getQuantity()));
+            }
+        }
+        BigDecimal totalProfitLossAmount = totalMarketValue.subtract(totalCostValue);
+        BigDecimal totalProfitLossPercent = BigDecimal.ZERO;
+        if (totalCostValue.compareTo(BigDecimal.ZERO) > 0) {
+            totalProfitLossPercent = totalProfitLossAmount
+                    .divide(totalCostValue, PROFIT_LOSS_SCALE, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(100));
+        }
+        return new PortfolioSummary(totalMarketValue, totalProfitLossPercent, totalProfitLossAmount, latestRefresh);
+    }
+
     /**
-     * 新增持仓标的
-     *
-     * <p>校验逻辑：
-     * <ol>
-     *   <li>全局持仓总数不得超过100</li>
-     *   <li>同一账户下不可重复添加同一标的（按 accountId + stockCode 判重）</li>
-     * </ol>
+     * 新增持仓标的，校验数量上限和重复性
      */
     @Override
     @Transactional
     public void createHolding(PortfolioHoldingRequest request) {
-        long count = holdingMapper.selectCount(null);
+        Long userId = StpUtil.getLoginIdAsLong();
+        long count = holdingMapper.selectCount(
+                new LambdaQueryWrapper<PortfolioHolding>()
+                        .eq(PortfolioHolding::getUserId, userId));
         if (count >= MAX_HOLDING_COUNT) {
             throw new RuntimeException("持仓数量已达上限（" + MAX_HOLDING_COUNT + "个），请先删除部分持仓再添加");
         }
 
         Long existing = holdingMapper.selectCount(new LambdaQueryWrapper<PortfolioHolding>()
+                .eq(PortfolioHolding::getUserId, userId)
                 .eq(PortfolioHolding::getAccountId, request.getAccountId())
                 .eq(PortfolioHolding::getStockCode, request.getStockCode()));
         if (existing > 0) {
@@ -296,19 +314,26 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
         holding.setStockName(request.getStockName());
         holding.setCost(request.getCost().setScale(PRICE_SCALE, RoundingMode.HALF_UP));
         holding.setQuantity(request.getQuantity());
+        holding.setUserId(userId);
         holding.setCreateTime(LocalDateTime.now());
         holding.setUpdateTime(LocalDateTime.now());
         holdingMapper.insert(holding);
     }
 
+    /**
+     * 批量新增持仓标的，校验重复性和数量上限
+     */
     @Override
     @Transactional
     public void batchCreateHoldings(Long accountId, List<PortfolioHoldingRequest> items) {
+        Long userId = StpUtil.getLoginIdAsLong();
         if (items == null || items.isEmpty()) {
             throw new RuntimeException("批量添加列表不能为空");
         }
 
-        long currentCount = holdingMapper.selectCount(null);
+        long currentCount = holdingMapper.selectCount(
+                new LambdaQueryWrapper<PortfolioHolding>()
+                        .eq(PortfolioHolding::getUserId, userId));
 
         Set<String> batchCodes = new HashSet<>();
         for (PortfolioHoldingRequest item : items) {
@@ -317,6 +342,7 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
             }
 
             Long existing = holdingMapper.selectCount(new LambdaQueryWrapper<PortfolioHolding>()
+                    .eq(PortfolioHolding::getUserId, userId)
                     .eq(PortfolioHolding::getAccountId, accountId)
                     .eq(PortfolioHolding::getStockCode, item.getStockCode()));
             if (existing > 0) {
@@ -336,6 +362,7 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
             holding.setStockName(item.getStockName());
             holding.setCost(item.getCost() != null ? item.getCost().setScale(PRICE_SCALE, RoundingMode.HALF_UP) : null);
             holding.setQuantity(item.getQuantity());
+            holding.setUserId(userId);
             holding.setCreateTime(now);
             holding.setUpdateTime(now);
             holdingMapper.insert(holding);
@@ -345,12 +372,26 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
     @Override
     @Transactional
     public void deleteHolding(Long id) {
+        Long userId = StpUtil.getLoginIdAsLong();
+        Long count = holdingMapper.selectCount(
+                new LambdaQueryWrapper<PortfolioHolding>()
+                        .eq(PortfolioHolding::getId, id)
+                        .eq(PortfolioHolding::getUserId, userId));
+        if (count == 0) {
+            throw new RuntimeException("持仓记录不存在");
+        }
         holdingMapper.deleteById(id);
     }
 
+    /**
+     * 获取当前用户所有持仓的股票代码集合
+     */
     @Override
     public Set<String> getHoldingStockCodes() {
-        List<PortfolioHolding> holdings = holdingMapper.selectList(null);
+        Long userId = StpUtil.getLoginIdAsLong();
+        List<PortfolioHolding> holdings = holdingMapper.selectList(
+                new LambdaQueryWrapper<PortfolioHolding>()
+                        .eq(PortfolioHolding::getUserId, userId));
         return holdings.stream()
                 .map(PortfolioHolding::getStockCode)
                 .collect(Collectors.toCollection(HashSet::new));

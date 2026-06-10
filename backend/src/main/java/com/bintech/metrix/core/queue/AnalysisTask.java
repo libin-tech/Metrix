@@ -16,4 +16,6 @@ public class AnalysisTask {
     private StockAnalysisRequest request;
     /** 股票名称 */
     private String stockName;
+    /** 用户ID */
+    private Long userId;
 }

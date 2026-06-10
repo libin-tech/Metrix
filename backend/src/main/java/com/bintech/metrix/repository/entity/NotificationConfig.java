@@ -40,4 +40,8 @@ public class NotificationConfig extends BaseEntity {
      */
     @TableField(value = "is_active")
     private Boolean isActive;
+
+    /** 用户ID（数据隔离） */
+    @TableField(value = "user_id")
+    private Long userId;
 }

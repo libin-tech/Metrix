@@ -80,10 +80,6 @@
               <ApiOutlined />
               <span>{{ $t('menu.apiManagement') }}</span>
             </a-menu-item>
-            <a-menu-item v-if="hasPerm('system:stats:view')" key="/admin/stats" @click="navigate('/admin/stats')">
-              <BarChartOutlined />
-              <span>{{ $t('menu.usageStats') }}</span>
-            </a-menu-item>
             <a-menu-item v-if="hasPerm('system:audit:view')" key="/admin/audit-log" @click="navigate('/admin/audit-log')">
               <FileTextOutlined />
               <span>{{ $t('menu.auditLog') }}</span>
@@ -172,7 +168,6 @@ import {useI18n} from 'vue-i18n'
 import {message} from 'ant-design-vue'
 import {
   ApiOutlined,
-  BarChartOutlined,
   BellOutlined,
   BgColorsOutlined,
   BookOutlined,
@@ -258,7 +253,6 @@ const pageTitleMap = {
   '/admin/roles': () => t('menu.roleManagement'),
   '/admin/menus': () => t('menu.menuManagement'),
   '/admin/apis': () => t('menu.apiManagement'),
-  '/admin/stats': () => t('menu.usageStats'),
   '/admin/audit-log': () => t('menu.auditLog')
 }
 

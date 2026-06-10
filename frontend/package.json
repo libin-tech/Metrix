@@ -1,6 +1,6 @@
 {
   "name": "stock-analysis-frontend",
-  "version": "1.0.0",
+  "version": "1.6.0",
   "description": "量化决策分析前端",
   "scripts": {
     "dev": "vite",

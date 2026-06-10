@@ -45,7 +45,6 @@ export default {
     roleManagement: 'Role Management',
     menuManagement: 'Menu Management',
     apiManagement: 'API Management',
-    usageStats: 'Usage Stats',
     auditLog: 'Audit Log',
     logout: 'Logout',
   },
@@ -376,6 +375,10 @@ export default {
     batchInputHint: 'Add multiple holdings under the same account',
     addRow: 'Add Row',
     noValidItems: 'Please fill in at least one valid holding',
+    totalMarketValue: 'Total Mkt Value',
+    totalProfitLossPct: 'Total P&L (%)',
+    totalProfitLossAmt: 'Total P&L Amount',
+    lastRefreshTime: 'Last Refresh',
   },
   marketReview: {
     title: 'Market Review',

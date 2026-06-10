@@ -11,9 +11,11 @@ public interface ChatSessionService {
 
     ChatSession getSessionById(Long id);
 
+    ChatSession getSessionById(Long id, Long userId);
+
     List<ChatSessionVO> getUserSessions(Long userId);
 
-    void deleteSession(Long id);
+    void deleteSession(Long id, Long userId);
 
     void deleteSessions(List<Long> ids, Long userId);
 

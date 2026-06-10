@@ -11,4 +11,6 @@ import lombok.Data;
 public class MarketReviewTask {
     private Long reviewId;
     private String reviewDate;
+    /** 用户ID，NULL表示系统生成 */
+    private Long userId;
 }

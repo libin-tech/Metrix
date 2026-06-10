@@ -14,10 +14,10 @@ public interface ChatService {
 
     ChatSessionVO createSession(Long userId, String sessionName);
 
-    void deleteSession(Long id);
+    void deleteSession(Long id, Long userId);
 
     void deleteSessions(List<Long> ids, Long userId);
 
-    List<ChatMessageVO> getSessionMessages(Long sessionId);
+    List<ChatMessageVO> getSessionMessages(Long sessionId, Long userId);
 
 }

@@ -1,7 +1,6 @@
 package com.bintech.metrix.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
-import com.bintech.metrix.annotation.Audit;
 import com.bintech.metrix.dto.response.ApiResponse;
 import com.bintech.metrix.service.MarketIndexService;
 import lombok.RequiredArgsConstructor;
@@ -11,7 +10,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
-@Audit(resourceType = "大盘行情")
 @RestController
 @RequestMapping("/api/market-index")
 @RequiredArgsConstructor

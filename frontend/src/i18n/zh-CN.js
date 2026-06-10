@@ -45,7 +45,6 @@ export default {
     roleManagement: '角色管理',
     menuManagement: '菜单管理',
     apiManagement: '接口管理',
-    usageStats: '数据统计',
     auditLog: '审计日志',
     logout: '退出登录',
   },
@@ -376,6 +375,10 @@ export default {
     batchInputHint: '为同一账户批量添加多个标的',
     addRow: '添加一行',
     noValidItems: '请至少填写一个有效的标的',
+    totalMarketValue: '总市值',
+    totalProfitLossPct: '总盈亏（%）',
+    totalProfitLossAmt: '总盈亏金额',
+    lastRefreshTime: '最近刷新',
   },
   marketReview: {
     title: '大盘复盘',

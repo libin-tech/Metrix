@@ -35,24 +35,32 @@ public class NewsCollector {
      * @return 新闻摘要Map，包含 count / summary / newsList 三个字段；失败返回null
      */
     public Map<String, Object> collect(StockBasic stockBasic, String modelType) {
-        // 调用新闻服务获取原始新闻数据
-        Map<String, Object> newsResult = newsService.fetchStockNews(stockBasic);
+        return collect(stockBasic, modelType, null);
+    }
 
-        // 校验接口状态
+    /**
+     * 获取股票相关新闻并生成AI摘要
+     *
+     * @param stockBasic 股票基本信息
+     * @param modelType  AI模型类型
+     * @param userId     用户ID
+     * @return 新闻摘要Map，包含 count / summary / newsList 三个字段；失败返回null
+     */
+    public Map<String, Object> collect(StockBasic stockBasic, String modelType, Long userId) {
+        Map<String, Object> newsResult = newsService.fetchStockNews(stockBasic, userId);
+
         if (!ApiConstants.STATUS_SUCCESS.equals(newsResult.get(ApiConstants.KEY_STATUS))) {
             String errorMsg = (String) newsResult.get(ApiConstants.KEY_MESSAGE);
             log.warn("获取新闻失败: {}", errorMsg);
             return null;
         }
 
-        // 校验数据格式
         Object dataObj = newsResult.get("data");
         if (!(dataObj instanceof JSONArray newsArray)) {
             log.warn("新闻数据的data字段不是JSONArray类型");
             return null;
         }
 
-        // 解析新闻列表
         List<Map<String, Object>> newsList = new ArrayList<>();
         for (int i = 0; i < newsArray.size(); i++) {
             try {
@@ -69,13 +77,12 @@ public class NewsCollector {
             }
         }
 
-        // 生成AI摘要
         Map<String, Object> newsSummaryMap = new HashMap<>();
         newsSummaryMap.put("count", newsList.size());
 
         if (!newsList.isEmpty()) {
             String summary = aiModelService.generateAnalysis(
-                    newsPromptBuilder.buildSummarizePrompt(newsList), modelType);
+                    newsPromptBuilder.buildSummarizePrompt(newsList), modelType, userId);
             newsSummaryMap.put("summary", summary);
         } else {
             newsSummaryMap.put("summary", "暂无相关新闻");

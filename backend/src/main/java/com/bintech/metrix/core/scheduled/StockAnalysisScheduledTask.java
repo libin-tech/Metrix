@@ -15,6 +15,9 @@ public class StockAnalysisScheduledTask {
 
     private final StockAnalysisService stockAnalysisService;
 
+    /**
+     * 定时任务：每天凌晨3:00清理过量的股票分析记录
+     */
     @Scheduled(cron = "0 0 3 * * ?")
     @Transactional
     public void scheduledCleanup() {

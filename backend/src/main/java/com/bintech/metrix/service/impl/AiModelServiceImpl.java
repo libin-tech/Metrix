@@ -1,15 +1,16 @@
 package com.bintech.metrix.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bintech.metrix.constants.BusinessConstants;
 import com.bintech.metrix.constants.SystemConstants;
 import com.bintech.metrix.dto.request.AiModelConfigRequest;
 import com.bintech.metrix.dto.request.AiModelTestRequest;
 import com.bintech.metrix.dto.response.AiModelTestResponse;
+import com.bintech.metrix.dto.response.AnalysisResult;
 import com.bintech.metrix.repository.entity.AiModelConfig;
 import com.bintech.metrix.repository.mapper.AiModelConfigMapper;
 import com.bintech.metrix.service.AiModelService;
-import com.bintech.metrix.dto.response.AnalysisResult;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
@@ -34,11 +35,15 @@ public class AiModelServiceImpl implements AiModelService {
 
     private final AiModelConfigMapper configMapper;
 
+    /**
+     * 创建AI模型配置，若标记为激活则先停用同类型其他配置
+     */
     @Override
     @Transactional
     public AiModelConfig createConfig(AiModelConfigRequest request) {
+        Long userId = StpUtil.getLoginIdAsLong();
         if (Boolean.TRUE.equals(request.getIsActive())) {
-            deactivateSameType(request.getModelType(), null);
+            deactivateSameType(request.getModelType(), null, userId);
         }
         AiModelConfig config = new AiModelConfig();
         config.setModelType(request.getModelType());
@@ -48,6 +53,7 @@ public class AiModelServiceImpl implements AiModelService {
         config.setTemperature(request.getTemperature());
         config.setTimeout(request.getTimeout());
         config.setIsActive(request.getIsActive());
+        config.setUserId(userId);
         config.setCreateTime(LocalDateTime.now());
         config.setUpdateTime(LocalDateTime.now());
         configMapper.insert(config);
@@ -57,12 +63,16 @@ public class AiModelServiceImpl implements AiModelService {
     @Override
     @Transactional
     public AiModelConfig updateConfig(Long id, AiModelConfigRequest request) {
-        AiModelConfig config = configMapper.selectById(id);
+        Long userId = StpUtil.getLoginIdAsLong();
+        AiModelConfig config = configMapper.selectOne(
+                new LambdaQueryWrapper<AiModelConfig>()
+                        .eq(AiModelConfig::getId, id)
+                        .eq(AiModelConfig::getUserId, userId));
         if (config == null) {
             throw new RuntimeException("AI Model config not found");
         }
         if (Boolean.TRUE.equals(request.getIsActive())) {
-            deactivateSameType(request.getModelType(), id);
+            deactivateSameType(request.getModelType(), id, userId);
         }
         config.setModelType(request.getModelType());
         config.setModelName(request.getModelName());
@@ -76,10 +86,11 @@ public class AiModelServiceImpl implements AiModelService {
         return config;
     }
 
-    private void deactivateSameType(String modelType, Long excludeId) {
+    private void deactivateSameType(String modelType, Long excludeId, Long userId) {
         LambdaQueryWrapper<AiModelConfig> wrapper = new LambdaQueryWrapper<AiModelConfig>()
                 .eq(AiModelConfig::getModelType, modelType)
-                .eq(AiModelConfig::getIsActive, true);
+                .eq(AiModelConfig::getIsActive, true)
+                .eq(AiModelConfig::getUserId, userId);
         if (excludeId != null) {
             wrapper.ne(AiModelConfig::getId, excludeId);
         }
@@ -93,7 +104,11 @@ public class AiModelServiceImpl implements AiModelService {
 
     @Override
     public AiModelConfig getConfigById(Long id) {
-        AiModelConfig config = configMapper.selectById(id);
+        Long userId = StpUtil.getLoginIdAsLong();
+        AiModelConfig config = configMapper.selectOne(
+                new LambdaQueryWrapper<AiModelConfig>()
+                        .eq(AiModelConfig::getId, id)
+                        .eq(AiModelConfig::getUserId, userId));
         if (config == null) {
             throw new RuntimeException("AI Model config not found");
         }
@@ -102,20 +117,45 @@ public class AiModelServiceImpl implements AiModelService {
 
     @Override
     public List<AiModelConfig> getAllConfigs() {
-        return configMapper.selectList(null);
+        Long userId = StpUtil.getLoginIdAsLong();
+        return getAllConfigs(userId);
+    }
+
+    @Override
+    public List<AiModelConfig> getAllConfigs(Long userId) {
+        LambdaQueryWrapper<AiModelConfig> wrapper = new LambdaQueryWrapper<AiModelConfig>()
+                .eq(AiModelConfig::getUserId, userId);
+        return configMapper.selectList(wrapper);
     }
 
     @Override
     public List<AiModelConfig> getActiveConfigs() {
-        LambdaQueryWrapper<AiModelConfig> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(AiModelConfig::getIsActive, true);
+        Long userId = StpUtil.getLoginIdAsLong();
+        return getActiveConfigs(userId);
+    }
+
+    @Override
+    public List<AiModelConfig> getActiveConfigs(Long userId) {
+        LambdaQueryWrapper<AiModelConfig> queryWrapper = new LambdaQueryWrapper<AiModelConfig>()
+                .eq(AiModelConfig::getIsActive, true)
+                .eq(AiModelConfig::getUserId, userId);
         return configMapper.selectList(queryWrapper);
     }
 
     @Override
     public AiModelConfig getActiveConfig() {
-        LambdaQueryWrapper<AiModelConfig> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(AiModelConfig::getIsActive, true)
+        Long userId = StpUtil.getLoginIdAsLong();
+        return getActiveConfig(userId);
+    }
+
+    @Override
+    public AiModelConfig getActiveConfig(Long userId) {
+        if (userId == null) {
+            return null;
+        }
+        LambdaQueryWrapper<AiModelConfig> queryWrapper = new LambdaQueryWrapper<AiModelConfig>()
+                .eq(AiModelConfig::getIsActive, true)
+                .eq(AiModelConfig::getUserId, userId)
                 .orderByDesc(AiModelConfig::getUpdateTime)
                 .last("LIMIT 1");
         return configMapper.selectOne(queryWrapper);
@@ -123,10 +163,16 @@ public class AiModelServiceImpl implements AiModelService {
 
     @Override
     public String getActiveModelType() {
+        Long userId = StpUtil.getLoginIdAsLong();
+        return getActiveModelType(userId);
+    }
+
+    @Override
+    public String getActiveModelType(Long userId) {
         try {
-            AiModelConfig config = getActiveConfig();
+            AiModelConfig config = getActiveConfig(userId);
             if (config != null && config.getModelType() != null && !config.getModelType().isEmpty()) {
-                log.info("从数据库获取到激活的模型类型: {}", config.getModelType());
+                log.info("从数据库获取到激活的模型类型: {} (userId={})", config.getModelType(), userId);
                 return config.getModelType();
             }
             log.warn("未找到激活的模型配置，使用默认值: {}", BusinessConstants.MODEL_TYPE_OPENAI);
@@ -141,14 +187,32 @@ public class AiModelServiceImpl implements AiModelService {
     @Override
     @Transactional
     public void deleteConfig(Long id) {
+        Long userId = StpUtil.getLoginIdAsLong();
+        Long count = configMapper.selectCount(
+                new LambdaQueryWrapper<AiModelConfig>()
+                        .eq(AiModelConfig::getId, id)
+                        .eq(AiModelConfig::getUserId, userId));
+        if (count == 0) {
+            throw new RuntimeException("AI Model config not found");
+        }
         configMapper.deleteById(id);
     }
 
     @Override
     public AiModelConfig getActiveConfigByType(String modelType) {
+        Long userId = StpUtil.getLoginIdAsLong();
+        return getActiveConfigByType(modelType, userId);
+    }
+
+    @Override
+    public AiModelConfig getActiveConfigByType(String modelType, Long userId) {
+        if (userId == null) {
+            return null;
+        }
         LambdaQueryWrapper<AiModelConfig> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(AiModelConfig::getModelType, modelType)
-                .eq(AiModelConfig::getIsActive, true);
+                .eq(AiModelConfig::getIsActive, true)
+                .eq(AiModelConfig::getUserId, userId);
         AiModelConfig config = configMapper.selectOne(queryWrapper);
         if (config == null) {
             throw new RuntimeException("Active AI Model config not found for type: " + modelType);
@@ -158,7 +222,16 @@ public class AiModelServiceImpl implements AiModelService {
 
     @Override
     public String generateAnalysis(String prompt, String modelType) {
-        AiModelConfig config = getActiveConfigByType(modelType);
+        Long userId = StpUtil.getLoginIdAsLong();
+        return generateAnalysis(prompt, modelType, userId);
+    }
+
+    /**
+     * 调用AI模型生成分析内容，按模型类型构建对应的ChatModel并执行推理
+     */
+    @Override
+    public String generateAnalysis(String prompt, String modelType, Long userId) {
+        AiModelConfig config = getActiveConfigByType(modelType, userId);
         String modelName = config.getModelName();
         int promptLength = prompt != null ? prompt.length() : 0;
         String promptPreview = prompt != null && prompt.length() > SystemConstants.PROMPT_PREVIEW_MAX_LENGTH ? prompt.substring(0, SystemConstants.PROMPT_PREVIEW_MAX_LENGTH) + "..." : prompt;
@@ -182,7 +255,8 @@ public class AiModelServiceImpl implements AiModelService {
                                           java.util.function.Consumer<String> onNext,
                                           java.util.function.Consumer<AnalysisResult> onComplete,
                                           java.util.function.Consumer<Throwable> onError) {
-        AiModelConfig config = getActiveConfigByType(modelType);
+        Long userId = StpUtil.getLoginIdAsLong();
+        AiModelConfig config = getActiveConfigByType(modelType, userId);
         String modelName = config.getModelName();
         log.info("===== AI流式分析开始 =====");
         log.info("模型类型: {}, 模型名称: {}", modelType, modelName);
@@ -230,7 +304,7 @@ public class AiModelServiceImpl implements AiModelService {
     }
 
     /**
-     * 构建StreamingChatModel实例
+     * 构建流式ChatModel实例，支持OLLAMA/GEMINI/OPENAI三种类型
      */
     private StreamingChatModel buildStreamingModel(AiModelConfig config, String modelType) {
         if (BusinessConstants.MODEL_TYPE_OLLAMA.equalsIgnoreCase(modelType)) {
@@ -263,11 +337,7 @@ public class AiModelServiceImpl implements AiModelService {
     }
 
     /**
-     * 构建ChatLanguageModel实例
-     * 
-     * @param config 模型配置
-     * @param modelType 模型类型
-     * @return ChatLanguageModel实例
+     * 构建普通ChatModel实例，支持OLLAMA/GEMINI/OPENAI三种类型
      */
     private ChatModel buildModel(AiModelConfig config, String modelType) {
         if (BusinessConstants.MODEL_TYPE_OLLAMA.equalsIgnoreCase(modelType)) {
@@ -299,6 +369,11 @@ public class AiModelServiceImpl implements AiModelService {
     }
 
     @Override
+    public boolean hasActiveConfig(Long userId) {
+        return getActiveConfig(userId) != null;
+    }
+
+    @Override
     public AiModelTestResponse testConnection(AiModelTestRequest request) {
         log.info("===== AI模型连接测试开始 =====");
         log.info("模型类型: {}", request.getModelType());
@@ -319,8 +394,6 @@ public class AiModelServiceImpl implements AiModelService {
         } else if (BusinessConstants.MODEL_TYPE_GEMINI.equalsIgnoreCase(request.getModelType())) {
             log.info("使用 Gemini 模型配置");
             log.info("API Key: {}", maskApiKey(request.getApiKey()));
-            log.info("模型名称: {}", request.getModelName());
-            log.info("温度参数: {}", request.getTemperature());
 
             if (request.getApiKey() == null || request.getApiKey().trim().isEmpty()) {
                 log.error("Gemini API Key 为空");
@@ -345,10 +418,6 @@ public class AiModelServiceImpl implements AiModelService {
             log.info("Gemini 模型实例创建完成");
         } else {
             log.info("使用 OpenAI 兼容模型配置");
-            log.info("API Base URL: {}", request.getApiBaseUrl());
-            log.info("API Key: {}", maskApiKey(request.getApiKey()));
-            log.info("模型名称: {}", request.getModelName());
-            log.info("温度参数: {}", request.getTemperature());
 
             OpenAiChatModel.OpenAiChatModelBuilder builder = OpenAiChatModel.builder()
                     .baseUrl(request.getApiBaseUrl())
@@ -356,7 +425,6 @@ public class AiModelServiceImpl implements AiModelService {
                     .modelName(request.getModelName())
                     .temperature(request.getTemperature());
             if (request.getTimeout() != null) {
-                log.info("超时设置: {}秒", request.getTimeout());
                 builder.timeout(Duration.ofSeconds(request.getTimeout()));
             }
             model = builder.build();
@@ -366,70 +434,44 @@ public class AiModelServiceImpl implements AiModelService {
         long start = System.currentTimeMillis();
         try {
             log.info("开始执行测试连接请求...");
-            log.info("测试提示词: {}", BusinessConstants.TEST_CONNECTION_PROMPT);
 
             String result = model.chat(BusinessConstants.TEST_CONNECTION_PROMPT);
 
             long elapsed = System.currentTimeMillis() - start;
-            log.info("测试连接成功");
-            log.info("响应结果: {}", result);
-            log.info("总耗时: {}ms ({}秒)", elapsed, elapsed / 1000.0);
             log.info("===== AI模型连接测试完成 =====");
 
             return new AiModelTestResponse(request.getModelName(), elapsed);
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - start;
             log.error("测试连接失败");
-            log.error("耗时: {}ms", elapsed);
-            log.error("异常类型: {}", e.getClass().getName());
-            log.error("异常消息: {}", e.getMessage());
-
-            if (e.getCause() != null) {
-                log.error("根本原因: {}", e.getCause().getClass().getName());
-                log.error("根本原因消息: {}", e.getCause().getMessage());
-            }
 
             String errorMsg = "AI模型连接测试失败: ";
             if (e.getMessage() != null && (e.getMessage().contains("ConnectException") || e.getMessage().contains("ClosedChannelException"))) {
                 if (BusinessConstants.MODEL_TYPE_GEMINI.equalsIgnoreCase(request.getModelType())) {
-                    log.error("检测到 Gemini API 连接异常");
                     errorMsg += "无法连接到 Gemini API 服务器。可能原因：\n" +
-                            "1. 网络连接问题，请检查是否可以访问 Google API (generativelanguage.googleapis.com)\n" +
-                            "2. 需要配置网络代理才能访问 Google 服务\n" +
+                            "1. 网络连接问题\n" +
+                            "2. 需要配置网络代理\n" +
                             "3. API Key 可能无效或已过期\n" +
-                            "4. 防火墙阻止了连接\n" +
-                            "5. 当前网络环境不支持访问 Google 服务";
+                            "4. 防火墙阻止了连接";
                 } else if (BusinessConstants.MODEL_TYPE_OLLAMA.equalsIgnoreCase(request.getModelType())) {
-                    log.error("检测到 Ollama 连接异常");
                     errorMsg += "无法连接到 Ollama 服务器。请检查：\n" +
                             "1. Ollama 服务是否正在运行\n" +
                             "2. API Base URL 是否正确: " + request.getApiBaseUrl() + "\n" +
-                            "3. 网络连接是否正常\n" +
-                            "4. 端口是否正确开放";
+                            "3. 端口是否正确开放";
                 } else {
-                    log.error("检测到 OpenAI 兼容 API 连接异常");
                     errorMsg += "无法连接到 API 服务器。请检查：\n" +
                             "1. API Base URL 是否正确: " + request.getApiBaseUrl() + "\n" +
-                            "2. 网络连接是否正常\n" +
-                            "3. 服务是否正在运行\n" +
-                            "4. API Key 是否有效";
+                            "2. 服务是否正在运行\n" +
+                            "3. API Key 是否有效";
                 }
             } else {
                 errorMsg += e.getMessage();
             }
 
-            log.error("错误详情: {}", errorMsg);
-            log.error("===== AI模型连接测试失败 =====");
-
             throw new RuntimeException(errorMsg, e);
         }
     }
 
-    /**
-     * 隐藏 API Key 用于日志输出
-     * @param apiKey 原始 API Key
-     * @return 隐藏后的字符串
-     */
     private String maskApiKey(String apiKey) {
         if (apiKey == null || apiKey.isEmpty()) {
             return "(空)";

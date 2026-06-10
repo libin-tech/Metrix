@@ -31,6 +31,7 @@ import com.bintech.metrix.service.StockAnalysisService;
 import com.bintech.metrix.service.StockBasicService;
 import com.bintech.metrix.util.MarkdownRenderer;
 
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
@@ -52,55 +53,40 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
     private final NotificationService notificationService;
 
     /**
-     * 执行完整的股票分析流程：
-     * <ol>
-     *   <li>获取行情、深度、K线、舆情数据</li>
-     *   <li>构建AI提示词并调用模型分析</li>
-     *   <li>生成核心洞察与分析概览</li>
-     *   <li>持久化分析结果</li>
-     * </ol>
-     *
-     * @param request 分析请求
-     * @param record  待更新的分析记录
-     * @return 分析响应
+     * 执行股票全维度分析
+     * <p>按序采集实时行情、五档深度、K线、筹码分布、十大流通股东、新闻舆情，
+     * 构建AI提示词并调用模型生成分析报告，最后从报告中提取核心洞察和概览数据。</p>
      */
     @Override
     @Transactional
     public StockAnalysisResponse analyzeStock(StockAnalysisRequest request, StockAnalysisRecord record) {
-        // 解析请求参数，获取股票基本信息
         String stockCode = request.getStockCode();
         StockBasic stockBasic = stockBasicService.getByTsCode(stockCode);
         String analysisType = request.getAnalysisType();
+        Long userId = record.getUserId();
 
-        // 保留最近50条，超出则清理
         cleanupExcessRecords();
 
-        // 获取当前活跃的AI模型类型
-        String modelType = aiModelService.getActiveModelType();
-        log.info("使用动态获取的模型类型进行分析: {}", modelType);
+        String modelType = aiModelService.getActiveModelType(userId);
+        log.info("使用动态获取的模型类型进行分析: {}, userId={}", modelType, userId);
 
-        // 获取原始数据：实时行情、五档深度、K线、筹码分布、十大流通股东、新闻舆情
-        Map<String, Object> marketData = marketDataService.fetchRealTimeData(stockBasic);
+        Map<String, Object> marketData = marketDataService.fetchRealTimeData(stockBasic, userId);
         Map<String, Object> depthData = null;
         try {
-            depthData = marketDataService.fetchDepthData(stockBasic);
+            depthData = marketDataService.fetchDepthData(stockBasic, userId);
         } catch (Exception e) {
             log.warn("获取五档深度行情失败，跳过: {}", e.getMessage());
         }
-        Map<String, Object> klinesData = marketDataService.fetchKlinesData(stockBasic, BusinessConstants.DEFAULT_KLINE_LIMIT);
-        Map<String, Object> chipData = marketDataService.fetchChipData(stockBasic);
-        Map<String, Object> topFreeShareholdersData = marketDataService.fetchTopFreeShareholdersData(stockBasic);
-        Map<String, Object> newsSummary = newsCollector.collect(stockBasic, modelType);
+        Map<String, Object> klinesData = marketDataService.fetchKlinesData(stockBasic, BusinessConstants.DEFAULT_KLINE_LIMIT, userId);
+        Map<String, Object> chipData = marketDataService.fetchChipData(stockBasic, userId);
+        Map<String, Object> topFreeShareholdersData = marketDataService.fetchTopFreeShareholdersData(stockBasic, userId);
+        Map<String, Object> newsSummary = newsCollector.collect(stockBasic, modelType, userId);
 
-        // AI分析：构建提示词 → 模型生成报告 → 提取核心洞察和关联板块 → 构建分析概览
         String prompt = analysisPromptBuilder.build(stockBasic, analysisType, marketData, depthData, klinesData, newsSummary, chipData, topFreeShareholdersData);
-        String content = aiModelService.generateAnalysis(prompt, modelType);
-        String coreInsight = analysisOverviewBuilder.generateCoreInsight(content, modelType);
+        String content = aiModelService.generateAnalysis(prompt, modelType, userId);
+        String coreInsight = analysisOverviewBuilder.generateCoreInsight(content, modelType, userId);
         AnalysisOverview overview = analysisOverviewBuilder.build(marketData, klinesData, content, coreInsight, chipData, topFreeShareholdersData);
 
-
-
-        // 持久化分析结果
         record.setAnalysisResult(content);
         record.setAnalysisOverview(JSONUtil.toJsonStr(overview));
         record.setMarketData(marketData != null ? JSONUtil.toJsonStr(marketData) : null);
@@ -113,7 +99,6 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
         recordMapper.updateById(record);
         cleanupExcessRecords();
 
-        // 组装响应
         StockAnalysisResponse response = new StockAnalysisResponse();
         response.setStockCode(stockCode);
         response.setStockName(record.getStockName());
@@ -126,6 +111,9 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
         return response;
     }
 
+    /**
+     * 根据主键查询分析记录，不存在时抛出异常
+     */
     @Override
     public StockAnalysisRecord getAnalysisById(Long id) {
         StockAnalysisRecord record = recordMapper.selectById(id);
@@ -135,18 +123,26 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
         return record;
     }
 
+    /**
+     * 获取当前用户的所有分析记录，按ID倒序排列
+     */
     @Override
     public List<StockAnalysisRecord> getAllAnalysisRecords() {
-        Long userId = cn.dev33.satoken.stp.StpUtil.getLoginIdAsLong();
+        Long userId = StpUtil.getLoginIdAsLong();
         LambdaQueryWrapper<StockAnalysisRecord> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(StockAnalysisRecord::getUserId, userId);
         queryWrapper.orderByDesc(StockAnalysisRecord::getId);
         return recordMapper.selectList(queryWrapper);
     }
 
+    /**
+     * 游标分页查询当前用户的分析记录
+     * @param cursor 上一页最后一条的ID，null时从最新开始
+     * @param limit 每页条数（实际多取一条用于判断 hasMore）
+     */
     @Override
     public CursorPageResult<StockAnalysisRecord> cursorQuery(Long cursor, int limit) {
-        Long userId = cn.dev33.satoken.stp.StpUtil.getLoginIdAsLong();
+        Long userId = StpUtil.getLoginIdAsLong();
         LambdaQueryWrapper<StockAnalysisRecord> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(StockAnalysisRecord::getUserId, userId);
         if (cursor != null && cursor > 0) {
@@ -167,6 +163,9 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
                 .build();
     }
 
+    /**
+     * 删除指定分析记录
+     */
     @Override
     @Transactional
     public void deleteAnalysisRecord(Long id) {
@@ -178,23 +177,32 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
         log.info("分析记录删除成功，ID: {}", id);
     }
 
+    /**
+     * 清理超出 {@link BusinessConstants#MAX_RECORD_KEEP_COUNT} 的旧分析记录，
+     * 仅保留最新的 N 条
+     */
     @Override
     @Transactional
     public void cleanupExcessRecords() {
-        long total = recordMapper.selectCount(new LambdaQueryWrapper<>());
+        List<StockAnalysisRecord> allRecords = recordMapper.selectList(
+                new LambdaQueryWrapper<StockAnalysisRecord>()
+                        .orderByDesc(StockAnalysisRecord::getCreateTime));
+        if (allRecords.isEmpty()) return;
+
+        long total = allRecords.size();
         if (total <= BusinessConstants.MAX_RECORD_KEEP_COUNT) return;
 
-        List<StockAnalysisRecord> latestRecords = recordMapper.selectList(
-                new LambdaQueryWrapper<StockAnalysisRecord>()
-                        .orderByDesc(StockAnalysisRecord::getCreateTime)
-                        .last("LIMIT " + BusinessConstants.MAX_RECORD_KEEP_COUNT));
-        List<Long> keepIds = latestRecords.stream()
+        List<Long> keepIds = allRecords.stream()
+                .limit(BusinessConstants.MAX_RECORD_KEEP_COUNT)
                 .map(StockAnalysisRecord::getId)
                 .collect(Collectors.toList());
         recordMapper.delete(new LambdaQueryWrapper<StockAnalysisRecord>()
                 .notIn(StockAnalysisRecord::getId, keepIds));
     }
 
+    /**
+     * 获取分析报告详情，包含渲染后的分析结果、新闻摘要和列表
+     */
     @Override
     public StockAnalysisDetailResponse getAnalysisDetail(Long id) {
         StockAnalysisRecord record = getAnalysisById(id);
@@ -213,6 +221,10 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
                 .build();
     }
 
+    /**
+     * 执行异步分析任务（由任务队列 Worker 调用）
+     * 分析完成后根据请求决定是否自动推送到飞书
+     */
     @Override
     @Transactional
     public void executeAnalysis(Long recordId, StockAnalysisRequest request) {
@@ -224,7 +236,6 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
         }
         analyzeStock(request, record);
 
-        // 自动推送到飞书
         if (Boolean.TRUE.equals(request.getPushToFeishu())) {
             try {
                 pushToFeishu(recordId);
@@ -235,6 +246,10 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
         }
     }
 
+    /**
+     * 将已完成的分析报告推送到飞书，包含核心洞察卡片
+     * @throws RuntimeException 当记录未完成或推送失败时抛出
+     */
     @Override
     public void pushToFeishu(Long id) {
         StockAnalysisRecord record = getAnalysisById(id);
@@ -244,14 +259,12 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
 
         StockBasic stockBasic = stockBasicService.getByTsCode(record.getStockCode());
 
-        // 解析概览
         String overviewJson = record.getAnalysisOverview();
         String coreInsight = "";
         if (overviewJson != null) {
             try {
                 JSONObject overview = JSONUtil.parseObj(overviewJson);
                 coreInsight = overview.getStr("coreInsight", "");
-                // 清理Markdown标记用于纯文本展示
                 coreInsight = coreInsight.replaceAll("\\*\\*", "").replaceAll("\\*", "");
             } catch (Exception e) {
                 log.warn("解析概览JSON失败: {}", e.getMessage());
@@ -264,7 +277,7 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
 
         boolean success = notificationService.sendFeishuCardMessage(
                 stockBasic.getName(), stockBasic.getTsCode(),
-                coreInsight, overviewJson, analysisTime);
+                coreInsight, overviewJson, analysisTime, record.getUserId());
 
         if (!success) {
             throw new RuntimeException("飞书推送失败，请检查飞书配置");
