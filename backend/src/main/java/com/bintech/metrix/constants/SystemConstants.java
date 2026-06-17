@@ -32,9 +32,6 @@ public final class SystemConstants {
     public static final int DEFAULT_MAX_TOKENS = 2048;
     public static final int DEFAULT_REQUEST_INTERVAL = 30;
 
-    /* ==================== 摘要相关 ==================== */
-    public static final int SUMMARY_MAX_WORDS = 100;
-
     /* ==================== K线相关 ==================== */
     public static final String KLINE_PERIOD_DAY = "1d";
     public static final int KLINE_DISPLAY_COUNT = 30;

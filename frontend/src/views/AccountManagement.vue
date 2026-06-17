@@ -89,21 +89,11 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { message } from 'ant-design-vue'
-import {
-  BankOutlined,
-  DeleteOutlined,
-  EditOutlined,
-  PlusOutlined
-} from '@ant-design/icons-vue'
-import {
-  getBrokerAccounts,
-  createBrokerAccount,
-  updateBrokerAccount,
-  deleteBrokerAccount
-} from '../api'
+import {computed, onMounted, reactive, ref} from 'vue'
+import {useI18n} from 'vue-i18n'
+import {message} from 'ant-design-vue'
+import {BankOutlined, DeleteOutlined, EditOutlined, PlusOutlined} from '@ant-design/icons-vue'
+import {createBrokerAccount, deleteBrokerAccount, getBrokerAccounts, updateBrokerAccount} from '../api'
 
 const { t } = useI18n()
 

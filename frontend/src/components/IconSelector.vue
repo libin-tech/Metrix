@@ -23,7 +23,7 @@
 </template>
 
 <script setup>
-import { iconMap } from '../composables/iconMap'
+import {iconMap} from '../composables/iconMap'
 
 defineProps({
   visible: Boolean,

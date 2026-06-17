@@ -1,15 +1,14 @@
 package com.bintech.metrix.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bintech.metrix.constants.BusinessConstants;
 import com.bintech.metrix.constants.SystemConstants;
 import com.bintech.metrix.dto.request.AiModelConfigRequest;
 import com.bintech.metrix.dto.request.AiModelTestRequest;
 import com.bintech.metrix.dto.response.AiModelTestResponse;
 import com.bintech.metrix.dto.response.AnalysisResult;
+import com.bintech.metrix.repository.dao.AiModelConfigDao;
 import com.bintech.metrix.repository.entity.AiModelConfig;
-import com.bintech.metrix.repository.mapper.AiModelConfigMapper;
 import com.bintech.metrix.service.AiModelService;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -26,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 
 @Slf4j
@@ -33,11 +33,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AiModelServiceImpl implements AiModelService {
 
-    private final AiModelConfigMapper configMapper;
+    private final AiModelConfigDao configDao;
 
-    /**
-     * 创建AI模型配置，若标记为激活则先停用同类型其他配置
-     */
     @Override
     @Transactional
     public AiModelConfig createConfig(AiModelConfigRequest request) {
@@ -56,7 +53,7 @@ public class AiModelServiceImpl implements AiModelService {
         config.setUserId(userId);
         config.setCreateTime(LocalDateTime.now());
         config.setUpdateTime(LocalDateTime.now());
-        configMapper.insert(config);
+        configDao.insert(config);
         return config;
     }
 
@@ -64,10 +61,7 @@ public class AiModelServiceImpl implements AiModelService {
     @Transactional
     public AiModelConfig updateConfig(Long id, AiModelConfigRequest request) {
         Long userId = StpUtil.getLoginIdAsLong();
-        AiModelConfig config = configMapper.selectOne(
-                new LambdaQueryWrapper<AiModelConfig>()
-                        .eq(AiModelConfig::getId, id)
-                        .eq(AiModelConfig::getUserId, userId));
+        AiModelConfig config = configDao.selectByIdAndUserId(id, userId);
         if (config == null) {
             throw new RuntimeException("AI Model config not found");
         }
@@ -82,33 +76,26 @@ public class AiModelServiceImpl implements AiModelService {
         config.setTimeout(request.getTimeout());
         config.setIsActive(request.getIsActive());
         config.setUpdateTime(LocalDateTime.now());
-        configMapper.updateById(config);
+        configDao.updateById(config);
         return config;
     }
 
     private void deactivateSameType(String modelType, Long excludeId, Long userId) {
-        LambdaQueryWrapper<AiModelConfig> wrapper = new LambdaQueryWrapper<AiModelConfig>()
-                .eq(AiModelConfig::getModelType, modelType)
-                .eq(AiModelConfig::getIsActive, true)
-                .eq(AiModelConfig::getUserId, userId);
-        if (excludeId != null) {
-            wrapper.ne(AiModelConfig::getId, excludeId);
-        }
-        List<AiModelConfig> activeConfigs = configMapper.selectList(wrapper);
+        List<AiModelConfig> activeConfigs = configDao.selectActiveByUserIdAndModelType(userId, modelType);
         for (AiModelConfig c : activeConfigs) {
+            if (excludeId != null && c.getId().equals(excludeId)) {
+                continue;
+            }
             c.setIsActive(false);
             c.setUpdateTime(LocalDateTime.now());
-            configMapper.updateById(c);
+            configDao.updateById(c);
         }
     }
 
     @Override
     public AiModelConfig getConfigById(Long id) {
         Long userId = StpUtil.getLoginIdAsLong();
-        AiModelConfig config = configMapper.selectOne(
-                new LambdaQueryWrapper<AiModelConfig>()
-                        .eq(AiModelConfig::getId, id)
-                        .eq(AiModelConfig::getUserId, userId));
+        AiModelConfig config = configDao.selectByIdAndUserId(id, userId);
         if (config == null) {
             throw new RuntimeException("AI Model config not found");
         }
@@ -123,9 +110,7 @@ public class AiModelServiceImpl implements AiModelService {
 
     @Override
     public List<AiModelConfig> getAllConfigs(Long userId) {
-        LambdaQueryWrapper<AiModelConfig> wrapper = new LambdaQueryWrapper<AiModelConfig>()
-                .eq(AiModelConfig::getUserId, userId);
-        return configMapper.selectList(wrapper);
+        return configDao.selectByUserId(userId);
     }
 
     @Override
@@ -136,10 +121,7 @@ public class AiModelServiceImpl implements AiModelService {
 
     @Override
     public List<AiModelConfig> getActiveConfigs(Long userId) {
-        LambdaQueryWrapper<AiModelConfig> queryWrapper = new LambdaQueryWrapper<AiModelConfig>()
-                .eq(AiModelConfig::getIsActive, true)
-                .eq(AiModelConfig::getUserId, userId);
-        return configMapper.selectList(queryWrapper);
+        return configDao.selectActiveByUserId(userId);
     }
 
     @Override
@@ -153,12 +135,13 @@ public class AiModelServiceImpl implements AiModelService {
         if (userId == null) {
             return null;
         }
-        LambdaQueryWrapper<AiModelConfig> queryWrapper = new LambdaQueryWrapper<AiModelConfig>()
-                .eq(AiModelConfig::getIsActive, true)
-                .eq(AiModelConfig::getUserId, userId)
-                .orderByDesc(AiModelConfig::getUpdateTime)
-                .last("LIMIT 1");
-        return configMapper.selectOne(queryWrapper);
+        List<AiModelConfig> configs = configDao.selectActiveByUserId(userId);
+        if (configs.isEmpty()) {
+            return null;
+        }
+        return configs.stream()
+                .max(Comparator.comparing(AiModelConfig::getUpdateTime))
+                .orElse(null);
     }
 
     @Override
@@ -188,14 +171,11 @@ public class AiModelServiceImpl implements AiModelService {
     @Transactional
     public void deleteConfig(Long id) {
         Long userId = StpUtil.getLoginIdAsLong();
-        Long count = configMapper.selectCount(
-                new LambdaQueryWrapper<AiModelConfig>()
-                        .eq(AiModelConfig::getId, id)
-                        .eq(AiModelConfig::getUserId, userId));
+        long count = configDao.countByIdAndUserId(id, userId);
         if (count == 0) {
             throw new RuntimeException("AI Model config not found");
         }
-        configMapper.deleteById(id);
+        configDao.deleteById(id);
     }
 
     @Override
@@ -209,11 +189,7 @@ public class AiModelServiceImpl implements AiModelService {
         if (userId == null) {
             return null;
         }
-        LambdaQueryWrapper<AiModelConfig> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(AiModelConfig::getModelType, modelType)
-                .eq(AiModelConfig::getIsActive, true)
-                .eq(AiModelConfig::getUserId, userId);
-        AiModelConfig config = configMapper.selectOne(queryWrapper);
+        AiModelConfig config = configDao.selectOneActiveByUserIdAndModelType(userId, modelType);
         if (config == null) {
             throw new RuntimeException("Active AI Model config not found for type: " + modelType);
         }
@@ -226,9 +202,6 @@ public class AiModelServiceImpl implements AiModelService {
         return generateAnalysis(prompt, modelType, userId);
     }
 
-    /**
-     * 调用AI模型生成分析内容，按模型类型构建对应的ChatModel并执行推理
-     */
     @Override
     public String generateAnalysis(String prompt, String modelType, Long userId) {
         AiModelConfig config = getActiveConfigByType(modelType, userId);
@@ -303,9 +276,6 @@ public class AiModelServiceImpl implements AiModelService {
         });
     }
 
-    /**
-     * 构建流式ChatModel实例，支持OLLAMA/GEMINI/OPENAI三种类型
-     */
     private StreamingChatModel buildStreamingModel(AiModelConfig config, String modelType) {
         if (BusinessConstants.MODEL_TYPE_OLLAMA.equalsIgnoreCase(modelType)) {
             return OllamaStreamingChatModel.builder()
@@ -336,9 +306,6 @@ public class AiModelServiceImpl implements AiModelService {
         return builder.build();
     }
 
-    /**
-     * 构建普通ChatModel实例，支持OLLAMA/GEMINI/OPENAI三种类型
-     */
     private ChatModel buildModel(AiModelConfig config, String modelType) {
         if (BusinessConstants.MODEL_TYPE_OLLAMA.equalsIgnoreCase(modelType)) {
             return OllamaChatModel.builder()

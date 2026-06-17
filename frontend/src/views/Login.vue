@@ -128,13 +128,13 @@
 </template>
 
 <script setup>
-import { reactive, ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { useI18n } from 'vue-i18n'
-import { message } from 'ant-design-vue'
-import { LockOutlined, UserOutlined, SafetyOutlined, WechatOutlined } from '@ant-design/icons-vue'
-import { login, loginByCode } from '../api'
-import { marked } from 'marked'
+import {computed, reactive, ref} from 'vue'
+import {useRouter} from 'vue-router'
+import {useI18n} from 'vue-i18n'
+import {message} from 'ant-design-vue'
+import {LockOutlined, SafetyOutlined, UserOutlined, WechatOutlined} from '@ant-design/icons-vue'
+import {login, loginByCode} from '../api'
+import {marked} from 'marked'
 
 const { locale, t } = useI18n()
 const router = useRouter()

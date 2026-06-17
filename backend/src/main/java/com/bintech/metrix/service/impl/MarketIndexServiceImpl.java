@@ -1,10 +1,10 @@
 package com.bintech.metrix.service.impl;
 
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import com.bintech.metrix.constants.ApiConstants;
 import com.bintech.metrix.constants.SystemConstants;
 import com.bintech.metrix.service.MarketIndexService;
-import cn.hutool.json.JSONObject;
-import cn.hutool.json.JSONUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -51,6 +51,7 @@ public class MarketIndexServiceImpl implements MarketIndexService {
         try {
             ProcessBuilder pb = new ProcessBuilder(command);
             pb.redirectErrorStream(true);
+            pb.environment().put("PYTHONIOENCODING", "utf-8");
 
             Process process = pb.start();
 

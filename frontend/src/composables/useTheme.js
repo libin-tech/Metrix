@@ -1,4 +1,4 @@
-import { ref, computed, onMounted } from 'vue'
+import {computed, onMounted, ref} from 'vue'
 
 const THEME_KEY = 'metrix-theme'
 

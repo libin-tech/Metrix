@@ -1,5 +1,8 @@
 package com.bintech.metrix.core.analysis;
 
+import cn.hutool.json.JSONArray;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import com.bintech.metrix.constants.ApiConstants;
 import com.bintech.metrix.constants.BusinessConstants;
 import com.bintech.metrix.model.AnalysisOverview;
@@ -7,16 +10,11 @@ import com.bintech.metrix.model.BattlePlan;
 import com.bintech.metrix.model.DataPivot;
 import com.bintech.metrix.model.RealTimeMarket;
 import com.bintech.metrix.service.AiModelService;
-import cn.hutool.json.JSONArray;
-import cn.hutool.json.JSONObject;
-import cn.hutool.json.JSONUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -56,31 +54,6 @@ public class AnalysisOverviewBuilder {
             return "核心洞察分析失败";
         }
 
-    }
-
-    private List<String> parseRelatedSectors(String response) {
-        List<String> sectors = new ArrayList<>();
-        try {
-            int idx = response.indexOf("【关联板块】");
-            if (idx < 0) idx = response.indexOf("关联板块");
-            if (idx < 0) return sectors;
-
-            String section = response.substring(idx);
-            for (String line : section.split("\n")) {
-                line = line.trim();
-                if (!line.startsWith("-") && !line.startsWith("*")) {
-                    continue;
-                }
-                String name = line.replaceAll("^[-*]\\s*", "").replaceAll("\\*\\*", "").trim();
-                if (name.isEmpty()) {
-                    continue;
-                }
-                sectors.add(name);
-            }
-        } catch (Exception e) {
-            log.warn("解析关联板块失败: {}", e.getMessage());
-        }
-        return sectors;
     }
 
     /**

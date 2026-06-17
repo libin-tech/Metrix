@@ -1,22 +1,20 @@
 package com.bintech.metrix.core.analysis;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.springframework.stereotype.Component;
-
+import cn.hutool.json.JSONArray;
+import cn.hutool.json.JSONObject;
 import com.bintech.metrix.constants.ApiConstants;
 import com.bintech.metrix.constants.BusinessConstants;
 import com.bintech.metrix.repository.entity.StockBasic;
 import com.bintech.metrix.service.AiModelService;
 import com.bintech.metrix.service.NewsService;
-
-import cn.hutool.json.JSONArray;
-import cn.hutool.json.JSONObject;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -76,6 +74,13 @@ public class NewsCollector {
                 log.warn("解析第{}条新闻数据失败: {}", i + 1, e.getMessage());
             }
         }
+        newsList.sort((a, b) -> {
+            String ta = (String) a.get("publishTime");
+            String tb = (String) b.get("publishTime");
+            if (ta == null || "未知时间".equals(ta)) return 1;
+            if (tb == null || "未知时间".equals(tb)) return -1;
+            return tb.compareTo(ta);
+        });
 
         Map<String, Object> newsSummaryMap = new HashMap<>();
         newsSummaryMap.put("count", newsList.size());

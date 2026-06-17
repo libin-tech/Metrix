@@ -19,7 +19,12 @@
 - 遵循标准 Maven 结构：backend/src/main/java/{package}/{module}。
 - controller 层只负责请求转发和参数校验。
 - service 层负责业务逻辑。核心业务逻辑在 service 层完成。
-- repository 层负责数据库持久化。禁止引入其他持久层框架。禁止处理数据以外的业务。
+- repository 层分为 **mapper** 和 **DAO** 两层：
+  - `repository.mapper` — MyBatis-Plus Mapper 接口，仅由 DAO 实现类注入。
+  - `repository.dao` — DAO 接口（公开） + 包级私有实现类（`@Repository`），是唯一对外暴露的持久化层入口。
+- DAO 接口禁止接受 `LambdaQueryWrapper` / `LambdaUpdateWrapper` 参数，必须定义具体的查询方法（如 `selectByUserId(Long)`、`countByUsernameAndNotId(String, Long)`）。
+- DAO 实现类负责参数校验（非空、非空白检查，失败时 `log.warn` + 返回安全默认值）和 MyBatis-Plus 条件构造器构建。
+- 所有 Mapper 只在 DAO 实现类中使用，Service 和 Controller 只注入 DAO 接口。
 
 ## 3. MyBatis-Plus 实体规范
 - 实体类必须继承 `BaseEntity`。
@@ -31,9 +36,9 @@
 - 表示状态或类型的字段需要用枚举类代替。枚举类型使用MyBatis-Plus自动映射枚举。
 - 所有字段必须添加注释。
 
-
 ## 4. 建表语句规范
 - 必须包含 `id`, `create_time`, `update_time`, `version`, `creator`, `modifier` 字段。
+- `create_time`/`creator` 对应 `FieldFill.INSERT`，`update_time`/`modifier` 对应 `FieldFill.INSERT_UPDATE`，通过 `MybatisMetaObjectHandler` 自动填充。
 - 必须有表注释和字段注释。
 - 涉及到表变更的需要完善到 `.doc/db/` 目录下。
 
@@ -57,6 +62,16 @@
 - 不要循环调用 DB，优先批量操作。
 - 不要硬编码密钥。
 
-## 7. 数据库规范
+## 7. Python 进程调用规范
+- 所有通过 `ProcessBuilder` 调用 Python 脚本的代码必须在 `pb.start()` 前设置环境变量：`pb.environment().put("PYTHONIOENCODING", "utf-8")`
+- 读取进程输出流必须使用 `StandardCharsets.UTF_8` 编码。
+- 脚本执行必须设置超时机制，超时后调用 `process.destroyForcibly()`。
+
+## 8. 审计字段自动填充规范
+- 实体基类 `BaseEntity` 的 `createTime`/`creator` 标注 `FieldFill.INSERT`，`updateTime`/`modifier` 标注 `FieldFill.INSERT_UPDATE`。
+- `MybatisMetaObjectHandler` 通过 `StpUtil.getLoginId()` 获取当前用户 ID 填充 `creator`/`modifier`，获取失败时使用 `"UNKNOWN"` 并输出 warn 日志。
+- 使用 `strictInsertFill`/`strictUpdateFill`，确保用户显式设置的值不会被自动填充覆盖。
+
+## 9. 数据库规范
 - 脚本存放路径：`.doc/db/V{version}_{description}.sql`
 

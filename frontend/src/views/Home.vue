@@ -196,16 +196,16 @@ import {
   WalletOutlined
 } from '@ant-design/icons-vue'
 import {
+  createMarketReview,
   getAiModelConfigs,
   getAllAnalysis,
   getBrokerAccounts,
   getMarketActivity,
   getMarketIndex,
-  getMarketReviews,
   getMarketReviewCursor,
+  getMarketReviews,
   getPortfolioHoldings,
-  triggerMarketReview,
-  createMarketReview
+  triggerMarketReview
 } from '../api'
 
 const router = useRouter()

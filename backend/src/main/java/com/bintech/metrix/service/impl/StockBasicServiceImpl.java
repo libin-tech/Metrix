@@ -3,11 +3,11 @@ package com.bintech.metrix.service.impl;
 import cn.hutool.core.text.csv.CsvData;
 import cn.hutool.core.text.csv.CsvRow;
 import cn.hutool.core.text.csv.CsvUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.bintech.metrix.dto.response.PageResult;
+import com.bintech.metrix.repository.dao.StockBasicDao;
 import com.bintech.metrix.repository.entity.StockBasic;
-import com.bintech.metrix.repository.mapper.StockBasicMapper;
 import com.bintech.metrix.service.StockBasicService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,25 +26,11 @@ import java.util.*;
 @RequiredArgsConstructor
 public class StockBasicServiceImpl implements StockBasicService {
 
-    private final StockBasicMapper stockBasicMapper;
+    private final StockBasicDao stockBasicDao;
 
     @Override
     public PageResult<StockBasic> pageQuery(String keyword, int page, int size) {
-        LambdaQueryWrapper<StockBasic> wrapper = new LambdaQueryWrapper<>();
-        if (keyword != null && !keyword.trim().isEmpty()) {
-            String kw = keyword.trim().toUpperCase();
-            wrapper.and(w -> w
-                    .like(StockBasic::getTsCode, kw)
-                    .or()
-                    .like(StockBasic::getSymbol, kw)
-                    .or()
-                    .like(StockBasic::getName, kw)
-                    .or()
-                    .like(StockBasic::getCnspell, kw));
-        }
-        wrapper.orderByAsc(StockBasic::getSymbol);
-
-        Page<StockBasic> p = stockBasicMapper.selectPage(new Page<>(page, size), wrapper);
+        IPage<StockBasic> p = stockBasicDao.selectStockPage(new Page<>(page, size), keyword);
         return new PageResult<>(p.getTotal(), p.getRecords());
     }
 
@@ -70,8 +56,7 @@ public class StockBasicServiceImpl implements StockBasicService {
 
             Map<String, StockBasic> existingMap = new HashMap<>();
             if (!incomingTsCodes.isEmpty()) {
-                List<StockBasic> existing = stockBasicMapper.selectList(
-                        new LambdaQueryWrapper<StockBasic>().in(StockBasic::getTsCode, incomingTsCodes));
+                List<StockBasic> existing = stockBasicDao.selectByTsCodeIn(new ArrayList<>(incomingTsCodes));
                 for (StockBasic s : existing) {
                     existingMap.put(s.getTsCode(), s);
                 }
@@ -94,10 +79,10 @@ public class StockBasicServiceImpl implements StockBasicService {
             }
 
             for (StockBasic e : insertList) {
-                stockBasicMapper.insert(e);
+                stockBasicDao.insert(e);
             }
             for (StockBasic e : updateList) {
-                stockBasicMapper.updateById(e);
+                stockBasicDao.updateById(e);
             }
 
             return String.format("导入完成：新增 %d 条，更新 %d 条，共 %d 条",
@@ -110,7 +95,7 @@ public class StockBasicServiceImpl implements StockBasicService {
 
     @Override
     public StockBasic getByTsCode(String stockCode) {
-        return stockBasicMapper.selectOne(new LambdaQueryWrapper<StockBasic>().eq(StockBasic::getTsCode, stockCode));
+        return stockBasicDao.selectByTsCode(stockCode);
     }
 
     private StockBasic rowToEntity(CsvRow row) {

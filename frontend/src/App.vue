@@ -182,19 +182,19 @@ import {
   LineChartOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
+  MenuOutlined,
   MenuUnfoldOutlined,
   MessageOutlined,
   SafetyCertificateOutlined,
   SafetyOutlined,
   SettingOutlined,
   TeamOutlined,
-  MenuOutlined,
   UserOutlined,
   WalletOutlined
 } from '@ant-design/icons-vue'
 
 import {useTheme} from './composables/useTheme.js'
-import { getPermissions, getCurrentUser } from './api'
+import {getCurrentUser, getPermissions} from './api'
 
 const {locale, t} = useI18n()
 const router = useRouter()

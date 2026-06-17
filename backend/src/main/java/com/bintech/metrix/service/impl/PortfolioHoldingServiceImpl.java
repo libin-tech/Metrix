@@ -4,16 +4,15 @@ import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bintech.metrix.dto.request.PortfolioHoldingRequest;
 import com.bintech.metrix.dto.response.PortfolioHoldingListResponse;
 import com.bintech.metrix.dto.response.PortfolioHoldingVO;
 import com.bintech.metrix.dto.response.PortfolioSummary;
+import com.bintech.metrix.repository.dao.BrokerAccountDao;
+import com.bintech.metrix.repository.dao.PortfolioHoldingDao;
 import com.bintech.metrix.repository.entity.BrokerAccount;
 import com.bintech.metrix.repository.entity.PortfolioHolding;
 import com.bintech.metrix.repository.entity.StockBasic;
-import com.bintech.metrix.repository.mapper.BrokerAccountMapper;
-import com.bintech.metrix.repository.mapper.PortfolioHoldingMapper;
 import com.bintech.metrix.service.MarketDataService;
 import com.bintech.metrix.service.PortfolioHoldingService;
 import com.bintech.metrix.service.StockBasicService;
@@ -26,12 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -52,8 +46,8 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
     private static final int PROFIT_LOSS_SCALE = 4;
     private static final int PRICE_SCALE = 3;
 
-    private final PortfolioHoldingMapper holdingMapper;
-    private final BrokerAccountMapper accountMapper;
+    private final PortfolioHoldingDao holdingDao;
+    private final BrokerAccountDao accountDao;
     private final StockBasicService stockBasicService;
     private final MarketDataService marketDataService;
 
@@ -71,19 +65,17 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
     @Override
     public PortfolioHoldingListResponse getHoldings(String keyword, Long accountId) {
         Long userId = StpUtil.getLoginIdAsLong();
-        LambdaQueryWrapper<PortfolioHolding> queryWrapper = new LambdaQueryWrapper<PortfolioHolding>()
-                .eq(PortfolioHolding::getUserId, userId);
+        List<PortfolioHolding> holdings = holdingDao.selectByUserId(userId);
         if (accountId != null) {
-            queryWrapper.eq(PortfolioHolding::getAccountId, accountId);
+            holdings = holdings.stream()
+                    .filter(h -> accountId.equals(h.getAccountId()))
+                    .collect(Collectors.toList());
         }
-        List<PortfolioHolding> holdings = holdingMapper.selectList(queryWrapper);
         if (holdings.isEmpty()) {
             return new PortfolioHoldingListResponse(List.of(), new PortfolioSummary(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, null));
         }
 
-        List<BrokerAccount> accounts = accountMapper.selectList(
-                new LambdaQueryWrapper<BrokerAccount>()
-                        .eq(BrokerAccount::getUserId, userId));
+        List<BrokerAccount> accounts = accountDao.selectByUserId(userId);
         Map<Long, BrokerAccount> accountMap = accounts.stream()
                 .collect(Collectors.toMap(BrokerAccount::getId, a -> a));
 
@@ -126,19 +118,12 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
     }
 
     private List<PortfolioHoldingVO> doRefreshPrices(Long userId) {
-        List<PortfolioHolding> holdings = holdingMapper.selectList(
-                new LambdaQueryWrapper<PortfolioHolding>()
-                        .eq(PortfolioHolding::getUserId, userId)
-                        .isNotNull(PortfolioHolding::getCost)
-                        .isNotNull(PortfolioHolding::getQuantity)
-                        .last("LIMIT " + MAX_REFRESH_COUNT));
+        List<PortfolioHolding> holdings = holdingDao.selectByUserIdWithCostAndQuantityLimit(userId, MAX_REFRESH_COUNT);
         if (holdings.isEmpty()) {
             return List.of();
         }
 
-        List<BrokerAccount> accounts = accountMapper.selectList(
-                new LambdaQueryWrapper<BrokerAccount>()
-                        .eq(BrokerAccount::getUserId, userId));
+        List<BrokerAccount> accounts = accountDao.selectByUserId(userId);
         Map<Long, BrokerAccount> accountMap = accounts.stream()
                 .collect(Collectors.toMap(BrokerAccount::getId, a -> a));
 
@@ -264,7 +249,7 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
         entity.setId(holdingId);
         entity.setCachedPrice(currentPrice);
         entity.setCachedPriceTime(LocalDateTime.now());
-        holdingMapper.updateById(entity);
+        holdingDao.updateById(entity);
     }
 
     private PortfolioSummary calculateSummary(List<PortfolioHoldingVO> vos, LocalDateTime latestRefresh) {
@@ -293,17 +278,12 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
     @Transactional
     public void createHolding(PortfolioHoldingRequest request) {
         Long userId = StpUtil.getLoginIdAsLong();
-        long count = holdingMapper.selectCount(
-                new LambdaQueryWrapper<PortfolioHolding>()
-                        .eq(PortfolioHolding::getUserId, userId));
+        long count = holdingDao.countByUserId(userId);
         if (count >= MAX_HOLDING_COUNT) {
             throw new RuntimeException("持仓数量已达上限（" + MAX_HOLDING_COUNT + "个），请先删除部分持仓再添加");
         }
 
-        Long existing = holdingMapper.selectCount(new LambdaQueryWrapper<PortfolioHolding>()
-                .eq(PortfolioHolding::getUserId, userId)
-                .eq(PortfolioHolding::getAccountId, request.getAccountId())
-                .eq(PortfolioHolding::getStockCode, request.getStockCode()));
+        long existing = holdingDao.countByUserIdAndAccountIdAndStockCode(userId, request.getAccountId(), request.getStockCode());
         if (existing > 0) {
             throw new RuntimeException("该账户下已存在该标的，请勿重复添加");
         }
@@ -317,7 +297,7 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
         holding.setUserId(userId);
         holding.setCreateTime(LocalDateTime.now());
         holding.setUpdateTime(LocalDateTime.now());
-        holdingMapper.insert(holding);
+        holdingDao.insert(holding);
     }
 
     /**
@@ -331,9 +311,7 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
             throw new RuntimeException("批量添加列表不能为空");
         }
 
-        long currentCount = holdingMapper.selectCount(
-                new LambdaQueryWrapper<PortfolioHolding>()
-                        .eq(PortfolioHolding::getUserId, userId));
+        long currentCount = holdingDao.countByUserId(userId);
 
         Set<String> batchCodes = new HashSet<>();
         for (PortfolioHoldingRequest item : items) {
@@ -341,10 +319,7 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
                 throw new RuntimeException("批量列表中存在重复标的：" + item.getStockCode());
             }
 
-            Long existing = holdingMapper.selectCount(new LambdaQueryWrapper<PortfolioHolding>()
-                    .eq(PortfolioHolding::getUserId, userId)
-                    .eq(PortfolioHolding::getAccountId, accountId)
-                    .eq(PortfolioHolding::getStockCode, item.getStockCode()));
+            long existing = holdingDao.countByUserIdAndAccountIdAndStockCode(userId, accountId, item.getStockCode());
             if (existing > 0) {
                 throw new RuntimeException("该账户下已存在标的：" + item.getStockCode());
             }
@@ -365,7 +340,7 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
             holding.setUserId(userId);
             holding.setCreateTime(now);
             holding.setUpdateTime(now);
-            holdingMapper.insert(holding);
+            holdingDao.insert(holding);
         }
     }
 
@@ -373,14 +348,11 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
     @Transactional
     public void deleteHolding(Long id) {
         Long userId = StpUtil.getLoginIdAsLong();
-        Long count = holdingMapper.selectCount(
-                new LambdaQueryWrapper<PortfolioHolding>()
-                        .eq(PortfolioHolding::getId, id)
-                        .eq(PortfolioHolding::getUserId, userId));
+        long count = holdingDao.countByIdAndUserId(id, userId);
         if (count == 0) {
             throw new RuntimeException("持仓记录不存在");
         }
-        holdingMapper.deleteById(id);
+        holdingDao.deleteById(id);
     }
 
     /**
@@ -389,9 +361,7 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
     @Override
     public Set<String> getHoldingStockCodes() {
         Long userId = StpUtil.getLoginIdAsLong();
-        List<PortfolioHolding> holdings = holdingMapper.selectList(
-                new LambdaQueryWrapper<PortfolioHolding>()
-                        .eq(PortfolioHolding::getUserId, userId));
+        List<PortfolioHolding> holdings = holdingDao.selectByUserId(userId);
         return holdings.stream()
                 .map(PortfolioHolding::getStockCode)
                 .collect(Collectors.toCollection(HashSet::new));

@@ -2,8 +2,8 @@ package com.bintech.metrix.core.queue;
 
 import com.bintech.metrix.constants.SystemConstants;
 import com.bintech.metrix.enums.StockAnalysisStatus;
+import com.bintech.metrix.repository.dao.StockAnalysisRecordDao;
 import com.bintech.metrix.repository.entity.StockAnalysisRecord;
-import com.bintech.metrix.repository.mapper.StockAnalysisRecordMapper;
 import com.bintech.metrix.service.StockAnalysisService;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -38,7 +38,7 @@ public class AnalysisTaskQueue {
     private final AtomicInteger runningTasks = new AtomicInteger(0);
 
     private final StockAnalysisService stockAnalysisService;
-    private final StockAnalysisRecordMapper recordMapper;
+    private final StockAnalysisRecordDao recordDao;
 
     private final List<Thread> workers = new ArrayList<>();
     private volatile boolean running = true;
@@ -103,7 +103,7 @@ public class AnalysisTaskQueue {
                 StockAnalysisRecord record = new StockAnalysisRecord();
                 record.setId(task.getRecordId());
                 record.setStatus(StockAnalysisStatus.FAILED);
-                recordMapper.updateById(record);
+                recordDao.updateById(record);
             } catch (Exception ex) {
                 log.error("更新任务失败状态失败: recordId={}", task.getRecordId(), ex);
             }

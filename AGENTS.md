@@ -10,6 +10,8 @@
 - 前端代码存放于 `frontend/` 目录（Vue 3 + Vite）
 - 后端代码存放于 `backend/` 目录（Java Spring Boot）
 - `.claude/skills/` 按 `backend/` 和 `frontend/` 区分领域技能
+- 各子目录的 `AGENTS.md` 存放领域专属规范，子目录 `AGENTS.md` 须引用本文件。
+- 后端 `backend/AGENTS.md` 包含分层规范（Mapper → DAO → Service → Controller）、MyBatis-Plus 实体规范、Python 进程调用规范、审计字段自动填充规范等。**开发前请先阅读。**
 
 # 通用规范
 - 使用驼峰命名法。

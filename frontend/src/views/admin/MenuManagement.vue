@@ -160,28 +160,22 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { message } from 'ant-design-vue'
+import {computed, onMounted, reactive, ref} from 'vue'
+import {useI18n} from 'vue-i18n'
+import {message} from 'ant-design-vue'
+import {DeleteOutlined, EditOutlined, LinkOutlined, MenuOutlined, PlusOutlined} from '@ant-design/icons-vue'
 import {
-  MenuOutlined,
-  PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  LinkOutlined
-} from '@ant-design/icons-vue'
-import {
-  getMenuTree,
-  getMenuById,
+  assignMenuApis,
   createMenu,
-  updateMenu,
   deleteMenu,
   getAllApis,
   getMenuApis,
-  assignMenuApis
+  getMenuById,
+  getMenuTree,
+  updateMenu
 } from '../../api'
 import IconSelector from '../../components/IconSelector.vue'
-import { resolveIcon } from '../../composables/iconMap'
+import {resolveIcon} from '../../composables/iconMap'
 
 const { t } = useI18n()
 

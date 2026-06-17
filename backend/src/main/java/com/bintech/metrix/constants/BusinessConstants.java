@@ -80,9 +80,6 @@ public final class BusinessConstants {
     /* ==================== 时间格式 ==================== */
     public static final String DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm:ss";
 
-    /* ==================== 认证排除路径 ==================== */
-    //public static final String[] EXCLUDED_AUTH_PATHS = {"/api/auth/login", "/api/auth/check", "/api/auth/login-by-code", "/api/wechat/callback"};
-
     /* ==================== 问一问对话限制 ==================== */
     public static final int MAX_CHAT_SESSIONS_PER_USER = 100;
     public static final int MAX_MESSAGES_PER_SESSION = 20;

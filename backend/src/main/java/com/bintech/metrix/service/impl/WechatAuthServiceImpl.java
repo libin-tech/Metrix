@@ -1,23 +1,21 @@
 package com.bintech.metrix.service.impl;
 
-import cn.dev33.satoken.stp.SaLoginModel;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.dev33.satoken.stp.parameter.SaLoginParameter;
 import cn.hutool.cache.CacheUtil;
 import cn.hutool.cache.impl.TimedCache;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.crypto.digest.DigestUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bintech.metrix.dto.response.UserLoginResponse;
 import com.bintech.metrix.enums.UserRole;
 import com.bintech.metrix.enums.UserStatus;
 import com.bintech.metrix.exception.FrozenUserException;
+import com.bintech.metrix.repository.dao.SystemRoleDao;
+import com.bintech.metrix.repository.dao.SystemUserRoleDao;
+import com.bintech.metrix.repository.dao.UserDao;
 import com.bintech.metrix.repository.entity.SystemRole;
 import com.bintech.metrix.repository.entity.SystemUserRole;
 import com.bintech.metrix.repository.entity.User;
-import com.bintech.metrix.repository.mapper.SystemRoleMapper;
-import com.bintech.metrix.repository.mapper.SystemUserRoleMapper;
-import com.bintech.metrix.repository.mapper.UserMapper;
 import com.bintech.metrix.service.WechatAuthService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,20 +31,19 @@ public class WechatAuthServiceImpl implements WechatAuthService {
 
     private static final String DEFAULT_AVATAR = "";
 
-    private final UserMapper userMapper;
-    private final SystemRoleMapper systemRoleMapper;
-    private final SystemUserRoleMapper systemUserRoleMapper;
+    private final UserDao userDao;
+    private final SystemRoleDao systemRoleDao;
+    private final SystemUserRoleDao systemUserRoleDao;
 
     private void assignDefaultRole(Long userId) {
-        SystemRole userRole = systemRoleMapper.selectOne(
-                new LambdaQueryWrapper<SystemRole>().eq(SystemRole::getRoleCode, "USER"));
+        SystemRole userRole = systemRoleDao.selectByRoleCode("USER");
         if (userRole == null) return;
         SystemUserRole sur = new SystemUserRole();
         sur.setUserId(userId);
         sur.setRoleId(userRole.getId());
         sur.setCreateTime(LocalDateTime.now());
         sur.setUpdateTime(LocalDateTime.now());
-        systemUserRoleMapper.insert(sur);
+        systemUserRoleDao.insert(sur);
     }
 
     public static final TimedCache<String, String> LOGIN_CACHE = CacheUtil.newTimedCache(300_000);
@@ -68,9 +65,7 @@ public class WechatAuthServiceImpl implements WechatAuthService {
 
         LOGIN_CACHE.remove(code);
 
-        LambdaQueryWrapper<User> query = new LambdaQueryWrapper<>();
-        query.eq(User::getOpenid, openid);
-        User user = userMapper.selectOne(query);
+        User user = userDao.selectByOpenid(openid);
 
         if (user == null) {
             LocalDateTime now = LocalDateTime.now();
@@ -85,7 +80,7 @@ public class WechatAuthServiceImpl implements WechatAuthService {
             user.setIsActive(true);
             user.setCreateTime(now);
             user.setUpdateTime(now);
-            userMapper.insert(user);
+            userDao.insert(user);
             assignDefaultRole(user.getId());
             log.info("新用户通过微信验证码登录自动注册: userId={}, openid={}, nickname={}",
                     user.getId(), openid, user.getNickname());

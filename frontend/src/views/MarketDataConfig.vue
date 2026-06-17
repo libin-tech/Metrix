@@ -88,7 +88,7 @@ import {computed, onMounted, reactive, ref} from 'vue'
 import {useI18n} from 'vue-i18n'
 import {createMarketDataConfig, deleteMarketDataConfig, getMarketDataConfigs, updateMarketDataConfig} from '../api'
 import {message, Modal} from 'ant-design-vue'
-import {EyeOutlined, EyeInvisibleOutlined} from '@ant-design/icons-vue'
+import {EyeInvisibleOutlined, EyeOutlined} from '@ant-design/icons-vue'
 
 const columns = computed(() => [
   { title: t('config.id'), dataIndex: 'id', key: 'id', width: 80 },

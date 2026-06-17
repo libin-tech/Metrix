@@ -1,5 +1,35 @@
 # 变更记录
 
+## 1.6.1 (2026-06-17)
+### 持久层重构
+- 新增 19 个 DAO 接口（拒绝 `LambdaQueryWrapper`/`LambdaUpdateWrapper` 参数，全部改为具体方法）和包级私有实现类
+- 重构所有 15 个调用方（Service/Controller/Config）使用具体 DAO 方法，消除 400+ 编译错误
+- 新增 `MybatisMetaObjectHandler`，通过 `StpUtil.getLoginId()` 自动填充 `creator`/`modifier`
+- 实体基类 `BaseEntity` 添加 `FieldFill` 注解
+- 补充 DAO 接口缺少的方法：`countByPermissionCode`、`countByPermissionCodeExcludeId`、`deleteByApiId`、`selectAll`
+
+### Python 编码修复
+- 所有 5 个 `ProcessBuilder` 调用 Python 脚本处设置 `PYTHONIOENCODING=utf-8`
+- 修复 Windows 中文环境下 Python 输出 GBK 导致的中文乱码
+
+### Bug 修复
+- 修复 `NotificationConfigDaoImpl` 引用了不存在的 `getNotifyType()` 字段
+- 修复 `SystemApiServiceImpl` 引用了不存在的 `selectAllActive()` 方法
+
+### 功能优化
+- 评估概览新闻列表按 `publishTime` 倒序排列（最新在前）
+
+### 代码清理
+- 删除未使用的私有方法和常量
+- 删除冗余 import
+- 删除注释掉的代码
+- 删除上一次重构残留的 DAO 包装器引用
+
+### 文档完善
+- 新增 `backend/.doc/ARCHITECTURE.md` 架构文档
+- 更新 `backend/AGENTS.md` 分层、Python 进程、审计字段规范
+- 更新 `AGENTS.md` 项目级规范引用
+
 ## 1.6.0 (2026-06-10)
 ### SaaS 多租户隔离
 - 为 BrokerAccount、PortfolioHolding、MarketReview、AiModelConfig、MarketDataConfig、NewsSourceConfig、NotificationConfig、ChatMessage 新增 `user_id` 字段做数据隔离

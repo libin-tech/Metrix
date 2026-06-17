@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { message, Modal } from 'ant-design-vue'
+import {message, Modal} from 'ant-design-vue'
 import i18n from '../i18n'
 
 const service = axios.create({

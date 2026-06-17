@@ -39,11 +39,10 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useI18n } from 'vue-i18n'
-import { SearchOutlined, FolderOutlined, MessageOutlined } from '@ant-design/icons-vue'
-import { getPermissions } from '../api'
+import {onMounted} from 'vue'
+import {useRouter} from 'vue-router'
+import {FolderOutlined, MessageOutlined, SearchOutlined} from '@ant-design/icons-vue'
+import {getPermissions} from '../api'
 
 const router = useRouter()
 

@@ -2,11 +2,7 @@ package com.bintech.metrix.annotation;
 
 import com.bintech.metrix.enums.ConfigType;
 
-import java.lang.annotation.Documented;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.lang.annotation.*;
 
 /**
  * 配置检查注解，标注在Controller方法上，

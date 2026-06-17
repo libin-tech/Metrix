@@ -1,5 +1,23 @@
 package com.bintech.metrix.service.impl;
 
+import com.bintech.metrix.constants.BusinessConstants;
+import com.bintech.metrix.core.analysis.StockAdvisorPromptBuilder;
+import com.bintech.metrix.dto.response.ChatMessageVO;
+import com.bintech.metrix.dto.response.ChatSessionVO;
+import com.bintech.metrix.enums.ChatRole;
+import com.bintech.metrix.repository.dao.ChatMessageDao;
+import com.bintech.metrix.repository.dao.StockBasicDao;
+import com.bintech.metrix.repository.entity.ChatMessage;
+import com.bintech.metrix.repository.entity.ChatSession;
+import com.bintech.metrix.repository.entity.StockBasic;
+import com.bintech.metrix.service.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -7,41 +25,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.bintech.metrix.constants.BusinessConstants;
-import com.bintech.metrix.core.analysis.StockAdvisorPromptBuilder;
-import com.bintech.metrix.dto.response.ChatMessageVO;
-import com.bintech.metrix.dto.response.ChatSessionVO;
-import com.bintech.metrix.enums.ChatRole;
-import com.bintech.metrix.repository.entity.ChatMessage;
-import com.bintech.metrix.repository.entity.ChatSession;
-import com.bintech.metrix.repository.entity.StockBasic;
-import com.bintech.metrix.repository.mapper.ChatMessageMapper;
-import com.bintech.metrix.repository.mapper.StockBasicMapper;
-import com.bintech.metrix.service.AiModelService;
-import com.bintech.metrix.service.ChatService;
-import com.bintech.metrix.service.ChatSessionService;
-import com.bintech.metrix.service.MarketDataService;
-import com.bintech.metrix.service.NewsService;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChatServiceImpl implements ChatService {
 
     private final ChatSessionService chatSessionService;
-    private final ChatMessageMapper messageMapper;
+    private final ChatMessageDao messageDao;
     private final AiModelService aiModelService;
     private final StockAdvisorPromptBuilder promptBuilder;
-    private final StockBasicMapper stockBasicMapper;
+    private final StockBasicDao stockBasicDao;
     private final MarketDataService marketDataService;
     private final NewsService newsService;
 
@@ -62,14 +55,6 @@ public class ChatServiceImpl implements ChatService {
             用户：%s
             返回：""";
 
-    /**
-     * 发送聊天消息并返回 SSE 事件流，包含以下步骤：
-     * 1. 校验会话归属和消息上限
-     * 2. 识别股票名称（正则 + AI 兜底）
-     * 3. 并行采集实时行情、深度行情、K线、新闻、筹码、股东数据
-     * 4. 构建提示词调用 AI 生成分析报告
-     * 5. 通过 SSE 逐步推送进度和最终结果
-     */
     @Override
     public SseEmitter sendMessage(Long sessionId, Long userId, String content) {
         ChatSession session = chatSessionService.getSessionById(sessionId);
@@ -77,9 +62,7 @@ public class ChatServiceImpl implements ChatService {
             throw new RuntimeException("无权访问此对话");
         }
 
-        Long messageCount = messageMapper.selectCount(
-                new LambdaQueryWrapper<ChatMessage>()
-                        .eq(ChatMessage::getSessionId, sessionId));
+        Long messageCount = messageDao.countBySessionId(sessionId);
         if (messageCount >= BusinessConstants.MAX_MESSAGES_PER_SESSION * 2) {
             throw new RuntimeException("对话消息数量已达上限（" + BusinessConstants.MAX_MESSAGES_PER_SESSION + "轮）");
         }
@@ -97,7 +80,7 @@ public class ChatServiceImpl implements ChatService {
                 userMsg.setContent(content);
                 userMsg.setTokens(content.length() / 2);
                 userMsg.setCreateTime(LocalDateTime.now());
-                messageMapper.insert(userMsg);
+                messageDao.insert(userMsg);
 
                 long t1 = System.currentTimeMillis();
                 sendStep(emitter, "**Step 1/6** 🔍 解析股票名称...");
@@ -127,7 +110,7 @@ public class ChatServiceImpl implements ChatService {
 
                 userMsg.setStockCode(stockCode);
                 userMsg.setStockName(stockName);
-                messageMapper.updateById(userMsg);
+                messageDao.updateById(userMsg);
                 chatSessionService.updateSessionName(sessionId, "帮我分析下 " + stockName);
                 sendStep(emitter, "✅ **Step 1/6** 🔍 解析股票名称：" + stockName);
 
@@ -293,9 +276,6 @@ public class ChatServiceImpl implements ChatService {
     }
 
 
-    /**
-     * 持久化 AI 助手的回复消息
-     */
     @Transactional
     protected void saveAssistantMessage(Long sessionId, Long userId, String content, int tokens,
                                          String stockCode, String stockName, String steps) {
@@ -309,12 +289,9 @@ public class ChatServiceImpl implements ChatService {
         msg.setStockName(stockName);
         msg.setSteps(steps);
         msg.setCreateTime(LocalDateTime.now());
-        messageMapper.insert(msg);
+        messageDao.insert(msg);
     }
 
-    /**
-     * 从用户消息中识别股票，优先级：TS代码 > 6位数字代码 > AI识别
-     */
     private StockBasic identifyStock(String content, Long userId) {
         if (content == null || content.isBlank()) return null;
         String text = content.trim();
@@ -322,9 +299,7 @@ public class ChatServiceImpl implements ChatService {
         String tsCodePattern = "\\d{6}\\.(SZ|SH)";
         java.util.regex.Matcher matcher = java.util.regex.Pattern.compile(tsCodePattern).matcher(text);
         if (matcher.find()) {
-            StockBasic stock = stockBasicMapper.selectOne(
-                    new LambdaQueryWrapper<StockBasic>()
-                            .eq(StockBasic::getTsCode, matcher.group().toUpperCase()));
+            StockBasic stock = stockBasicDao.selectByTsCode(matcher.group().toUpperCase());
             if (stock != null) return stock;
         }
 
@@ -332,9 +307,7 @@ public class ChatServiceImpl implements ChatService {
         matcher = java.util.regex.Pattern.compile(symbolPattern).matcher(text);
         if (matcher.find()) {
             log.info("识别股票代码: {}", matcher.group());
-            StockBasic stock = stockBasicMapper.selectOne(
-                    new LambdaQueryWrapper<StockBasic>()
-                            .eq(StockBasic::getSymbol, matcher.group()));
+            StockBasic stock = stockBasicDao.selectBySymbol(matcher.group());
             if (stock != null) return stock;
         }
 
@@ -345,9 +318,6 @@ public class ChatServiceImpl implements ChatService {
         return null;
     }
 
-    /**
-     * 调用 AI 模型识别用户消息中的股票名称，再回数据库匹配
-     */
     private StockBasic identifyStockByAi(String text, Long userId) {
         String prompt = String.format(STOCK_IDENTIFY_PROMPT, text);
         String aiResult;
@@ -363,15 +333,9 @@ public class ChatServiceImpl implements ChatService {
         }
         String stockName = aiResult.trim();
         log.info("AI识别股票名称: {}", stockName);
-        StockBasic stock = stockBasicMapper.selectOne(
-                new LambdaQueryWrapper<StockBasic>()
-                        .eq(StockBasic::getName, stockName)
-                        .last("LIMIT 1"));
+        StockBasic stock = stockBasicDao.selectByName(stockName);
         if (stock != null) return stock;
-        stock = stockBasicMapper.selectOne(
-                new LambdaQueryWrapper<StockBasic>()
-                        .like(StockBasic::getName, stockName)
-                        .last("LIMIT 1"));
+        stock = stockBasicDao.selectByNameLike(stockName);
         if (stock != null) return stock;
         log.warn("AI识别到股票名称[{}]但数据库未匹配到", stockName);
         return null;
@@ -382,9 +346,6 @@ public class ChatServiceImpl implements ChatService {
         return chatSessionService.getUserSessions(userId);
     }
 
-    /**
-     * 创建新的对话会话
-     */
     @Override
     public ChatSessionVO createSession(Long userId, String sessionName) {
         ChatSession session = chatSessionService.createSession(userId, sessionName);
@@ -399,32 +360,20 @@ public class ChatServiceImpl implements ChatService {
                 .build();
     }
 
-    /**
-     * 删除单个会话
-     */
     @Override
     public void deleteSession(Long id, Long userId) {
         chatSessionService.deleteSession(id, userId);
     }
 
-    /**
-     * 批量删除会话
-     */
     @Override
     public void deleteSessions(List<Long> ids, Long userId) {
         chatSessionService.deleteSessions(ids, userId);
     }
 
-    /**
-     * 获取会话所有消息，按创建时间正序
-     */
     @Override
     public List<ChatMessageVO> getSessionMessages(Long sessionId, Long userId) {
         chatSessionService.getSessionById(sessionId, userId);
-        List<ChatMessage> messages = messageMapper.selectList(
-                new LambdaQueryWrapper<ChatMessage>()
-                        .eq(ChatMessage::getSessionId, sessionId)
-                        .orderByAsc(ChatMessage::getCreateTime));
+        List<ChatMessage> messages = messageDao.selectBySessionIdOrderByCreateTimeAsc(sessionId);
         return messages.stream()
                 .map(m -> ChatMessageVO.builder()
                         .id(m.getId())

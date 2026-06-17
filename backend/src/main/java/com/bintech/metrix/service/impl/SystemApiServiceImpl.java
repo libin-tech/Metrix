@@ -1,16 +1,13 @@
 package com.bintech.metrix.service.impl;
 
-import cn.hutool.core.util.StrUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.bintech.metrix.dto.request.ApiCreateRequest;
 import com.bintech.metrix.dto.request.ApiUpdateRequest;
 import com.bintech.metrix.enums.CommonStatus;
+import com.bintech.metrix.repository.dao.SystemApiDao;
+import com.bintech.metrix.repository.dao.SystemMenuApiDao;
 import com.bintech.metrix.repository.entity.SystemApi;
-import com.bintech.metrix.repository.entity.SystemMenuApi;
-import com.bintech.metrix.repository.mapper.SystemApiMapper;
-import com.bintech.metrix.repository.mapper.SystemMenuApiMapper;
 import com.bintech.metrix.service.SystemApiService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,25 +22,18 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SystemApiServiceImpl implements SystemApiService {
 
-    private final SystemApiMapper apiMapper;
-    private final SystemMenuApiMapper menuApiMapper;
+    private final SystemApiDao apiDao;
+    private final SystemMenuApiDao menuApiDao;
 
     @Override
     public IPage<SystemApi> page(Integer page, Integer size, String keyword) {
         Page<SystemApi> pageParam = new Page<>(page, size);
-        LambdaQueryWrapper<SystemApi> wrapper = new LambdaQueryWrapper<>();
-        if (StrUtil.isNotBlank(keyword)) {
-            wrapper.like(SystemApi::getApiName, keyword)
-                    .or().like(SystemApi::getApiPath, keyword)
-                    .or().like(SystemApi::getPermissionCode, keyword);
-        }
-        wrapper.orderByAsc(SystemApi::getId);
-        return apiMapper.selectPage(pageParam, wrapper);
+        return apiDao.selectApiPage(pageParam, keyword);
     }
 
     @Override
     public SystemApi getById(Long id) {
-        SystemApi api = apiMapper.selectById(id);
+        SystemApi api = apiDao.selectById(id);
         if (api == null) {
             throw new RuntimeException("接口不存在");
         }
@@ -53,12 +43,8 @@ public class SystemApiServiceImpl implements SystemApiService {
     @Override
     @Transactional
     public SystemApi create(ApiCreateRequest request) {
-        if (request.getPermissionCode() != null) {
-            LambdaQueryWrapper<SystemApi> existsWrapper = new LambdaQueryWrapper<SystemApi>()
-                    .eq(SystemApi::getPermissionCode, request.getPermissionCode());
-            if (apiMapper.selectCount(existsWrapper) > 0) {
-                throw new RuntimeException("权限标识已存在");
-            }
+        if (request.getPermissionCode() != null && apiDao.countByPermissionCode(request.getPermissionCode()) > 0) {
+            throw new RuntimeException("权限标识已存在");
         }
 
         SystemApi api = new SystemApi();
@@ -70,20 +56,16 @@ public class SystemApiServiceImpl implements SystemApiService {
         api.setStatus(CommonStatus.ACTIVE);
         api.setCreateTime(LocalDateTime.now());
         api.setUpdateTime(LocalDateTime.now());
-        apiMapper.insert(api);
+        apiDao.insert(api);
         return api;
     }
 
     @Override
     @Transactional
     public SystemApi update(Long id, ApiUpdateRequest request) {
-        if (request.getPermissionCode() != null) {
-            LambdaQueryWrapper<SystemApi> existsWrapper = new LambdaQueryWrapper<SystemApi>()
-                    .eq(SystemApi::getPermissionCode, request.getPermissionCode())
-                    .ne(SystemApi::getId, id);
-            if (apiMapper.selectCount(existsWrapper) > 0) {
-                throw new RuntimeException("权限标识已存在");
-            }
+        if (request.getPermissionCode() != null
+                && apiDao.countByPermissionCodeExcludeId(request.getPermissionCode(), id) > 0) {
+            throw new RuntimeException("权限标识已存在");
         }
 
         SystemApi api = getById(id);
@@ -96,7 +78,7 @@ public class SystemApiServiceImpl implements SystemApiService {
             api.setStatus(request.getStatus());
         }
         api.setUpdateTime(LocalDateTime.now());
-        apiMapper.updateById(api);
+        apiDao.updateById(api);
         return api;
     }
 
@@ -104,16 +86,13 @@ public class SystemApiServiceImpl implements SystemApiService {
     @Transactional
     public void delete(Long id) {
         getById(id);
-        menuApiMapper.delete(new LambdaQueryWrapper<SystemMenuApi>().eq(SystemMenuApi::getApiId, id));
-        apiMapper.deleteById(id);
+        menuApiDao.deleteByApiId(id);
+        apiDao.deleteById(id);
     }
 
     @Override
     public List<SystemApi> listAll() {
-        LambdaQueryWrapper<SystemApi> wrapper = new LambdaQueryWrapper<SystemApi>()
-                .eq(SystemApi::getStatus, CommonStatus.ACTIVE)
-                .orderByAsc(SystemApi::getId);
-        return apiMapper.selectList(wrapper);
+        return apiDao.selectAll();
     }
 
 }

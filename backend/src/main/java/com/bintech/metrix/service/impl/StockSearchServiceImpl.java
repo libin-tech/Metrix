@@ -1,9 +1,8 @@
 package com.bintech.metrix.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bintech.metrix.dto.response.StockInfo;
+import com.bintech.metrix.repository.dao.StockBasicDao;
 import com.bintech.metrix.repository.entity.StockBasic;
-import com.bintech.metrix.repository.mapper.StockBasicMapper;
 import com.bintech.metrix.service.StockSearchService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,7 +14,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class StockSearchServiceImpl implements StockSearchService {
 
-    private final StockBasicMapper stockBasicMapper;
+    private final StockBasicDao stockBasicDao;
 
     @Override
     public List<StockInfo> searchStocks(String keyword) {
@@ -24,17 +23,7 @@ public class StockSearchServiceImpl implements StockSearchService {
         }
         String kw = keyword.trim().toUpperCase();
 
-        LambdaQueryWrapper<StockBasic> wrapper = new LambdaQueryWrapper<StockBasic>();
-        wrapper.and(w -> w
-                .like(StockBasic::getTsCode, kw)
-                .or()
-                .like(StockBasic::getSymbol, kw)
-                .or()
-                .like(StockBasic::getName, kw)
-                .or()
-                .like(StockBasic::getCnspell, kw));
-
-        List<StockBasic> list = stockBasicMapper.selectList(wrapper);
+        List<StockBasic> list = stockBasicDao.selectLikeNameOrTsCode(kw);
 
         return list.stream()
                 .map(s -> new StockInfo(s.getTsCode(), s.getName(), s.getMarket()))

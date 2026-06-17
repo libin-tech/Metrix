@@ -115,13 +115,20 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { message, Modal } from 'ant-design-vue'
-import { PlusOutlined, DeleteOutlined, SendOutlined } from '@ant-design/icons-vue'
-import { createChatSession, listChatSessions, deleteChatSession, deleteChatSessions, getChatSessionMessages, sendChatMessage } from '../api/index.js'
+import {computed, nextTick, onMounted, ref} from 'vue'
+import {useI18n} from 'vue-i18n'
+import {message, Modal} from 'ant-design-vue'
+import {DeleteOutlined, PlusOutlined, SendOutlined} from '@ant-design/icons-vue'
+import {
+  createChatSession,
+  deleteChatSession,
+  deleteChatSessions,
+  getChatSessionMessages,
+  listChatSessions,
+  sendChatMessage
+} from '../api/index.js'
 import MarkdownRender from 'markstream-vue'
-import { marked } from 'marked'
+import {marked} from 'marked'
 
 const { t } = useI18n()
 

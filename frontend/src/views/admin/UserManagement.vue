@@ -75,23 +75,11 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { message } from 'ant-design-vue'
-import {
-  TeamOutlined,
-  SafetyOutlined,
-  LockOutlined,
-  UnlockOutlined
-} from '@ant-design/icons-vue'
-import {
-  getAdminUsers,
-  freezeUser,
-  unfreezeUser,
-  getAllRoles,
-  getUserRoles,
-  assignUserRoles
-} from '../../api'
+import {computed, onMounted, ref} from 'vue'
+import {useI18n} from 'vue-i18n'
+import {message} from 'ant-design-vue'
+import {LockOutlined, SafetyOutlined, TeamOutlined, UnlockOutlined} from '@ant-design/icons-vue'
+import {assignUserRoles, freezeUser, getAdminUsers, getAllRoles, getUserRoles, unfreezeUser} from '../../api'
 
 const { t } = useI18n()
 

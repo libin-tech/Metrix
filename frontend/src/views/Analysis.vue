@@ -495,45 +495,42 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, reactive, ref, computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { marked } from 'marked';
-import { useI18n } from 'vue-i18n';
+import {computed, onMounted, onUnmounted, reactive, ref} from 'vue';
+import {useRoute, useRouter} from 'vue-router';
+import {marked} from 'marked';
+import {useI18n} from 'vue-i18n';
 import {
   createAnalysis,
-  getAllAnalysis,
-  getAnalysisCursor,
-  getAnalysisById,
   deleteAnalysis,
-  getNotificationConfigs,
-  pushToFeishu as pushToFeishuApi,
   exportPdf as exportPdfApi,
-  searchStocks,
+  getAnalysisById,
+  getAnalysisCursor,
   getAnalysisDetail,
-  getQueueStatus
+  getNotificationConfigs,
+  getQueueStatus,
+  pushToFeishu as pushToFeishuApi,
+  searchStocks
 } from '../api';
-import { message } from 'ant-design-vue';
+import {message} from 'ant-design-vue';
 import {
+  AimOutlined,
+  AppstoreOutlined,
   BarChartOutlined,
   ClockCircleOutlined,
-  DatabaseOutlined,
   DeleteOutlined,
   FieldTimeOutlined,
   FilePdfOutlined,
-  LoadingOutlined,
   FileTextOutlined,
+  InboxOutlined,
+  LinkOutlined,
+  LoadingOutlined,
+  MessageOutlined,
+  PieChartOutlined,
   PlayCircleOutlined,
   ReloadOutlined,
+  RightOutlined,
   SearchOutlined,
   SendOutlined,
-  MessageOutlined,
-  InboxOutlined,
-  AimOutlined,
-  AppstoreOutlined,
-  UserOutlined,
-  LinkOutlined,
-  RightOutlined,
-  PieChartOutlined,
   TeamOutlined
 } from '@ant-design/icons-vue';
 

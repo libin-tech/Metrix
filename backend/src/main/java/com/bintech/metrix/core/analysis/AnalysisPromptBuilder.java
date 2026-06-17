@@ -1,12 +1,12 @@
 package com.bintech.metrix.core.analysis;
 
-import com.bintech.metrix.constants.ApiConstants;
-import com.bintech.metrix.constants.SystemConstants;
-import com.bintech.metrix.repository.entity.StockBasic;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
+import com.bintech.metrix.constants.ApiConstants;
+import com.bintech.metrix.constants.SystemConstants;
+import com.bintech.metrix.repository.entity.StockBasic;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 

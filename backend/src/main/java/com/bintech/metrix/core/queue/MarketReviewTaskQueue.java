@@ -2,8 +2,8 @@ package com.bintech.metrix.core.queue;
 
 import com.bintech.metrix.constants.SystemConstants;
 import com.bintech.metrix.enums.MarketReviewStatus;
+import com.bintech.metrix.repository.dao.MarketReviewDao;
 import com.bintech.metrix.repository.entity.MarketReview;
-import com.bintech.metrix.repository.mapper.MarketReviewMapper;
 import com.bintech.metrix.service.MarketReviewService;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -33,7 +33,7 @@ public class MarketReviewTaskQueue {
     private final BlockingQueue<MarketReviewTask> queue = new LinkedBlockingQueue<>(QUEUE_CAPACITY);
 
     private final MarketReviewService marketReviewService;
-    private final MarketReviewMapper marketReviewMapper;
+    private final MarketReviewDao marketReviewDao;
 
     private final List<Thread> workers = new ArrayList<>();
     private volatile boolean running = true;
@@ -97,7 +97,7 @@ public class MarketReviewTaskQueue {
                 record.setId(task.getReviewId());
                 record.setStatus(MarketReviewStatus.FAILED);
                 record.setErrorMessage(e.getMessage());
-                marketReviewMapper.updateById(record);
+                marketReviewDao.updateById(record);
             } catch (Exception ex) {
                 log.error("更新大盘复盘失败状态失败: reviewId={}", task.getReviewId(), ex);
             }

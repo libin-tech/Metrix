@@ -1,17 +1,15 @@
 package com.bintech.metrix.service.impl;
 
+import cn.hutool.json.JSONArray;
+import cn.hutool.json.JSONObject;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
-import cn.hutool.json.JSONArray;
-import cn.hutool.json.JSONObject;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * StockAnalysisServiceImpl JSON解析单元测试

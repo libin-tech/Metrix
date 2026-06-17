@@ -5,13 +5,11 @@ import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.bintech.metrix.constants.ApiConstants;
 import com.bintech.metrix.constants.BusinessConstants;
 import com.bintech.metrix.dto.request.NotificationConfigRequest;
+import com.bintech.metrix.repository.dao.NotificationConfigDao;
 import com.bintech.metrix.repository.entity.NotificationConfig;
-import com.bintech.metrix.repository.mapper.NotificationConfigMapper;
 import com.bintech.metrix.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,16 +26,14 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class NotificationServiceImpl implements NotificationService {
 
-    private final NotificationConfigMapper configMapper;
+    private final NotificationConfigDao notificationConfigDao;
 
     @Override
     @Transactional
     public NotificationConfig createConfig(NotificationConfigRequest request) {
         Long userId = StpUtil.getLoginIdAsLong();
         if (Boolean.TRUE.equals(request.getIsActive())) {
-            configMapper.update(null, new LambdaUpdateWrapper<NotificationConfig>()
-                    .set(NotificationConfig::getIsActive, false)
-                    .eq(NotificationConfig::getUserId, userId));
+            notificationConfigDao.deactivateByUserId(userId);
         }
 
         NotificationConfig config = new NotificationConfig();
@@ -48,7 +44,7 @@ public class NotificationServiceImpl implements NotificationService {
         config.setUserId(userId);
         config.setCreateTime(LocalDateTime.now());
         config.setUpdateTime(LocalDateTime.now());
-        configMapper.insert(config);
+        notificationConfigDao.insert(config);
         return config;
     }
 
@@ -56,19 +52,13 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public NotificationConfig updateConfig(Long id, NotificationConfigRequest request) {
         Long userId = StpUtil.getLoginIdAsLong();
-        NotificationConfig config = configMapper.selectOne(
-                new LambdaQueryWrapper<NotificationConfig>()
-                        .eq(NotificationConfig::getId, id)
-                        .eq(NotificationConfig::getUserId, userId));
+        NotificationConfig config = notificationConfigDao.selectByIdAndUserId(id, userId);
         if (config == null) {
             throw new RuntimeException("Notification config not found");
         }
 
         if (Boolean.TRUE.equals(request.getIsActive())) {
-            configMapper.update(null, new LambdaUpdateWrapper<NotificationConfig>()
-                    .set(NotificationConfig::getIsActive, false)
-                    .ne(NotificationConfig::getId, id)
-                    .eq(NotificationConfig::getUserId, userId));
+            notificationConfigDao.deactivateByUserIdAndExcludeId(userId, id);
         }
 
         config.setChannelType(request.getChannelType());
@@ -76,17 +66,14 @@ public class NotificationServiceImpl implements NotificationService {
         config.setSecret(request.getSecret());
         config.setIsActive(request.getIsActive());
         config.setUpdateTime(LocalDateTime.now());
-        configMapper.updateById(config);
+        notificationConfigDao.updateById(config);
         return config;
     }
 
     @Override
     public NotificationConfig getConfigById(Long id) {
         Long userId = StpUtil.getLoginIdAsLong();
-        NotificationConfig config = configMapper.selectOne(
-                new LambdaQueryWrapper<NotificationConfig>()
-                        .eq(NotificationConfig::getId, id)
-                        .eq(NotificationConfig::getUserId, userId));
+        NotificationConfig config = notificationConfigDao.selectByIdAndUserId(id, userId);
         if (config == null) {
             throw new RuntimeException("Notification config not found");
         }
@@ -96,32 +83,24 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public List<NotificationConfig> getAllConfigs() {
         Long userId = StpUtil.getLoginIdAsLong();
-        LambdaQueryWrapper<NotificationConfig> wrapper = new LambdaQueryWrapper<NotificationConfig>()
-                .eq(NotificationConfig::getUserId, userId);
-        return configMapper.selectList(wrapper);
+        return notificationConfigDao.selectByUserId(userId);
     }
 
     @Override
     public List<NotificationConfig> getActiveConfigs() {
         Long userId = StpUtil.getLoginIdAsLong();
-        LambdaQueryWrapper<NotificationConfig> queryWrapper = new LambdaQueryWrapper<NotificationConfig>()
-                .eq(NotificationConfig::getIsActive, true)
-                .eq(NotificationConfig::getUserId, userId);
-        return configMapper.selectList(queryWrapper);
+        return notificationConfigDao.selectActiveByUserId(userId);
     }
 
     @Override
     @Transactional
     public void deleteConfig(Long id) {
         Long userId = StpUtil.getLoginIdAsLong();
-        Long count = configMapper.selectCount(
-                new LambdaQueryWrapper<NotificationConfig>()
-                        .eq(NotificationConfig::getId, id)
-                        .eq(NotificationConfig::getUserId, userId));
+        long count = notificationConfigDao.countByIdAndUserId(id, userId);
         if (count == 0) {
             throw new RuntimeException("Notification config not found");
         }
-        configMapper.deleteById(id);
+        notificationConfigDao.deleteById(id);
     }
 
     private NotificationConfig getActiveFeishuConfig() {
@@ -130,13 +109,14 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     private NotificationConfig getActiveFeishuConfig(Long userId) {
-        LambdaQueryWrapper<NotificationConfig> queryWrapper = new LambdaQueryWrapper<NotificationConfig>()
-                .eq(NotificationConfig::getChannelType, BusinessConstants.CHANNEL_TYPE_FEISHU)
-                .eq(NotificationConfig::getIsActive, true);
-        if (userId != null) {
-            queryWrapper.eq(NotificationConfig::getUserId, userId);
+        if (userId == null) {
+            return null;
         }
-        NotificationConfig config = configMapper.selectOne(queryWrapper);
+        List<NotificationConfig> activeConfigs = notificationConfigDao.selectActiveByUserId(userId);
+        NotificationConfig config = activeConfigs.stream()
+                .filter(c -> BusinessConstants.CHANNEL_TYPE_FEISHU.equals(c.getChannelType()))
+                .findFirst()
+                .orElse(null);
         if (config == null) {
             log.warn("未找到活跃的飞书通知配置");
         }

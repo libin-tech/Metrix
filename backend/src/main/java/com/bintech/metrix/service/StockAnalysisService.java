@@ -1,12 +1,12 @@
 package com.bintech.metrix.service;
 
-import java.util.List;
-
 import com.bintech.metrix.dto.request.StockAnalysisRequest;
 import com.bintech.metrix.dto.response.CursorPageResult;
 import com.bintech.metrix.dto.response.StockAnalysisDetailResponse;
 import com.bintech.metrix.dto.response.StockAnalysisResponse;
 import com.bintech.metrix.repository.entity.StockAnalysisRecord;
+
+import java.util.List;
 
 /**
  * 股票分析服务接口

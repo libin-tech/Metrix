@@ -1,39 +1,38 @@
 package com.bintech.metrix.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
+import com.bintech.metrix.constants.ApiConstants;
+import com.bintech.metrix.constants.SystemConstants;
+import com.bintech.metrix.dto.request.MarketDataConfigRequest;
+import com.bintech.metrix.repository.dao.MarketDataConfigDao;
+import com.bintech.metrix.repository.entity.MarketDataConfig;
+import com.bintech.metrix.repository.entity.StockBasic;
+import com.bintech.metrix.service.MarketDataService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
-
-import cn.dev33.satoken.stp.StpUtil;
-import com.bintech.metrix.constants.ApiConstants;
-import com.bintech.metrix.constants.SystemConstants;
-import com.bintech.metrix.repository.entity.StockBasic;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.bintech.metrix.dto.request.MarketDataConfigRequest;
-import com.bintech.metrix.repository.entity.MarketDataConfig;
-import com.bintech.metrix.repository.mapper.MarketDataConfigMapper;
-import com.bintech.metrix.service.MarketDataService;
-
-import cn.hutool.json.JSONObject;
-import cn.hutool.json.JSONUtil;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class MarketDataServiceImpl implements MarketDataService {
 
-    private final MarketDataConfigMapper configMapper;
+    private final MarketDataConfigDao marketDataConfigDao;
 
     @Value("${python.executable:python}")
     private String pythonExecutable;
@@ -44,32 +43,21 @@ public class MarketDataServiceImpl implements MarketDataService {
     @Value("${python.akshare-script-path:python-service/akshare.py}")
     private String akshareScriptPath;
 
-    private MarketDataConfig getTickFlowConfig() {
-        Long userId = StpUtil.getLoginIdAsLong();
-        return getTickFlowConfig(userId);
-    }
-
     private MarketDataConfig getTickFlowConfig(Long userId) {
-        LambdaQueryWrapper<MarketDataConfig> queryWrapper = new LambdaQueryWrapper<MarketDataConfig>()
-                .eq(MarketDataConfig::getIsActive, true);
+        List<MarketDataConfig> configs;
         if (userId != null) {
-            queryWrapper.eq(MarketDataConfig::getUserId, userId);
+            configs = marketDataConfigDao.selectActiveByUserId(userId);
+        } else {
+            configs = List.of();
         }
-        MarketDataConfig config = configMapper.selectOne(queryWrapper);
-
-        if (config == null) {
+        if (configs.isEmpty()) {
             String errorMsg = "TickFlow市场数据配置不存在";
             log.error(errorMsg);
             throw new RuntimeException(errorMsg);
         }
-
+        MarketDataConfig config = configs.get(0);
         log.debug("成功获取TickFlow配置: id={}", config.getId());
         return config;
-    }
-
-    private Map<String, Object> runPythonScript(String scriptName, String... scriptArgs) {
-        Long userId = StpUtil.getLoginIdAsLong();
-        return runPythonScript(scriptName, userId, scriptArgs);
     }
 
     private Map<String, Object> runPythonScript(String scriptName, Long userId, String... scriptArgs) {
@@ -97,9 +85,7 @@ public class MarketDataServiceImpl implements MarketDataService {
         log.info("开始创建市场数据配置: sourceName={}, userId={}", request.getSourceName(), userId);
 
         if (Boolean.TRUE.equals(request.getIsActive())) {
-            configMapper.update(null, new LambdaUpdateWrapper<MarketDataConfig>()
-                    .set(MarketDataConfig::getIsActive, false)
-                    .eq(MarketDataConfig::getUserId, userId));
+            marketDataConfigDao.deactivateByUserId(userId);
         }
 
         MarketDataConfig config = new MarketDataConfig();
@@ -115,7 +101,7 @@ public class MarketDataServiceImpl implements MarketDataService {
         config.setCreateTime(LocalDateTime.now());
         config.setUpdateTime(LocalDateTime.now());
 
-        configMapper.insert(config);
+        marketDataConfigDao.insert(config);
         log.info("市场数据配置创建成功: id={}", config.getId());
 
         return config;
@@ -127,19 +113,13 @@ public class MarketDataServiceImpl implements MarketDataService {
         Long userId = StpUtil.getLoginIdAsLong();
         log.info("开始更新市场数据配置: id={}", id);
 
-        MarketDataConfig config = configMapper.selectOne(
-                new LambdaQueryWrapper<MarketDataConfig>()
-                        .eq(MarketDataConfig::getId, id)
-                        .eq(MarketDataConfig::getUserId, userId));
+        MarketDataConfig config = marketDataConfigDao.selectByIdAndUserId(id, userId);
         if (config == null) {
             throw new RuntimeException("市场数据配置不存在");
         }
 
         if (Boolean.TRUE.equals(request.getIsActive())) {
-            configMapper.update(null, new LambdaUpdateWrapper<MarketDataConfig>()
-                    .set(MarketDataConfig::getIsActive, false)
-                    .ne(MarketDataConfig::getId, id)
-                    .eq(MarketDataConfig::getUserId, userId));
+            marketDataConfigDao.deactivateByUserIdAndExcludeId(userId, id);
         }
 
         config.setSourceName(request.getSourceName());
@@ -152,7 +132,7 @@ public class MarketDataServiceImpl implements MarketDataService {
         config.setRemark(request.getRemark());
         config.setUpdateTime(LocalDateTime.now());
 
-        configMapper.updateById(config);
+        marketDataConfigDao.updateById(config);
         log.info("市场数据配置更新成功: id={}", id);
 
         return config;
@@ -162,10 +142,7 @@ public class MarketDataServiceImpl implements MarketDataService {
     public MarketDataConfig getConfigById(Long id) {
         Long userId = StpUtil.getLoginIdAsLong();
         log.debug("查询市场数据配置: id={}", id);
-        MarketDataConfig config = configMapper.selectOne(
-                new LambdaQueryWrapper<MarketDataConfig>()
-                        .eq(MarketDataConfig::getId, id)
-                        .eq(MarketDataConfig::getUserId, userId));
+        MarketDataConfig config = marketDataConfigDao.selectByIdAndUserId(id, userId);
 
         if (config == null) {
             log.warn("市场数据配置不存在: id={}", id);
@@ -178,9 +155,7 @@ public class MarketDataServiceImpl implements MarketDataService {
     public List<MarketDataConfig> getAllConfigs() {
         Long userId = StpUtil.getLoginIdAsLong();
         log.debug("查询所有市场数据配置, userId={}", userId);
-        List<MarketDataConfig> configs = configMapper.selectList(
-                new LambdaQueryWrapper<MarketDataConfig>()
-                        .eq(MarketDataConfig::getUserId, userId));
+        List<MarketDataConfig> configs = marketDataConfigDao.selectByUserId(userId);
         log.debug("查询到{}条市场数据配置", configs.size());
         return configs;
     }
@@ -190,11 +165,7 @@ public class MarketDataServiceImpl implements MarketDataService {
         Long userId = StpUtil.getLoginIdAsLong();
         log.debug("查询所有启用的市场数据配置, userId={}", userId);
 
-        LambdaQueryWrapper<MarketDataConfig> wrapper = new LambdaQueryWrapper<MarketDataConfig>()
-                .eq(MarketDataConfig::getIsActive, true)
-                .eq(MarketDataConfig::getUserId, userId);
-
-        List<MarketDataConfig> configs = configMapper.selectList(wrapper);
+        List<MarketDataConfig> configs = marketDataConfigDao.selectActiveByUserId(userId);
         log.debug("查询到{}条启用的市场数据配置", configs.size());
 
         return configs;
@@ -206,27 +177,22 @@ public class MarketDataServiceImpl implements MarketDataService {
         Long userId = StpUtil.getLoginIdAsLong();
         log.info("开始删除市场数据配置: id={}", id);
 
-        MarketDataConfig config = configMapper.selectOne(
-                new LambdaQueryWrapper<MarketDataConfig>()
-                        .eq(MarketDataConfig::getId, id)
-                        .eq(MarketDataConfig::getUserId, userId));
+        MarketDataConfig config = marketDataConfigDao.selectByIdAndUserId(id, userId);
         if (config == null) {
             log.warn("市场数据配置不存在，无需删除: id={}", id);
             return;
         }
 
-        configMapper.deleteById(id);
+        marketDataConfigDao.deleteById(id);
         log.info("市场数据配置删除成功: id={}, sourceName={}", id, config.getSourceName());
     }
 
     @Override
     public boolean hasActiveConfig(Long userId) {
-        LambdaQueryWrapper<MarketDataConfig> queryWrapper = new LambdaQueryWrapper<MarketDataConfig>()
-                .eq(MarketDataConfig::getIsActive, true);
         if (userId != null) {
-            queryWrapper.eq(MarketDataConfig::getUserId, userId);
+            return !marketDataConfigDao.selectActiveByUserId(userId).isEmpty();
         }
-        return configMapper.selectCount(queryWrapper) > 0;
+        return false;
     }
 
     @Override
@@ -273,6 +239,7 @@ public class MarketDataServiceImpl implements MarketDataService {
         try {
             ProcessBuilder pb = new ProcessBuilder(command);
             pb.redirectErrorStream(true);
+            pb.environment().put("PYTHONIOENCODING", "utf-8");
 
             Process process = pb.start();
 

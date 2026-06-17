@@ -1,15 +1,13 @@
 package com.bintech.metrix.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bintech.metrix.dto.request.MenuCreateRequest;
 import com.bintech.metrix.dto.request.MenuUpdateRequest;
 import com.bintech.metrix.dto.response.MenuTreeVO;
 import com.bintech.metrix.enums.CommonStatus;
-import com.bintech.metrix.enums.MenuType;
+import com.bintech.metrix.repository.dao.SystemMenuApiDao;
+import com.bintech.metrix.repository.dao.SystemMenuDao;
 import com.bintech.metrix.repository.entity.SystemMenu;
 import com.bintech.metrix.repository.entity.SystemMenuApi;
-import com.bintech.metrix.repository.mapper.SystemMenuMapper;
-import com.bintech.metrix.repository.mapper.SystemMenuApiMapper;
 import com.bintech.metrix.service.SystemMenuService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,14 +25,13 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class SystemMenuServiceImpl implements SystemMenuService {
 
-    private final SystemMenuMapper menuMapper;
-    private final SystemMenuApiMapper menuApiMapper;
+    private final SystemMenuDao menuDao;
+    private final SystemMenuApiDao menuApiDao;
 
     @Override
     public MenuTreeVO getMenuTree() {
-        List<SystemMenu> allMenus = menuMapper.selectList(
-                new LambdaQueryWrapper<SystemMenu>().orderByAsc(SystemMenu::getSortOrder));
-        Map<Long, List<Long>> menuApiMap = menuApiMapper.selectList(null).stream()
+        List<SystemMenu> allMenus = menuDao.selectAll();
+        Map<Long, List<Long>> menuApiMap = menuApiDao.selectAll().stream()
                 .collect(Collectors.groupingBy(
                         SystemMenuApi::getMenuId,
                         Collectors.mapping(SystemMenuApi::getApiId, Collectors.toList())
@@ -77,7 +74,7 @@ public class SystemMenuServiceImpl implements SystemMenuService {
 
     @Override
     public SystemMenu getById(Long id) {
-        SystemMenu menu = menuMapper.selectById(id);
+        SystemMenu menu = menuDao.selectById(id);
         if (menu == null) {
             throw new RuntimeException("菜单不存在");
         }
@@ -87,12 +84,8 @@ public class SystemMenuServiceImpl implements SystemMenuService {
     @Override
     @Transactional
     public SystemMenu create(MenuCreateRequest request) {
-        if (request.getPermissionCode() != null) {
-            LambdaQueryWrapper<SystemMenu> existsWrapper = new LambdaQueryWrapper<SystemMenu>()
-                    .eq(SystemMenu::getPermissionCode, request.getPermissionCode());
-            if (menuMapper.selectCount(existsWrapper) > 0) {
-                throw new RuntimeException("权限标识已存在");
-            }
+        if (request.getPermissionCode() != null && menuDao.countByPermissionCode(request.getPermissionCode()) > 0) {
+            throw new RuntimeException("权限标识已存在");
         }
 
         SystemMenu menu = new SystemMenu();
@@ -108,20 +101,16 @@ public class SystemMenuServiceImpl implements SystemMenuService {
         menu.setVisible(request.getVisible() != null ? request.getVisible() : true);
         menu.setCreateTime(LocalDateTime.now());
         menu.setUpdateTime(LocalDateTime.now());
-        menuMapper.insert(menu);
+        menuDao.insert(menu);
         return menu;
     }
 
     @Override
     @Transactional
     public SystemMenu update(Long id, MenuUpdateRequest request) {
-        if (request.getPermissionCode() != null) {
-            LambdaQueryWrapper<SystemMenu> existsWrapper = new LambdaQueryWrapper<SystemMenu>()
-                    .eq(SystemMenu::getPermissionCode, request.getPermissionCode())
-                    .ne(SystemMenu::getId, id);
-            if (menuMapper.selectCount(existsWrapper) > 0) {
-                throw new RuntimeException("权限标识已存在");
-            }
+        if (request.getPermissionCode() != null
+                && menuDao.countByPermissionCodeExcludeId(request.getPermissionCode(), id) > 0) {
+            throw new RuntimeException("权限标识已存在");
         }
 
         SystemMenu menu = getById(id);
@@ -138,7 +127,7 @@ public class SystemMenuServiceImpl implements SystemMenuService {
             menu.setStatus(request.getStatus());
         }
         menu.setUpdateTime(LocalDateTime.now());
-        menuMapper.updateById(menu);
+        menuDao.updateById(menu);
         return menu;
     }
 
@@ -146,35 +135,32 @@ public class SystemMenuServiceImpl implements SystemMenuService {
     @Transactional
     public void delete(Long id) {
         SystemMenu menu = getById(id);
-        long childCount = menuMapper.selectCount(
-                new LambdaQueryWrapper<SystemMenu>().eq(SystemMenu::getParentId, id));
+        long childCount = menuDao.countByParentId(id);
         if (childCount > 0) {
             throw new RuntimeException("存在子菜单，请先删除子菜单");
         }
-        menuApiMapper.delete(new LambdaQueryWrapper<SystemMenuApi>().eq(SystemMenuApi::getMenuId, id));
-        menuMapper.deleteById(id);
+        menuApiDao.deleteByMenuId(id);
+        menuDao.deleteById(id);
     }
 
     @Override
     @Transactional
     public void assignApis(Long menuId, List<Long> apiIds) {
         getById(menuId);
-        menuApiMapper.delete(new LambdaQueryWrapper<SystemMenuApi>().eq(SystemMenuApi::getMenuId, menuId));
+        menuApiDao.deleteByMenuId(menuId);
         for (Long apiId : apiIds) {
             SystemMenuApi ma = new SystemMenuApi();
             ma.setMenuId(menuId);
             ma.setApiId(apiId);
             ma.setCreateTime(LocalDateTime.now());
             ma.setUpdateTime(LocalDateTime.now());
-            menuApiMapper.insert(ma);
+            menuApiDao.insert(ma);
         }
     }
 
     @Override
     public List<Long> getAssignedApiIds(Long menuId) {
-        return menuApiMapper.selectList(
-                new LambdaQueryWrapper<SystemMenuApi>().eq(SystemMenuApi::getMenuId, menuId)
-        ).stream().map(SystemMenuApi::getApiId).toList();
+        return menuApiDao.selectByMenuIdIn(List.of(menuId)).stream().map(SystemMenuApi::getApiId).toList();
     }
 
 }

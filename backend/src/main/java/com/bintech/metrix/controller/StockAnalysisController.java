@@ -1,30 +1,8 @@
 package com.bintech.metrix.controller;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import cn.dev33.satoken.annotation.SaCheckLogin;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.core.io.Resource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.stp.StpUtil;
 import com.bintech.metrix.annotation.CheckConfig;
 import com.bintech.metrix.core.queue.AnalysisTask;
 import com.bintech.metrix.core.queue.AnalysisTaskQueue;
@@ -34,19 +12,31 @@ import com.bintech.metrix.dto.response.CursorPageResult;
 import com.bintech.metrix.dto.response.StockAnalysisDetailResponse;
 import com.bintech.metrix.enums.ConfigType;
 import com.bintech.metrix.enums.StockAnalysisStatus;
+import com.bintech.metrix.repository.dao.StockAnalysisRecordDao;
 import com.bintech.metrix.repository.entity.StockAnalysisRecord;
 import com.bintech.metrix.repository.entity.StockBasic;
-import com.bintech.metrix.repository.mapper.StockAnalysisRecordMapper;
 import com.bintech.metrix.service.PdfExportService;
 import com.bintech.metrix.service.PortfolioHoldingService;
 import com.bintech.metrix.service.StockAnalysisService;
 import com.bintech.metrix.service.StockBasicService;
-
-import cn.dev33.satoken.annotation.SaCheckPermission;
-import cn.dev33.satoken.stp.StpUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * 股票分析控制器
@@ -69,7 +59,7 @@ import lombok.extern.slf4j.Slf4j;
 public class StockAnalysisController {
 
     private final StockAnalysisService stockAnalysisService;
-    private final StockAnalysisRecordMapper recordMapper;
+    private final StockAnalysisRecordDao recordDao;
     private final StockBasicService stockBasicService;
     private final AnalysisTaskQueue analysisTaskQueue;
     private final PdfExportService pdfExportService;
@@ -100,10 +90,7 @@ public class StockAnalysisController {
             StockBasic stockBasic = stockBasicService.getByTsCode(stockCode);
 
             // 检查该股票是否已在分析中
-            Long analyzingCount = recordMapper.selectCount(
-                    new LambdaQueryWrapper<StockAnalysisRecord>()
-                            .eq(StockAnalysisRecord::getStockCode, stockCode)
-                            .eq(StockAnalysisRecord::getStatus, StockAnalysisStatus.ANALYZING));
+            Long analyzingCount = recordDao.countByStockCodeAndStatus(stockCode, StockAnalysisStatus.ANALYZING);
             if (analyzingCount > 0) {
                 Map<String, Object> result = new HashMap<>();
                 result.put("stockCode", stockCode);
@@ -122,7 +109,7 @@ public class StockAnalysisController {
             record.setCreateTime(LocalDateTime.now());
             record.setUpdateTime(LocalDateTime.now());
             
-            recordMapper.insert(record);
+            recordDao.insert(record);
             
             // 构建任务并提交到队列，由后台worker异步执行
             AnalysisTask task = new AnalysisTask(record.getId(), request, stockBasic.getName(), userId);

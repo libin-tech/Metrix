@@ -58,11 +58,11 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import {onMounted, reactive, ref} from 'vue'
 import dayjs from 'dayjs'
-import { message } from 'ant-design-vue'
-import { FileTextOutlined, ReloadOutlined } from '@ant-design/icons-vue'
-import { getAuditLogs } from '../../api'
+import {message} from 'ant-design-vue'
+import {FileTextOutlined, ReloadOutlined} from '@ant-design/icons-vue'
+import {getAuditLogs} from '../../api'
 
 const loading = ref(false)
 const logs = ref([])

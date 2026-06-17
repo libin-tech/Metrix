@@ -1,15 +1,9 @@
 package com.bintech.metrix.service.impl;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import cn.dev33.satoken.stp.StpUtil;
+import cn.hutool.json.JSONArray;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import com.bintech.metrix.constants.BusinessConstants;
 import com.bintech.metrix.core.analysis.AnalysisOverviewBuilder;
 import com.bintech.metrix.core.analysis.AnalysisPromptBuilder;
@@ -21,29 +15,28 @@ import com.bintech.metrix.dto.response.StockAnalysisDetailResponse;
 import com.bintech.metrix.dto.response.StockAnalysisResponse;
 import com.bintech.metrix.enums.StockAnalysisStatus;
 import com.bintech.metrix.model.AnalysisOverview;
+import com.bintech.metrix.repository.dao.StockAnalysisRecordDao;
 import com.bintech.metrix.repository.entity.StockAnalysisRecord;
 import com.bintech.metrix.repository.entity.StockBasic;
-import com.bintech.metrix.repository.mapper.StockAnalysisRecordMapper;
-import com.bintech.metrix.service.AiModelService;
-import com.bintech.metrix.service.MarketDataService;
-import com.bintech.metrix.service.NotificationService;
-import com.bintech.metrix.service.StockAnalysisService;
-import com.bintech.metrix.service.StockBasicService;
+import com.bintech.metrix.service.*;
 import com.bintech.metrix.util.MarkdownRenderer;
-
-import cn.dev33.satoken.stp.StpUtil;
-import cn.hutool.json.JSONArray;
-import cn.hutool.json.JSONObject;
-import cn.hutool.json.JSONUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class StockAnalysisServiceImpl implements StockAnalysisService {
 
-    private final StockAnalysisRecordMapper recordMapper;
+    private final StockAnalysisRecordDao recordDao;
     private final StockBasicService stockBasicService;
     private final MarketDataService marketDataService;
     private final AiModelService aiModelService;
@@ -96,7 +89,7 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
         record.setUpdateTime(LocalDateTime.now());
         record.setStatus(StockAnalysisStatus.COMPLETED);
 
-        recordMapper.updateById(record);
+        recordDao.updateById(record);
         cleanupExcessRecords();
 
         StockAnalysisResponse response = new StockAnalysisResponse();
@@ -116,7 +109,7 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
      */
     @Override
     public StockAnalysisRecord getAnalysisById(Long id) {
-        StockAnalysisRecord record = recordMapper.selectById(id);
+        StockAnalysisRecord record = recordDao.selectById(id);
         if (record == null) {
             throw new RuntimeException("Analysis record not found");
         }
@@ -129,10 +122,7 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
     @Override
     public List<StockAnalysisRecord> getAllAnalysisRecords() {
         Long userId = StpUtil.getLoginIdAsLong();
-        LambdaQueryWrapper<StockAnalysisRecord> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(StockAnalysisRecord::getUserId, userId);
-        queryWrapper.orderByDesc(StockAnalysisRecord::getId);
-        return recordMapper.selectList(queryWrapper);
+        return recordDao.selectByUserIdOrderByIdDesc(userId);
     }
 
     /**
@@ -143,14 +133,7 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
     @Override
     public CursorPageResult<StockAnalysisRecord> cursorQuery(Long cursor, int limit) {
         Long userId = StpUtil.getLoginIdAsLong();
-        LambdaQueryWrapper<StockAnalysisRecord> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(StockAnalysisRecord::getUserId, userId);
-        if (cursor != null && cursor > 0) {
-            wrapper.lt(StockAnalysisRecord::getId, cursor);
-        }
-        wrapper.orderByDesc(StockAnalysisRecord::getId);
-        wrapper.last("LIMIT " + (limit + 1));
-        List<StockAnalysisRecord> records = recordMapper.selectList(wrapper);
+        List<StockAnalysisRecord> records = recordDao.cursorQueryByUserId(userId, cursor, limit + 1);
         boolean hasMore = records.size() > limit;
         if (hasMore) {
             records = records.subList(0, limit);
@@ -169,11 +152,11 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
     @Override
     @Transactional
     public void deleteAnalysisRecord(Long id) {
-        StockAnalysisRecord record = recordMapper.selectById(id);
+        StockAnalysisRecord record = recordDao.selectById(id);
         if (record == null) {
             throw new RuntimeException("分析记录不存在");
         }
-        recordMapper.deleteById(id);
+        recordDao.deleteById(id);
         log.info("分析记录删除成功，ID: {}", id);
     }
 
@@ -184,9 +167,7 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
     @Override
     @Transactional
     public void cleanupExcessRecords() {
-        List<StockAnalysisRecord> allRecords = recordMapper.selectList(
-                new LambdaQueryWrapper<StockAnalysisRecord>()
-                        .orderByDesc(StockAnalysisRecord::getCreateTime));
+        List<StockAnalysisRecord> allRecords = recordDao.selectAllOrderByCreateTimeDesc();
         if (allRecords.isEmpty()) return;
 
         long total = allRecords.size();
@@ -196,8 +177,7 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
                 .limit(BusinessConstants.MAX_RECORD_KEEP_COUNT)
                 .map(StockAnalysisRecord::getId)
                 .collect(Collectors.toList());
-        recordMapper.delete(new LambdaQueryWrapper<StockAnalysisRecord>()
-                .notIn(StockAnalysisRecord::getId, keepIds));
+        recordDao.deleteByIdNotIn(keepIds);
     }
 
     /**
@@ -229,7 +209,7 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
     @Transactional
     public void executeAnalysis(Long recordId, StockAnalysisRequest request) {
         log.info("开始执行异步分析任务: recordId={}", recordId);
-        StockAnalysisRecord record = recordMapper.selectById(recordId);
+        StockAnalysisRecord record = recordDao.selectById(recordId);
         if (record == null) {
             log.error("分析记录不存在: recordId={}", recordId);
             return;

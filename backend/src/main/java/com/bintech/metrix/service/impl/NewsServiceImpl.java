@@ -1,5 +1,27 @@
 package com.bintech.metrix.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
+import cn.hutool.http.HttpRequest;
+import cn.hutool.http.HttpResponse;
+import cn.hutool.json.JSONArray;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
+import com.bintech.metrix.constants.ApiConstants;
+import com.bintech.metrix.constants.BusinessConstants;
+import com.bintech.metrix.constants.SystemConstants;
+import com.bintech.metrix.dto.request.NewsSourceConfigRequest;
+import com.bintech.metrix.repository.dao.NewsSourceConfigDao;
+import com.bintech.metrix.repository.entity.NewsSourceConfig;
+import com.bintech.metrix.repository.entity.StockBasic;
+import com.bintech.metrix.service.AiModelService;
+import com.bintech.metrix.service.NewsService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -10,38 +32,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import cn.dev33.satoken.stp.StpUtil;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.bintech.metrix.constants.ApiConstants;
-import com.bintech.metrix.constants.BusinessConstants;
-import com.bintech.metrix.constants.SystemConstants;
-import com.bintech.metrix.dto.request.NewsSourceConfigRequest;
-import com.bintech.metrix.repository.entity.NewsSourceConfig;
-import com.bintech.metrix.repository.entity.StockBasic;
-import com.bintech.metrix.repository.mapper.NewsSourceConfigMapper;
-import com.bintech.metrix.service.AiModelService;
-import com.bintech.metrix.service.NewsService;
-
-import cn.hutool.http.HttpRequest;
-import cn.hutool.http.HttpResponse;
-import cn.hutool.json.JSONArray;
-import cn.hutool.json.JSONObject;
-import cn.hutool.json.JSONUtil;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class NewsServiceImpl implements NewsService {
 
-    private final NewsSourceConfigMapper configMapper;
+    private final NewsSourceConfigDao newsSourceConfigDao;
     private final AiModelService aiModelService;
 
     @Value("${python.executable:python}")
@@ -55,9 +51,7 @@ public class NewsServiceImpl implements NewsService {
     public NewsSourceConfig createConfig(NewsSourceConfigRequest request) {
         Long userId = StpUtil.getLoginIdAsLong();
         if (Boolean.TRUE.equals(request.getIsActive())) {
-            configMapper.update(null, new LambdaUpdateWrapper<NewsSourceConfig>()
-                    .set(NewsSourceConfig::getIsActive, false)
-                    .eq(NewsSourceConfig::getUserId, userId));
+            newsSourceConfigDao.deactivateByUserId(userId);
         }
 
         NewsSourceConfig config = new NewsSourceConfig();
@@ -71,7 +65,7 @@ public class NewsServiceImpl implements NewsService {
         config.setUserId(userId);
         config.setCreateTime(LocalDateTime.now());
         config.setUpdateTime(LocalDateTime.now());
-        configMapper.insert(config);
+        newsSourceConfigDao.insert(config);
         return config;
     }
 
@@ -79,19 +73,13 @@ public class NewsServiceImpl implements NewsService {
     @Transactional
     public NewsSourceConfig updateConfig(Long id, NewsSourceConfigRequest request) {
         Long userId = StpUtil.getLoginIdAsLong();
-        NewsSourceConfig config = configMapper.selectOne(
-                new LambdaQueryWrapper<NewsSourceConfig>()
-                        .eq(NewsSourceConfig::getId, id)
-                        .eq(NewsSourceConfig::getUserId, userId));
+        NewsSourceConfig config = newsSourceConfigDao.selectByIdAndUserId(id, userId);
         if (config == null) {
             throw new RuntimeException("News source config not found");
         }
 
         if (Boolean.TRUE.equals(request.getIsActive())) {
-            configMapper.update(null, new LambdaUpdateWrapper<NewsSourceConfig>()
-                    .set(NewsSourceConfig::getIsActive, false)
-                    .ne(NewsSourceConfig::getId, id)
-                    .eq(NewsSourceConfig::getUserId, userId));
+            newsSourceConfigDao.deactivateByUserIdAndExcludeId(userId, id);
         }
 
         config.setSourceName(request.getSourceName());
@@ -102,17 +90,14 @@ public class NewsServiceImpl implements NewsService {
         config.setTimeout(request.getTimeout());
         config.setRemark(request.getRemark());
         config.setUpdateTime(LocalDateTime.now());
-        configMapper.updateById(config);
+        newsSourceConfigDao.updateById(config);
         return config;
     }
 
     @Override
     public NewsSourceConfig getConfigById(Long id) {
         Long userId = StpUtil.getLoginIdAsLong();
-        NewsSourceConfig config = configMapper.selectOne(
-                new LambdaQueryWrapper<NewsSourceConfig>()
-                        .eq(NewsSourceConfig::getId, id)
-                        .eq(NewsSourceConfig::getUserId, userId));
+        NewsSourceConfig config = newsSourceConfigDao.selectByIdAndUserId(id, userId);
         if (config == null) {
             throw new RuntimeException("News source config not found");
         }
@@ -122,42 +107,32 @@ public class NewsServiceImpl implements NewsService {
     @Override
     public List<NewsSourceConfig> getAllConfigs() {
         Long userId = StpUtil.getLoginIdAsLong();
-        LambdaQueryWrapper<NewsSourceConfig> wrapper = new LambdaQueryWrapper<NewsSourceConfig>()
-                .eq(NewsSourceConfig::getUserId, userId);
-        return configMapper.selectList(wrapper);
+        return newsSourceConfigDao.selectByUserId(userId);
     }
 
     @Override
     public List<NewsSourceConfig> getActiveConfigs() {
         Long userId = StpUtil.getLoginIdAsLong();
-        LambdaQueryWrapper<NewsSourceConfig> queryWrapper = new LambdaQueryWrapper<NewsSourceConfig>()
-                .eq(NewsSourceConfig::getIsActive, true)
-                .eq(NewsSourceConfig::getUserId, userId);
-        return configMapper.selectList(queryWrapper);
+        return newsSourceConfigDao.selectActiveByUserId(userId);
     }
 
     @Override
     @Transactional
     public void deleteConfig(Long id) {
         Long userId = StpUtil.getLoginIdAsLong();
-        Long count = configMapper.selectCount(
-                new LambdaQueryWrapper<NewsSourceConfig>()
-                        .eq(NewsSourceConfig::getId, id)
-                        .eq(NewsSourceConfig::getUserId, userId));
+        long count = newsSourceConfigDao.countByIdAndUserId(id, userId);
         if (count == 0) {
             throw new RuntimeException("News source config not found");
         }
-        configMapper.deleteById(id);
+        newsSourceConfigDao.deleteById(id);
     }
 
     @Override
     public boolean hasActiveNewsSource(Long userId) {
-        LambdaQueryWrapper<NewsSourceConfig> queryWrapper = new LambdaQueryWrapper<NewsSourceConfig>()
-                .eq(NewsSourceConfig::getIsActive, true);
         if (userId != null) {
-            queryWrapper.eq(NewsSourceConfig::getUserId, userId);
+            return newsSourceConfigDao.countActiveByUserId(userId) > 0;
         }
-        return configMapper.selectCount(queryWrapper) > 0;
+        return false;
     }
 
     @Override
@@ -193,6 +168,7 @@ public class NewsServiceImpl implements NewsService {
 
             ProcessBuilder pb = new ProcessBuilder(command);
             pb.redirectErrorStream(true);
+            pb.environment().put("PYTHONIOENCODING", "utf-8");
             Process process = pb.start();
 
             StringBuilder outputBuilder = new StringBuilder();
@@ -246,12 +222,16 @@ public class NewsServiceImpl implements NewsService {
     }
 
     private Map<String, Object> fetchBochaNews(StockBasic stockBasic, Long userId) {
-        LambdaQueryWrapper<NewsSourceConfig> queryWrapper = new LambdaQueryWrapper<NewsSourceConfig>()
-                .eq(NewsSourceConfig::getSourceName, BusinessConstants.SOURCE_NAME_BOCHA);
+        List<NewsSourceConfig> configs;
         if (userId != null) {
-            queryWrapper.eq(NewsSourceConfig::getUserId, userId);
+            configs = newsSourceConfigDao.selectByUserId(userId);
+        } else {
+            configs = List.of();
         }
-        NewsSourceConfig config = configMapper.selectOne(queryWrapper);
+        NewsSourceConfig config = configs.stream()
+                .filter(c -> BusinessConstants.SOURCE_NAME_BOCHA.equals(c.getSourceName()))
+                .findFirst()
+                .orElse(null);
         if (config == null) {
             String errorMsg = "Bocha新闻源配置不存在";
             log.error(errorMsg);

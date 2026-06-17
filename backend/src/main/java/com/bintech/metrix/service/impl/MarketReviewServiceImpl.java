@@ -1,15 +1,14 @@
 package com.bintech.metrix.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bintech.metrix.core.analysis.MarketReviewDataFetcher;
 import com.bintech.metrix.core.analysis.MarketReviewPromptBuilder;
 import com.bintech.metrix.core.queue.MarketReviewTask;
 import com.bintech.metrix.core.queue.MarketReviewTaskQueue;
 import com.bintech.metrix.dto.response.CursorPageResult;
 import com.bintech.metrix.enums.MarketReviewStatus;
+import com.bintech.metrix.repository.dao.MarketReviewDao;
 import com.bintech.metrix.repository.entity.MarketReview;
-import com.bintech.metrix.repository.mapper.MarketReviewMapper;
 import com.bintech.metrix.service.AiModelService;
 import com.bintech.metrix.service.MarketReviewService;
 import com.bintech.metrix.service.NotificationService;
@@ -49,7 +48,7 @@ public class MarketReviewServiceImpl implements MarketReviewService {
     private static final String CORE_SUMMARY_PREFIX = "【核心总结】";
     private static final int CORE_SUMMARY_MAX_LENGTH = 500;
 
-    private final MarketReviewMapper marketReviewMapper;
+    private final MarketReviewDao marketReviewDao;
     private final AiModelService aiModelService;
     private final NotificationService notificationService;
     private final MarketReviewDataFetcher marketReviewDataFetcher;
@@ -65,10 +64,7 @@ public class MarketReviewServiceImpl implements MarketReviewService {
     @Override
     public List<MarketReview> getAllReviews() {
         Long userId = StpUtil.getLoginIdAsLong();
-        LambdaQueryWrapper<MarketReview> wrapper = new LambdaQueryWrapper<MarketReview>()
-                .eq(MarketReview::getUserId, userId);
-        wrapper.orderByDesc(MarketReview::getReviewDate);
-        return marketReviewMapper.selectList(wrapper);
+        return marketReviewDao.selectByUserIdOrderByReviewDateDesc(userId);
     }
 
     /**
@@ -77,14 +73,7 @@ public class MarketReviewServiceImpl implements MarketReviewService {
     @Override
     public CursorPageResult<MarketReview> cursorQuery(Long cursor, int limit) {
         Long userId = StpUtil.getLoginIdAsLong();
-        LambdaQueryWrapper<MarketReview> wrapper = new LambdaQueryWrapper<MarketReview>()
-                .eq(MarketReview::getUserId, userId);
-        if (cursor != null && cursor > 0) {
-            wrapper.lt(MarketReview::getId, cursor);
-        }
-        wrapper.orderByDesc(MarketReview::getId);
-        wrapper.last("LIMIT " + (limit + 1));
-        List<MarketReview> records = marketReviewMapper.selectList(wrapper);
+        List<MarketReview> records = marketReviewDao.cursorQueryByUserId(userId, cursor, limit + 1);
         boolean hasMore = records.size() > limit;
         if (hasMore) {
             records = records.subList(0, limit);
@@ -103,10 +92,7 @@ public class MarketReviewServiceImpl implements MarketReviewService {
     @Override
     public MarketReview getReviewById(Long id) {
         Long userId = StpUtil.getLoginIdAsLong();
-        MarketReview review = marketReviewMapper.selectOne(
-                new LambdaQueryWrapper<MarketReview>()
-                        .eq(MarketReview::getId, id)
-                        .eq(MarketReview::getUserId, userId));
+        MarketReview review = marketReviewDao.selectByIdAndUserId(id, userId);
         if (review == null) {
             throw new RuntimeException("复盘记录不存在");
         }
@@ -117,14 +103,11 @@ public class MarketReviewServiceImpl implements MarketReviewService {
     @Transactional
     public void deleteReview(Long id) {
         Long userId = StpUtil.getLoginIdAsLong();
-        MarketReview review = marketReviewMapper.selectOne(
-                new LambdaQueryWrapper<MarketReview>()
-                        .eq(MarketReview::getId, id)
-                        .eq(MarketReview::getUserId, userId));
+        MarketReview review = marketReviewDao.selectByIdAndUserId(id, userId);
         if (review == null) {
             throw new RuntimeException("复盘记录不存在");
         }
-        marketReviewMapper.deleteById(id);
+        marketReviewDao.deleteById(id);
         log.info("大盘复盘记录删除成功，ID: {}", id);
     }
 
@@ -178,13 +161,10 @@ public class MarketReviewServiceImpl implements MarketReviewService {
     private MarketReview doCreateReview(String reviewDate, Long userId) {
         log.info("创建大盘复盘记录: reviewDate={}, userId={}", reviewDate, userId);
 
-        MarketReview existing = marketReviewMapper.selectOne(
-                new LambdaQueryWrapper<MarketReview>()
-                        .eq(MarketReview::getReviewDate, reviewDate)
-                        .eq(MarketReview::getUserId, userId));
+        MarketReview existing = marketReviewDao.selectByReviewDateAndUserId(reviewDate, userId);
 
         if (existing != null) {
-            marketReviewMapper.deleteById(existing.getId());
+            marketReviewDao.deleteById(existing.getId());
         }
 
         String reviewName = reviewDate + " A股复盘报告";
@@ -198,7 +178,7 @@ public class MarketReviewServiceImpl implements MarketReviewService {
         review.setUserId(userId);
         review.setCreateTime(now);
         review.setUpdateTime(now);
-        marketReviewMapper.insert(review);
+        marketReviewDao.insert(review);
 
         cleanupExcessRecords(userId);
 
@@ -207,7 +187,7 @@ public class MarketReviewServiceImpl implements MarketReviewService {
         if (!submitted) {
             review.setStatus(MarketReviewStatus.FAILED);
             review.setErrorMessage("复盘任务队列已满，请稍后重试");
-            marketReviewMapper.updateById(review);
+            marketReviewDao.updateById(review);
         }
 
         log.info("大盘复盘记录已创建并提交到队列: id={}, reviewDate={}", review.getId(), reviewDate);
@@ -259,7 +239,7 @@ public class MarketReviewServiceImpl implements MarketReviewService {
         String coreSummary = extractCoreSummary(content);
         LocalDateTime now = LocalDateTime.now();
 
-        MarketReview review = marketReviewMapper.selectById(reviewId);
+        MarketReview review = marketReviewDao.selectById(reviewId);
         if (review == null) {
             log.warn("大盘复盘记录不存在，无法更新: id={}", reviewId);
             return;
@@ -270,7 +250,7 @@ public class MarketReviewServiceImpl implements MarketReviewService {
         review.setCoreSummary(coreSummary);
         review.setStatus(MarketReviewStatus.COMPLETED);
         review.setUpdateTime(now);
-        marketReviewMapper.updateById(review);
+        marketReviewDao.updateById(review);
 
         try {
             sendFeishuReview(review, avgChangePct, userId);
@@ -298,7 +278,7 @@ public class MarketReviewServiceImpl implements MarketReviewService {
             review.setId(reviewId);
             review.setStatus(MarketReviewStatus.FAILED);
             review.setErrorMessage(errorMessage);
-            marketReviewMapper.updateById(review);
+            marketReviewDao.updateById(review);
             log.error("大盘复盘失败: reviewId={}, error={}", reviewId, errorMessage);
         } catch (Exception e) {
             log.error("更新大盘复盘失败状态异常: reviewId={}", reviewId, e);
@@ -341,22 +321,14 @@ public class MarketReviewServiceImpl implements MarketReviewService {
     }
 
     private void cleanupExcessRecords(Long userId) {
-        LambdaQueryWrapper<MarketReview> baseQuery = new LambdaQueryWrapper<MarketReview>()
-                .eq(MarketReview::getUserId, userId);
-        long total = marketReviewMapper.selectCount(baseQuery);
+        long total = marketReviewDao.countByUserId(userId);
         if (total <= MAX_RECORD_KEEP_COUNT) return;
 
-        List<MarketReview> latestRecords = marketReviewMapper.selectList(
-                new LambdaQueryWrapper<MarketReview>()
-                        .eq(MarketReview::getUserId, userId)
-                        .orderByDesc(MarketReview::getReviewDate)
-                        .last("LIMIT " + MAX_RECORD_KEEP_COUNT));
+        List<MarketReview> latestRecords = marketReviewDao.selectTopByUserIdOrderByReviewDateDesc(userId, MAX_RECORD_KEEP_COUNT);
         List<Long> keepIds = latestRecords.stream()
                 .map(MarketReview::getId)
                 .toList();
-        marketReviewMapper.delete(new LambdaQueryWrapper<MarketReview>()
-                .eq(MarketReview::getUserId, userId)
-                .notIn(MarketReview::getId, keepIds));
+        marketReviewDao.deleteByUserIdAndIdNotIn(userId, keepIds);
     }
 
     /**

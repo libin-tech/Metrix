@@ -6,7 +6,6 @@ import com.bintech.metrix.annotation.CheckConfig;
 import com.bintech.metrix.dto.response.ApiResponse;
 import com.bintech.metrix.dto.response.CursorPageResult;
 import com.bintech.metrix.enums.ConfigType;
-import com.bintech.metrix.enums.MarketReviewStatus;
 import com.bintech.metrix.repository.entity.MarketReview;
 import com.bintech.metrix.service.MarketReviewService;
 import lombok.RequiredArgsConstructor;

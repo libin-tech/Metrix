@@ -51,6 +51,7 @@ public class MarketReviewDataFetcher {
         try {
             ProcessBuilder pb = new ProcessBuilder(command);
             pb.redirectErrorStream(true);
+            pb.environment().put("PYTHONIOENCODING", "utf-8");
             Process process = pb.start();
             StringBuilder outputBuilder = new StringBuilder();
             Thread reader = Thread.ofVirtual()

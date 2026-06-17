@@ -119,11 +119,11 @@ import {message, Modal} from 'ant-design-vue'
 import {ClockCircleOutlined, DeleteOutlined, FundOutlined, ReloadOutlined} from '@ant-design/icons-vue'
 import {marked} from 'marked'
 import {
+  createMarketReview,
+  deleteMarketReview,
   getMarketReviewCursor,
   getMarketReviewDetail,
-  deleteMarketReview,
-  triggerMarketReview,
-  createMarketReview
+  triggerMarketReview
 } from '../api'
 
 const {t} = useI18n()

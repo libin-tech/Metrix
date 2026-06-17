@@ -1,12 +1,10 @@
 package com.bintech.metrix.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bintech.metrix.constants.BusinessConstants;
 import com.bintech.metrix.dto.response.ChatSessionVO;
-import com.bintech.metrix.repository.entity.ChatMessage;
+import com.bintech.metrix.repository.dao.ChatMessageDao;
+import com.bintech.metrix.repository.dao.ChatSessionDao;
 import com.bintech.metrix.repository.entity.ChatSession;
-import com.bintech.metrix.repository.mapper.ChatMessageMapper;
-import com.bintech.metrix.repository.mapper.ChatSessionMapper;
 import com.bintech.metrix.service.ChatSessionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,21 +21,15 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ChatSessionServiceImpl implements ChatSessionService {
 
-    private final ChatSessionMapper sessionMapper;
-    private final ChatMessageMapper messageMapper;
+    private final ChatSessionDao sessionDao;
+    private final ChatMessageDao messageDao;
 
     @Override
     @Transactional
     public ChatSession createSession(Long userId, String sessionName) {
-        Long count = sessionMapper.selectCount(
-                new LambdaQueryWrapper<ChatSession>()
-                        .eq(ChatSession::getUserId, userId));
+        Long count = sessionDao.countByUserId(userId);
         if (count >= BusinessConstants.MAX_CHAT_SESSIONS_PER_USER) {
-            ChatSession oldest = sessionMapper.selectOne(
-                    new LambdaQueryWrapper<ChatSession>()
-                            .eq(ChatSession::getUserId, userId)
-                            .orderByAsc(ChatSession::getUpdateTime)
-                            .last("LIMIT 1"));
+            ChatSession oldest = sessionDao.selectOldestByUserId(userId);
             if (oldest != null) {
                 deleteSession(oldest.getId(), userId);
             }
@@ -50,14 +42,14 @@ public class ChatSessionServiceImpl implements ChatSessionService {
         session.setMessageCount(0);
         session.setCreateTime(LocalDateTime.now());
         session.setUpdateTime(LocalDateTime.now());
-        sessionMapper.insert(session);
+        sessionDao.insert(session);
         log.info("创建对话会话: id={}, name={}, userId={}", session.getId(), sessionName, userId);
         return session;
     }
 
     @Override
     public ChatSession getSessionById(Long id) {
-        ChatSession session = sessionMapper.selectById(id);
+        ChatSession session = sessionDao.selectById(id);
         if (session == null) {
             throw new RuntimeException("对话会话不存在");
         }
@@ -66,10 +58,7 @@ public class ChatSessionServiceImpl implements ChatSessionService {
 
     @Override
     public ChatSession getSessionById(Long id, Long userId) {
-        ChatSession session = sessionMapper.selectOne(
-                new LambdaQueryWrapper<ChatSession>()
-                        .eq(ChatSession::getId, id)
-                        .eq(ChatSession::getUserId, userId));
+        ChatSession session = sessionDao.selectByIdAndUserId(id, userId);
         if (session == null) {
             throw new RuntimeException("对话会话不存在");
         }
@@ -78,10 +67,7 @@ public class ChatSessionServiceImpl implements ChatSessionService {
 
     @Override
     public List<ChatSessionVO> getUserSessions(Long userId) {
-        List<ChatSession> sessions = sessionMapper.selectList(
-                new LambdaQueryWrapper<ChatSession>()
-                        .eq(ChatSession::getUserId, userId)
-                        .orderByDesc(ChatSession::getUpdateTime));
+        List<ChatSession> sessions = sessionDao.selectByUserIdOrderByUpdateTimeDesc(userId);
         return sessions.stream()
                 .map(s -> ChatSessionVO.builder()
                         .id(s.getId())
@@ -98,56 +84,47 @@ public class ChatSessionServiceImpl implements ChatSessionService {
     @Override
     @Transactional
     public void deleteSession(Long id, Long userId) {
-        ChatSession session = sessionMapper.selectOne(
-                new LambdaQueryWrapper<ChatSession>()
-                        .eq(ChatSession::getId, id)
-                        .eq(ChatSession::getUserId, userId));
+        ChatSession session = sessionDao.selectByIdAndUserId(id, userId);
         if (session == null) {
             throw new RuntimeException("对话会话不存在");
         }
-        messageMapper.delete(new LambdaQueryWrapper<ChatMessage>()
-                .eq(ChatMessage::getSessionId, id));
-        sessionMapper.deleteById(id);
+        messageDao.deleteBySessionId(id);
+        sessionDao.deleteById(id);
         log.info("删除对话会话及其消息: sessionId={}, userId={}", id, userId);
     }
 
     @Override
     @Transactional
     public void deleteSessions(List<Long> ids, Long userId) {
-        List<ChatSession> sessions = sessionMapper.selectList(
-                new LambdaQueryWrapper<ChatSession>()
-                        .in(ChatSession::getId, ids)
-                        .eq(ChatSession::getUserId, userId));
+        List<ChatSession> sessions = sessionDao.selectByUserIdOrderByUpdateTimeDesc(userId);
         if (sessions.isEmpty()) return;
-        Set<Long> validIds = sessions.stream().map(ChatSession::getId).collect(Collectors.toSet());
-        messageMapper.delete(new LambdaQueryWrapper<ChatMessage>()
-                .in(ChatMessage::getSessionId, validIds));
-        sessionMapper.delete(new LambdaQueryWrapper<ChatSession>()
-                .in(ChatSession::getId, validIds)
-                .eq(ChatSession::getUserId, userId));
+        Set<Long> validIds = sessions.stream().map(ChatSession::getId).filter(ids::contains).collect(Collectors.toSet());
+        if (validIds.isEmpty()) return;
+        messageDao.deleteBySessionIdIn(validIds.stream().toList());
+        sessionDao.deleteByIdInAndUserId(validIds.stream().toList(), userId);
         log.info("批量删除对话会话及其消息: ids={}, userId={}", validIds, userId);
     }
 
     @Override
     @Transactional
     public void updateSessionTokenAndCount(Long sessionId, int tokens) {
-        ChatSession session = sessionMapper.selectById(sessionId);
+        ChatSession session = sessionDao.selectById(sessionId);
         if (session != null) {
             session.setTotalTokens(session.getTotalTokens() + tokens);
             session.setMessageCount(session.getMessageCount() + 1);
             session.setUpdateTime(LocalDateTime.now());
-            sessionMapper.updateById(session);
+            sessionDao.updateById(session);
         }
     }
 
     @Override
     @Transactional
     public void updateSessionName(Long sessionId, String sessionName) {
-        ChatSession session = sessionMapper.selectById(sessionId);
+        ChatSession session = sessionDao.selectById(sessionId);
         if (session != null) {
             session.setSessionName(sessionName);
             session.setUpdateTime(LocalDateTime.now());
-            sessionMapper.updateById(session);
+            sessionDao.updateById(session);
         }
     }
 }

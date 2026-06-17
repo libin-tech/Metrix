@@ -263,16 +263,16 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { useI18n } from 'vue-i18n'
-import { message } from 'ant-design-vue'
+import {computed, onMounted, onUnmounted, ref} from 'vue'
+import {useRouter} from 'vue-router'
+import {useI18n} from 'vue-i18n'
+import {message} from 'ant-design-vue'
 import {
   DeleteOutlined,
-  EyeOutlined,
   EyeInvisibleOutlined,
-  InfoCircleOutlined,
+  EyeOutlined,
   InboxOutlined,
+  InfoCircleOutlined,
   PlayCircleOutlined,
   PlusOutlined,
   ReloadOutlined,
@@ -281,15 +281,15 @@ import {
   WalletOutlined
 } from '@ant-design/icons-vue'
 import {
+  batchCreatePortfolioHolding,
   createAnalysis,
+  createPortfolioHolding,
+  deletePortfolioHolding,
   getAllAnalysis,
   getBrokerAccounts,
   getPortfolioHoldings,
-  createPortfolioHolding,
-  batchCreatePortfolioHolding,
-  deletePortfolioHolding,
-  refreshPortfolioPrices,
   pollRefreshedPrices,
+  refreshPortfolioPrices,
   searchStocks
 } from '../api'
 

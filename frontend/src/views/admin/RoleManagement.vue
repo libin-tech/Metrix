@@ -136,26 +136,26 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { message } from 'ant-design-vue'
+import {computed, onMounted, reactive, ref} from 'vue'
+import {useI18n} from 'vue-i18n'
+import {message} from 'ant-design-vue'
 import {
-  SafetyCertificateOutlined,
-  SafetyOutlined,
-  PlusOutlined,
+  DeleteOutlined,
   EditOutlined,
-  DeleteOutlined
+  PlusOutlined,
+  SafetyCertificateOutlined,
+  SafetyOutlined
 } from '@ant-design/icons-vue'
 import {
-  getRolePage,
-  getRoleDetail,
-  createRole,
-  updateRole,
-  deleteRole,
-  assignRoleMenus,
   assignRoleApis,
+  assignRoleMenus,
+  createRole,
+  deleteRole,
+  getAllApis,
   getMenuTree,
-  getAllApis
+  getRoleDetail,
+  getRolePage,
+  updateRole
 } from '../../api'
 
 const { t } = useI18n()
