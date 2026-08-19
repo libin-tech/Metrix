@@ -60,6 +60,10 @@ Metrix = Metric（指标） + Matrix（矩阵）
 ### 本地开发
 
 ```bash
+# 0. 安装AKshare和tikflow
+pip install akshare --upgrade
+pip install "tickflow[all]" --upgrade
+
 # 1. 配置数据库
 cp .env.example .env
 # 编辑 .env 填入 PostgreSQL 连接信息
