@@ -201,8 +201,9 @@ body {
   color: #fff;
 }
 
-.header {
-  height: 76px;
+.layout > .header {
+  height: 76px !important;
+  min-height: 76px;
   line-height: normal;
   background: #111d31;
   padding: 0;
