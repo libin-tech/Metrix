@@ -56,6 +56,10 @@
               
               <template v-if="msg.role === 'assistant'">
                 <div v-if="msg.isStreaming" class="streaming-container">
+                  <div class="streaming-heading">
+                    <span class="streaming-symbol"><LoadingOutlined spin /></span>
+                    <div><strong>{{ $t('chat.thinking') }}</strong><small>{{ $t('chat.thinkingPrompt') }}</small></div>
+                  </div>
                   <div class="step-overlay">
                     <MarkdownRender :content="currentStep || t('chat.thinkingPrompt')" :final="true" />
                     <div class="typing-indicator">
@@ -69,16 +73,22 @@
                 <template v-else>
                   <div v-if="msg.steps && msg.steps.length > 0" class="process-steps-box">
                     <details open>
-                      <summary class="process-summary">{{ $t('chat.processingSteps') }} ({{ formatDuration(totalElapsed(msg.steps)) }})</summary>
-                      <div v-for="s in msg.steps" :key="s.step" class="step-row">
-                        <span class="step-status-icon">{{ s.status === 'completed' ? '✅' : '⚠️' }}</span>
-                        <span class="step-label">Step {{ s.step }}/8: {{ s.title }}</span>
-                        <span class="step-duration">{{ formatDuration(s.elapsed) }}</span>
+                      <summary class="process-summary">
+                        <span class="process-summary-title"><span class="process-summary-icon"><NodeIndexOutlined /></span><span><strong>{{ $t('chat.processingSteps') }}</strong><small>{{ $t('chat.reasoningTrace') }}</small></span></span>
+                        <span class="process-summary-meta"><ClockCircleOutlined />{{ formatDuration(totalElapsed(msg.steps)) }}<DownOutlined class="summary-chevron" /></span>
+                      </summary>
+                      <div class="process-steps-list">
+                        <div v-for="s in msg.steps" :key="s.step" class="step-row">
+                          <span class="step-status-icon" :class="s.status === 'completed' ? 'completed' : 'pending'"><CheckOutlined v-if="s.status === 'completed'" /><ExclamationCircleOutlined v-else /></span>
+                          <span class="step-number">{{ s.step }}</span>
+                          <span class="step-label">{{ s.title }}</span>
+                          <span class="step-duration">{{ formatDuration(s.elapsed) }}</span>
+                        </div>
                       </div>
                     </details>
                   </div>
                   <details open v-if="extractThinking(msg.content)" class="thinking-box">
-                    <summary>{{ $t('chat.thinking') }}</summary>
+                    <summary class="thinking-summary"><span class="thinking-summary-title"><span class="thinking-summary-icon"><BulbOutlined /></span><span><strong>{{ $t('chat.thinking') }}</strong><small>{{ $t('chat.reasoningTrace') }}</small></span></span><DownOutlined class="summary-chevron" /></summary>
                     <div class="thinking-content" v-html="renderMarkdown(extractThinking(msg.content))"></div>
                   </details>
                   <div v-if="extractReport(msg.content)" class="report-content markdown-rendered" v-html="renderMarkdown(extractReport(msg.content))"></div>
@@ -118,7 +128,7 @@
 import {computed, nextTick, onMounted, ref} from 'vue'
 import {useI18n} from 'vue-i18n'
 import {message, Modal} from 'ant-design-vue'
-import {DeleteOutlined, PlusOutlined, SendOutlined} from '@ant-design/icons-vue'
+import {BulbOutlined, CheckOutlined, ClockCircleOutlined, DeleteOutlined, DownOutlined, ExclamationCircleOutlined, LoadingOutlined, NodeIndexOutlined, PlusOutlined, SendOutlined} from '@ant-design/icons-vue'
 import {
   createChatSession,
   deleteChatSession,
@@ -585,17 +595,45 @@ onMounted(() => {
 }
 
 .streaming-container {
-  background: #f6ffed;
-  border-radius: 4px 12px 12px 12px;
-  padding: 12px 16px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  background: #f7f9fc;
+  border: 1px solid #dce4ee;
+  border-radius: 12px;
+  box-shadow: 0 5px 16px rgba(35, 56, 89, .05);
 }
 
-.thinking-box {
-  margin-bottom: 16px;
-  background: #fffbe6;
-  border: 1px solid #ffe58f;
+.streaming-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 16px;
+  color: #263753;
+  background: #edf3ff;
+  border-bottom: 1px solid #dce7fa;
+}
+
+.streaming-symbol, .thinking-summary-icon, .process-summary-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: #fff;
+  background: #5878c2;
   border-radius: 8px;
+}
+
+.streaming-heading strong, .thinking-summary strong, .process-summary strong { display: block; font-size: 13px; font-weight: 700; line-height: 1.25; }
+.streaming-heading small, .thinking-summary small, .process-summary small { display: block; margin-top: 2px; color: #7888a1; font-size: 11px; line-height: 1.2; }
+
+.thinking-box, .process-steps-box {
+  margin-bottom: 16px;
   overflow: hidden;
+  background: #f7f9fc;
+  border: 1px solid #dce4ee;
+  border-radius: 12px;
+  box-shadow: 0 5px 16px rgba(35, 56, 89, .04);
 }
 
 .typing-indicator {
@@ -609,7 +647,7 @@ onMounted(() => {
 .typing-indicator .dot {
   width: 6px;
   height: 6px;
-  background: #52c41a;
+  background: #5878c2;
   border-radius: 50%;
   animation: typing 1.4s infinite ease-in-out;
 }
@@ -640,52 +678,74 @@ onMounted(() => {
 .step-overlay {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 20px 0;
-  text-align: center;
+  align-items: flex-start;
+  padding: 16px;
+  text-align: left;
   font-size: 14px;
-  color: #52c41a;
+  color: #42536e;
 }
 
-.process-steps-box {
-  margin-bottom: 16px;
-  background: #f0f5ff;
-  border: 1px solid #d6e4ff;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.process-steps-box summary {
+.thinking-box summary, .process-steps-box summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   cursor: pointer;
-  font-weight: 600;
-  font-size: 13px;
-  color: var(--primary-color);
-  padding: 8px 12px;
-  background: #f0f5ff;
+  padding: 12px 14px;
+  list-style: none;
+  transition: background .18s ease;
 }
 
-.process-summary {
-  display: block;
+.thinking-box summary:hover, .process-steps-box summary:hover { background: #f1f5fb; }
+.thinking-box summary::-webkit-details-marker, .process-steps-box summary::-webkit-details-marker { display: none; }
+.thinking-box summary::marker, .process-steps-box summary::marker { content: ''; }
+.thinking-summary-title, .process-summary-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.process-summary-meta { display: inline-flex; align-items: center; gap: 6px; color: #7888a1; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+.summary-chevron { margin-left: 6px; color: #7888a1; font-size: 11px; transition: transform .18s ease; }
+.thinking-box[open] .summary-chevron, .process-steps-box[open] .summary-chevron { transform: rotate(180deg); }
+
+.process-steps-list { padding: 2px 14px 12px; border-top: 1px solid #e5ebf3; }
+
+.process-summary-icon { color: #496eb8; background: #e7eefc; }
+.thinking-summary-icon { color: #a76b14; background: #fff1d5; }
+.thinking-box .thinking-summary { background: #fffdf8; }
+.thinking-box .thinking-content { background: #fffdf8; }
+
+.thinking-content {
+  padding: 4px 16px 16px 52px;
+  color: #53637b;
+  font-size: 13px;
+  line-height: 1.75;
 }
 
 .step-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
+  gap: 9px;
+  min-height: 40px;
+  padding: 7px 0;
   font-size: 13px;
-  color: #333;
-  border-top: 1px solid #e8e8e8;
+  color: #42536e;
+  border-bottom: 1px solid #edf0f5;
 }
 
-.step-row:last-child {
-  border-bottom: none;
-}
+.step-row:last-child { border-bottom: 0; }
 
 .step-status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
-  font-size: 14px;
+  color: #5678bc;
+  font-size: 10px;
+  background: #e8eefb;
+  border-radius: 50%;
 }
+
+.step-status-icon.completed { color: #287f52; background: #e7f6ed; }
+.step-status-icon.pending { color: #b2791e; background: #fff3dc; }
+.step-number { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; flex-shrink: 0; color: #7a8aa2; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; background: #eef2f7; border-radius: 5px; }
 
 .step-label {
   flex: 1;
@@ -696,9 +756,9 @@ onMounted(() => {
 
 .step-duration {
   flex-shrink: 0;
-  font-size: 12px;
-  color: #999;
-  font-family: 'Courier New', monospace;
+  color: #8390a3;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
 }
 
 .input-area {
@@ -718,23 +778,6 @@ onMounted(() => {
 .input-hint {
   font-size: 12px;
   color: #bbb;
-}
-
-.thinking-box summary {
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 13px;
-  color: #d48806;
-  padding: 4px 12px;
-}
-
-.thinking-content {
-  padding: 8px 12px 12px;
-  font-size: 13px;
-  color: #666;
-  line-height: 1.6;
-  background: #fffef5;
-  border-top: 1px solid #ffe58f;
 }
 
 .report-content {

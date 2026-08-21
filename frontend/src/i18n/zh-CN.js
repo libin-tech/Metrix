@@ -462,6 +462,7 @@ export default {
     qaCount: '问答数量',
     disclaimer: '免责声明：本分析仅供参考，不构成投资建议。投资有风险，入市需谨慎。',
     thinkingPrompt: '正在思考中...',
+    reasoningTrace: '推理记录',
     processingSteps: '处理过程',
     selectAll: '全选',
     selectedCount: '已选择 {count} 项',

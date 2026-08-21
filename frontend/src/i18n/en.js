@@ -462,6 +462,7 @@ export default {
     qaCount: 'Q&A Count',
     disclaimer: 'Disclaimer: This analysis is for reference only and does not constitute investment advice.',
     thinkingPrompt: 'Thinking...',
+    reasoningTrace: 'Reasoning trace',
     processingSteps: 'Processing Steps',
     selectAll: 'Select All',
     selectedCount: '{count} selected',
