@@ -294,7 +294,8 @@ watch(() => route.path, () => {
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background-color: #f5f7fa;
+  background-color: #f7f9fc;
+  color: #182336;
 }
 
 .app-container {
@@ -306,7 +307,7 @@ body {
 }
 
 .sider {
-  background: #001529;
+  background: #111d31;
   display: flex;
   flex-direction: column;
 }
@@ -320,8 +321,8 @@ body {
   position: fixed;
   bottom: 0;
   width: 200px;
-  background: #001529;
-  border-top: 1px solid #1f2f3d;
+  background: #111d31;
+  border-top: 1px solid #273651;
 }
 
 .sider.collapsed .logout-menu {
@@ -335,15 +336,15 @@ body {
   gap: 8px;
   height: 64px;
   padding: 16px;
-  border-bottom: 1px solid #1f2f3d;
+  border-bottom: 1px solid #273651;
 }
 
 
 .logo-icon-box {
   width: 32px;
   height: 32px;
-  border-radius: 6px;
-  background: #1890ff;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #4c77c7, #7e9edc);
   color: #fff;
   display: flex;
   align-items: center;
@@ -360,9 +361,11 @@ body {
 }
 
 .header {
-  background: white;
+  background: rgba(255, 255, 255, .88);
   padding: 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid #e7ebf1;
+  box-shadow: none;
+  backdrop-filter: blur(12px);
 }
 
 .header-content {
@@ -381,9 +384,9 @@ body {
 }
 
 .header-title {
-  font-size: 18px;
-  font-weight: bold;
-  color: #888;
+  font-size: 15px;
+  font-weight: 650;
+  color: #46536a;
 }
 
 .header-actions {
@@ -407,8 +410,8 @@ body {
 }
 
 .content {
-  padding: 20px;
-  background: #f5f7fa;
+  padding: 22px 32px;
+  background: #f7f9fc;
   min-height: calc(100vh - 64px);
   display: flex;
   flex-direction: column;
@@ -440,7 +443,7 @@ body {
   font-size: 18px;
   cursor: pointer;
   background: transparent;
-  color: #666;
+  color: #607087;
 }
 
 .theme-btn:hover {
