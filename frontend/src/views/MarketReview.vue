@@ -554,8 +554,16 @@ onUnmounted(() => {
   white-space: pre-wrap;
 }
 
-.core-summary-content :deep(p) { margin: 0 0 10px; }
-.core-summary-content :deep(p:last-child) { margin-bottom: 0; }
+.core-summary :deep(.core-summary-content.markdown-content) { padding: 0; color: #edf3fc; background: transparent; border-radius: 0; }
+.core-summary :deep(.core-summary-content.markdown-content p) { margin: 0 0 10px; color: #edf3fc; }
+.core-summary :deep(.core-summary-content.markdown-content p:last-child) { margin-bottom: 0; }
+.core-summary :deep(.core-summary-content.markdown-content h1),
+.core-summary :deep(.core-summary-content.markdown-content h2),
+.core-summary :deep(.core-summary-content.markdown-content h3),
+.core-summary :deep(.core-summary-content.markdown-content h4),
+.core-summary :deep(.core-summary-content.markdown-content strong) { color: #ffffff; }
+.core-summary :deep(.core-summary-content.markdown-content li),
+.core-summary :deep(.core-summary-content.markdown-content em) { color: #d9e5f7; }
 
 .review-error {
   padding: 12px;
