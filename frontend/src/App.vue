@@ -38,18 +38,18 @@
               <a-popover v-model:open="personalPopoverOpen" placement="bottomRight" trigger="click" overlay-class-name="personal-center-popover">
             <template #content>
               <div class="personal-actions">
-                <a-button block type="primary" @click="openSettings">
-                  <SettingOutlined />{{ $t('settingsHub.openSettings') }}
-                </a-button>
-                <a-button block type="text" danger @click="handleLogout">
-                  <LogoutOutlined />{{ $t('settingsHub.logout') }}
-                </a-button>
+                <div class="personal-popover-profile">
+                  <a-avatar :size="36" class="personal-avatar"><UserOutlined /></a-avatar>
+                  <strong>{{ currentUser || $t('settingsHub.personalCenter') }}</strong>
+                </div>
+                <div class="personal-menu-divider"></div>
+                <button type="button" class="personal-menu-item" @click="openSettings"><SettingOutlined />{{ $t('settingsHub.openSettings') }}</button>
+                <button type="button" class="personal-menu-item danger" @click="handleLogout"><LogoutOutlined />{{ $t('settingsHub.logout') }}</button>
               </div>
             </template>
                 <div class="personal-trigger" role="button" tabindex="0" @keydown.enter="$event.currentTarget.click()">
               <a-avatar :size="34" class="personal-avatar"><UserOutlined /></a-avatar>
-                  <span class="personal-copy"><strong>{{ currentUser || $t('settingsHub.personalCenter') }}</strong><small>{{ $t('settingsHub.personalCenter') }}</small></span>
-                  <DownOutlined class="personal-arrow" />
+                  <span class="personal-copy"><strong>{{ currentUser || $t('settingsHub.personalCenter') }}</strong></span>
                 </div>
           </a-popover>
             </div>
@@ -77,7 +77,6 @@ import {useI18n} from 'vue-i18n'
 import {message} from 'ant-design-vue'
 import {
   ChromeOutlined,
-  DownOutlined,
   FundOutlined,
   HomeOutlined,
   LineChartOutlined,
@@ -263,7 +262,6 @@ body {
 
 .personal-trigger:hover .personal-avatar { box-shadow: 0 0 0 3px rgba(143, 175, 231, .22); transform: scale(1.04); }
 .personal-trigger:hover .personal-copy strong { color: #fff; }
-.personal-trigger:hover .personal-arrow { color: #fff; transform: translateY(1px); }
 
 .personal-avatar {
   flex-shrink: 0;
@@ -280,18 +278,18 @@ body {
 }
 
 .personal-copy strong { overflow: hidden; font-size: 12px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
-.personal-copy small { color: #a9b8d1; font-size: 10px; }
-.personal-arrow { color: #aebcd3; font-size: 11px; transition: color .18s ease, transform .18s ease; }
-
-.personal-actions { display: grid; min-width: 174px; gap: 4px; }
-.personal-actions .ant-btn { display: flex; align-items: center; justify-content: flex-start; gap: 8px; }
-.personal-actions .ant-btn-primary { justify-content: center; }
-.personal-center-popover .ant-popover-inner { padding: 8px; border-radius: 12px; }
+.personal-actions { min-width: 222px; padding: 4px; }
+.personal-popover-profile { display: flex; align-items: center; gap: 10px; padding: 8px; color: #1d2a3e; }
+.personal-popover-profile strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.personal-menu-divider { height: 1px; margin: 6px 4px; background: #e7ebf1; }
+.personal-menu-item { display: flex; align-items: center; width: 100%; gap: 9px; padding: 9px 8px; color: #334158; font: inherit; font-size: 13px; text-align: left; background: transparent; border: 0; border-radius: 7px; cursor: pointer; }
+.personal-menu-item:hover { background: #f2f5fa; }.personal-menu-item.danger { color: #c74956; }.personal-menu-item.danger:hover { background: #fff1f2; }
+.personal-center-popover .ant-popover-inner { padding: 4px; border: 1px solid #e2e8f1; border-radius: 12px; box-shadow: 0 12px 28px rgba(12, 26, 49, .18); }
 .personal-center-popover .ant-popover-inner-content { padding: 0; }
 
 @media (max-width: 800px) {
   .topbar-content { gap: 16px; padding: 0 16px; }
-  .logo-text, .personal-copy, .personal-arrow { display: none; }
+  .logo-text, .personal-copy { display: none; }
   .personal-trigger { min-width: auto; padding: 6px; }
   .main-menu .ant-menu-item { padding-inline: 10px; }
   .main-menu { overflow-x: auto; }
