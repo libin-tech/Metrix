@@ -8,8 +8,8 @@ const routes = [
   },
   {
     path: '/',
-    name: 'Welcome',
-    component: () => import('../views/Welcome.vue'),
+    name: 'Home',
+    component: () => import('../views/Home.vue'),
     meta: { requiresAuth: true }
   },
   {
@@ -18,9 +18,7 @@ const routes = [
   },
   {
     path: '/dashboard',
-    name: 'Dashboard',
-    component: () => import('../views/Home.vue'),
-    meta: { requiresAuth: true }
+    redirect: '/'
   },
   {
     path: '/analysis',
