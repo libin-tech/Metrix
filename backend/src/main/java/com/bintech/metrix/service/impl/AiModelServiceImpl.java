@@ -48,7 +48,6 @@ public class AiModelServiceImpl implements AiModelService {
         config.setApiBaseUrl(request.getApiBaseUrl());
         config.setApiKey(request.getApiKey());
         config.setTemperature(request.getTemperature());
-        config.setMaxTokens(request.getMaxTokens());
         config.setTimeout(request.getTimeout());
         config.setIsActive(request.getIsActive());
         config.setUserId(userId);
@@ -74,7 +73,6 @@ public class AiModelServiceImpl implements AiModelService {
         config.setApiBaseUrl(request.getApiBaseUrl());
         config.setApiKey(request.getApiKey());
         config.setTemperature(request.getTemperature());
-        config.setMaxTokens(request.getMaxTokens());
         config.setTimeout(request.getTimeout());
         config.setIsActive(request.getIsActive());
         config.setUpdateTime(LocalDateTime.now());
@@ -311,7 +309,6 @@ public class AiModelServiceImpl implements AiModelService {
                 .apiKey(config.getApiKey())
                 .modelName(config.getModelName())
                 .temperature(config.getTemperature());
-        applyOpenAiMaxTokens(builder, config.getMaxTokens());
         if (config.getTimeout() != null) {
             builder.timeout(java.time.Duration.ofSeconds(config.getTimeout()));
         }
@@ -342,23 +339,10 @@ public class AiModelServiceImpl implements AiModelService {
                 .apiKey(config.getApiKey())
                 .modelName(config.getModelName())
                 .temperature(config.getTemperature());
-        applyOpenAiMaxTokens(builder, config.getMaxTokens());
         if (config.getTimeout() != null) {
             builder.timeout(Duration.ofSeconds(config.getTimeout()));
         }
         return builder.build();
-    }
-
-    private void applyOpenAiMaxTokens(OpenAiChatModel.OpenAiChatModelBuilder builder, Integer maxTokens) {
-        if (maxTokens != null && maxTokens > 0) {
-            builder.maxTokens(maxTokens);
-        }
-    }
-
-    private void applyOpenAiMaxTokens(OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder builder, Integer maxTokens) {
-        if (maxTokens != null && maxTokens > 0) {
-            builder.maxTokens(maxTokens);
-        }
     }
 
     private Duration resolveTimeout(AiModelConfig config) {
@@ -422,7 +406,6 @@ public class AiModelServiceImpl implements AiModelService {
                     .apiKey(request.getApiKey())
                     .modelName(request.getModelName())
                     .temperature(request.getTemperature());
-            applyOpenAiMaxTokens(builder, request.getMaxTokens());
             if (request.getTimeout() != null) {
                 builder.timeout(Duration.ofSeconds(request.getTimeout()));
             }

@@ -287,8 +287,6 @@ export default {
     temperatureHelp: '控制模型输出随机性，0 为确定性输出，2 为最大随机性，推荐 0.7',
     modelName: '模型名称',
     apiBaseUrl: 'API地址',
-    maxTokens: '最大输出 Token',
-    maxTokensHelp: '限制单次回答长度，建议 2048–4096，可避免长任务超时',
     timeoutShort: '超时(秒)',
     testConnection: '测试连接',
     timeout: '超时时间（秒）',

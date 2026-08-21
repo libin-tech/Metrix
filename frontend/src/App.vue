@@ -34,6 +34,10 @@
             <span>{{ $t('menu.marketReview') }}</span>
           </a-menu-item>
             </a-menu>
+            <button type="button" class="language-switch" :aria-label="$t('common.language')" @click="switchLanguage">
+              <GlobalOutlined />
+              <span>{{ locale === 'zh-CN' ? $t('common.english') : $t('common.chinese') }}</span>
+            </button>
             <div class="personal-center">
               <a-popover v-model:open="personalPopoverOpen" placement="bottomRight" trigger="click" overlay-class-name="personal-center-popover">
             <template #content>
@@ -78,6 +82,7 @@ import {message} from 'ant-design-vue'
 import {
   ChromeOutlined,
   FundOutlined,
+  GlobalOutlined,
   HomeOutlined,
   LineChartOutlined,
   LogoutOutlined,
@@ -91,7 +96,7 @@ import {
 import {getCurrentUser, getPermissions} from './api'
 import SettingsDrawer from './components/SettingsDrawer.vue'
 
-const {t} = useI18n()
+const {locale} = useI18n()
 const router = useRouter()
 const route = useRoute()
 const workspaceTheme = {token: {colorPrimary: '#5878c2'}}
@@ -126,6 +131,12 @@ const navigate = (path) => {
 const openSettings = () => {
   personalPopoverOpen.value = false
   settingsDrawerOpen.value = true
+}
+
+const switchLanguage = () => {
+  const nextLocale = locale.value === 'zh-CN' ? 'en' : 'zh-CN'
+  locale.value = nextLocale
+  localStorage.setItem('locale', nextLocale)
 }
 
 const handleLogout = () => {
@@ -250,6 +261,25 @@ body {
 .main-menu .ant-menu-item::after { border-bottom-color: #8ba9e6; border-bottom-width: 2px; }
 .main-menu::-webkit-scrollbar { display: none; }
 
+.language-switch {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 10px;
+  color: #d8e2f4;
+  font: inherit;
+  font-size: 13px;
+  background: transparent;
+  border: 1px solid rgba(181, 200, 230, .22);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color .18s ease, background .18s ease, border-color .18s ease;
+}
+
+.language-switch:hover { color: #fff; background: rgba(143, 175, 231, .14); border-color: rgba(181, 200, 230, .44); }
+
 .personal-center {
   flex-shrink: 0;
   padding: 0;
@@ -298,6 +328,8 @@ body {
 @media (max-width: 800px) {
   .topbar-content { gap: 16px; padding: 0 16px; }
   .logo-text, .personal-copy { display: none; }
+  .language-switch span { display: none; }
+  .language-switch { width: 34px; justify-content: center; padding: 0; }
   .personal-trigger { min-width: auto; padding: 6px; }
   .main-menu .ant-menu-item { padding-inline: 10px; }
   .main-menu { overflow-x: auto; }

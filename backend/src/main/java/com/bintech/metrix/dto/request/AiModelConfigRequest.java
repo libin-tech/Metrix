@@ -26,8 +26,6 @@ public class AiModelConfigRequest {
 
     private Double temperature = SystemConstants.DEFAULT_TEMPERATURE;
 
-    private Integer maxTokens = SystemConstants.DEFAULT_MAX_TOKENS;
-
     private Boolean isActive = true;
 
     private Integer timeout = SystemConstants.AI_MODEL_TIMEOUT_SECONDS;

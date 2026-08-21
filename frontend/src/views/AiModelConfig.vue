@@ -48,10 +48,6 @@
             <a-button :loading="testing" @click="handleTestConnection">{{ $t('aiModel.testConnection') }}</a-button>
           </a-space>
         </a-form-item>
-        <a-form-item :label="$t('aiModel.maxTokens')">
-          <a-input-number v-model:value="form.maxTokens" :min="256" :max="8192" :step="256" />
-          <span class="help-text">{{ $t('aiModel.maxTokensHelp') }}</span>
-        </a-form-item>
         <a-form-item :label="$t('aiModel.timeout')">
           <a-input-number v-model:value="form.timeout" :min="10" :max="600" :step="10" />
           <span class="help-text">{{ $t('aiModel.timeoutHelp') }}</span>
@@ -83,7 +79,6 @@ const columns = computed(() => [
   { title: t('aiModel.modelType'), dataIndex: 'modelType', key: 'modelType' },
   { title: t('aiModel.modelName'), dataIndex: 'modelName', key: 'modelName' },
   { title: t('aiModel.apiBaseUrl'), dataIndex: 'apiBaseUrl', key: 'apiBaseUrl' },
-  { title: t('aiModel.maxTokens'), dataIndex: 'maxTokens', key: 'maxTokens', width: 130 },
   { title: t('aiModel.timeoutShort'), dataIndex: 'timeout', key: 'timeout', width: 100 },
   { title: 'Temperature', dataIndex: 'temperature', key: 'temperature', width: 100 },
   { title: t('config.status'), key: 'isActive', width: 80 },
@@ -101,7 +96,6 @@ const form = reactive({
   apiBaseUrl: '',
   apiKey: '',
   temperature: 0.7,
-  maxTokens: 4096,
   timeout: 120,
   isActive: true
 })
@@ -123,7 +117,6 @@ const editConfig = (config) => {
   form.apiBaseUrl = config.apiBaseUrl
   form.apiKey = config.apiKey
   form.temperature = config.temperature
-  form.maxTokens = config.maxTokens
   form.timeout = config.timeout ?? 120
   form.isActive = config.isActive
   showAddModal.value = true
@@ -202,7 +195,6 @@ const handleTestConnection = async () => {
       apiBaseUrl: form.modelType === 'GEMINI' ? '' : form.apiBaseUrl,
       apiKey: form.apiKey,
       temperature: form.temperature,
-      maxTokens: form.maxTokens,
       timeout: form.timeout
     })
     const { modelName, elapsedMs } = response.data
@@ -222,7 +214,6 @@ const resetForm = () => {
   form.apiBaseUrl = ''
   form.apiKey = ''
   form.temperature = 0.7
-  form.maxTokens = 4096
   form.timeout = 120
   form.isActive = true
 }

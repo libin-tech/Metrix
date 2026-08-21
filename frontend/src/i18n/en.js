@@ -287,8 +287,6 @@ export default {
     temperatureHelp: 'Controls output randomness. 0 = deterministic, 2 = max randomness, recommended 0.7',
     modelName: 'Model Name',
     apiBaseUrl: 'API Base URL',
-    maxTokens: 'Max Output Tokens',
-    maxTokensHelp: 'Limits each response. Use 2,048–4,096 to avoid long-task timeouts.',
     timeoutShort: 'Timeout (s)',
     testConnection: 'Test Connection',
     timeout: 'Timeout (seconds)',

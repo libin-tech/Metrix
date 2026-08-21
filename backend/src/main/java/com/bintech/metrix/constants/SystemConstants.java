@@ -29,7 +29,6 @@ public final class SystemConstants {
 
     /* ==================== AI模型默认值 ==================== */
     public static final double DEFAULT_TEMPERATURE = 0.7;
-    public static final int DEFAULT_MAX_TOKENS = 2048;
     public static final int DEFAULT_REQUEST_INTERVAL = 30;
 
     /* ==================== K线相关 ==================== */
