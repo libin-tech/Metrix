@@ -135,16 +135,17 @@ export const sendChatMessage = async (sessionId, content, callbacks) => {
       for (const part of parts) {
         const lines = part.split('\n')
         let eventType = 'report'
-        let data = ''
+        const dataLines = []
         for (const line of lines) {
           if (line.startsWith('id:')) {
             // ignore id field
           } else if (line.startsWith('event:')) {
             eventType = line.slice(6).trim()
           } else if (line.startsWith('data:')) {
-            data = line.slice(5).replace(/^ /, '')
+            dataLines.push(line.slice(5).replace(/^ /, ''))
           }
         }
+        const data = dataLines.join('\n')
         if (eventType === 'done') {
           onDone && onDone(data ? JSON.parse(data) : {})
         } else if (eventType === 'error') {

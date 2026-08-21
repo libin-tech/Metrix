@@ -2,6 +2,7 @@ package com.bintech.metrix.service.impl;
 
 import com.bintech.metrix.constants.BusinessConstants;
 import com.bintech.metrix.core.analysis.StockAdvisorPromptBuilder;
+import com.bintech.metrix.dto.response.AnalysisResult;
 import com.bintech.metrix.dto.response.ChatMessageVO;
 import com.bintech.metrix.dto.response.ChatSessionVO;
 import com.bintech.metrix.enums.ChatRole;
@@ -198,50 +199,11 @@ public class ChatServiceImpl implements ChatService {
 
                 String prompt = promptBuilder.build(content, stockBasic, marketData, depthData, newsData, klinesData, chipData, topFreeShareholdersData);
 
-                try {
-                    long aiStartTime = System.currentTimeMillis();
-                    String aiContent = aiModelService.generateAnalysis(prompt, modelType, userId);
-                    long aiElapsed = System.currentTimeMillis() - aiStartTime;
-                    int tokens = (int) Math.ceil(aiContent.length() / 2.0);
-
-                    addStepRecord(stepRecords, 8, "AI总结分析", aiElapsed, "completed");
-                    String stepsJson = JSON_MAPPER.writeValueAsString(stepRecords);
-
-                    saveAssistantMessage(sessionId, userId, aiContent, tokens, stockCode, stockName, stepsJson);
-                    chatSessionService.updateSessionTokenAndCount(sessionId, tokens);
-
-                    sendStep(emitter, "✅ **Step 8/8** 🤖 分析完成");
-                    emitter.send(SseEmitter.event()
-                            .name("done")
-                            .data("{\"sessionId\":" + sessionId
-                                    + ",\"content\":" + JSON_MAPPER.writeValueAsString(aiContent)
-                                    + ",\"tokens\":" + tokens
-                                    + ",\"messageCount\":" + (messageCount / 2 + 1)
-                                    + ",\"steps\":" + stepsJson
-                                    + "}"));
-                    emitter.complete();
-                } catch (Exception e) {
-                    log.error("AI分析出错: {}", e.getMessage());
-                    long aiElapsed = System.currentTimeMillis() - t8;
-                    addStepRecord(stepRecords, 8, "AI总结分析", aiElapsed, "failed");
-                    String stepsJson = JSON_MAPPER.writeValueAsString(stepRecords);
-                    try {
-                        emitter.send(SseEmitter.event()
-                                .name("error")
-                                .data(e.getMessage() != null ? e.getMessage() : "AI分析出错"));
-                        emitter.send(SseEmitter.event()
-                                .name("done")
-                                .data("{\"sessionId\":" + sessionId
-                                        + ",\"content\":\"\"" 
-                                        + ",\"tokens\":0"
-                                        + ",\"messageCount\":" + (messageCount / 2 + 1)
-                                        + ",\"steps\":" + stepsJson
-                                        + "}"));
-                    } catch (IOException ex) {
-                        log.error("发送错误事件失败", ex);
-                    }
-                    emitter.completeWithError(e);
-                }
+                aiModelService.generateAnalysisStreaming(prompt, modelType, userId,
+                        partialResponse -> sendReport(emitter, partialResponse),
+                        result -> completeChatAnalysis(emitter, sessionId, userId, stockCode, stockName,
+                                messageCount, stepRecords, t8, result),
+                        error -> failChatAnalysis(emitter, sessionId, messageCount, stepRecords, t8, error));
             } catch (Exception e) {
                 log.error("管道处理异常: {}", e.getMessage(), e);
                 try {
@@ -264,6 +226,54 @@ public class ChatServiceImpl implements ChatService {
         } catch (IOException e) {
             log.warn("发送进度事件失败", e);
         }
+    }
+
+    private void sendReport(SseEmitter emitter, String partialResponse) {
+        try {
+            emitter.send(SseEmitter.event().name("report").data(partialResponse));
+        } catch (IOException e) {
+            log.warn("发送流式回答失败: {}", e.getMessage());
+        }
+    }
+
+    private void completeChatAnalysis(SseEmitter emitter, Long sessionId, Long userId, String stockCode,
+                                      String stockName, Long messageCount, List<Map<String, Object>> stepRecords,
+                                      long startedAt, AnalysisResult result) {
+        try {
+            String content = result.getContent();
+            int tokens = result.getTotalTokens();
+            addStepRecord(stepRecords, 8, "AI总结分析", System.currentTimeMillis() - startedAt, "completed");
+            String stepsJson = JSON_MAPPER.writeValueAsString(stepRecords);
+            saveAssistantMessage(sessionId, userId, content, tokens, stockCode, stockName, stepsJson);
+            chatSessionService.updateSessionTokenAndCount(sessionId, tokens);
+            sendStep(emitter, "✅ **Step 8/8** 🤖 分析完成");
+            emitter.send(SseEmitter.event().name("done").data("{\"sessionId\":" + sessionId
+                    + ",\"content\":" + JSON_MAPPER.writeValueAsString(content)
+                    + ",\"tokens\":" + tokens
+                    + ",\"messageCount\":" + (messageCount / 2 + 1)
+                    + ",\"steps\":" + stepsJson + "}"));
+            emitter.complete();
+        } catch (Exception e) {
+            log.error("完成流式聊天分析失败", e);
+            emitter.completeWithError(e);
+        }
+    }
+
+    private void failChatAnalysis(SseEmitter emitter, Long sessionId, Long messageCount,
+                                  List<Map<String, Object>> stepRecords, long startedAt, Throwable error) {
+        log.error("AI分析出错: {}", error.getMessage(), error);
+        addStepRecord(stepRecords, 8, "AI总结分析", System.currentTimeMillis() - startedAt, "failed");
+        try {
+            String stepsJson = JSON_MAPPER.writeValueAsString(stepRecords);
+            emitter.send(SseEmitter.event().name("error").data(error.getMessage() == null ? "AI分析出错" : error.getMessage()));
+            emitter.send(SseEmitter.event().name("done").data("{\"sessionId\":" + sessionId
+                    + ",\"content\":\"\",\"tokens\":0"
+                    + ",\"messageCount\":" + (messageCount / 2 + 1)
+                    + ",\"steps\":" + stepsJson + "}"));
+        } catch (IOException e) {
+            log.error("发送流式分析错误事件失败", e);
+        }
+        emitter.completeWithError(error);
     }
 
     private void addStepRecord(List<Map<String, Object>> records, int stepNum, String title, long elapsed, String status) {

@@ -54,6 +54,11 @@ public interface AiModelService {
                                     Consumer<AnalysisResult> onComplete,
                                     Consumer<Throwable> onError);
 
+    void generateAnalysisStreaming(String prompt, String modelType, Long userId,
+                                    Consumer<String> onNext,
+                                    Consumer<AnalysisResult> onComplete,
+                                    Consumer<Throwable> onError);
+
     boolean hasActiveConfig(Long userId);
 
     AiModelTestResponse testConnection(AiModelTestRequest request);

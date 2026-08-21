@@ -68,6 +68,7 @@
                       <span class="dot"></span>
                     </div>
                   </div>
+                  <div v-if="msg.content" class="streaming-content markdown-rendered" v-html="renderMarkdown(msg.content)"></div>
                 </div>
 
                 <template v-else>
@@ -366,6 +367,12 @@ async function handleSend() {
     {
       onStep: (text) => {
         currentStep.value = text
+        scrollToBottom()
+      },
+      onReport: (partialResponse) => {
+        fullContent += partialResponse
+        const last = messages.value[messages.value.length - 1]
+        if (last?.role === 'assistant' && last.isStreaming) last.content = fullContent
         scrollToBottom()
       },
       onDone: (data) => {
@@ -723,6 +730,8 @@ onMounted(() => {
   font-size: 14px;
   color: #42536e;
 }
+
+.streaming-content { padding: 0 16px 16px; color: #42536e; font-size: 14px; line-height: 1.72; }
 
 .thinking-box summary, .process-steps-box summary {
   display: flex;

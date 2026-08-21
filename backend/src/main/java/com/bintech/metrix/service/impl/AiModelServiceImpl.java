@@ -48,6 +48,7 @@ public class AiModelServiceImpl implements AiModelService {
         config.setApiBaseUrl(request.getApiBaseUrl());
         config.setApiKey(request.getApiKey());
         config.setTemperature(request.getTemperature());
+        config.setMaxTokens(request.getMaxTokens());
         config.setTimeout(request.getTimeout());
         config.setIsActive(request.getIsActive());
         config.setUserId(userId);
@@ -73,6 +74,7 @@ public class AiModelServiceImpl implements AiModelService {
         config.setApiBaseUrl(request.getApiBaseUrl());
         config.setApiKey(request.getApiKey());
         config.setTemperature(request.getTemperature());
+        config.setMaxTokens(request.getMaxTokens());
         config.setTimeout(request.getTimeout());
         config.setIsActive(request.getIsActive());
         config.setUpdateTime(LocalDateTime.now());
@@ -229,6 +231,14 @@ public class AiModelServiceImpl implements AiModelService {
                                           java.util.function.Consumer<AnalysisResult> onComplete,
                                           java.util.function.Consumer<Throwable> onError) {
         Long userId = StpUtil.getLoginIdAsLong();
+        generateAnalysisStreaming(prompt, modelType, userId, onNext, onComplete, onError);
+    }
+
+    @Override
+    public void generateAnalysisStreaming(String prompt, String modelType, Long userId,
+                                          java.util.function.Consumer<String> onNext,
+                                          java.util.function.Consumer<AnalysisResult> onComplete,
+                                          java.util.function.Consumer<Throwable> onError) {
         AiModelConfig config = getActiveConfigByType(modelType, userId);
         String modelName = config.getModelName();
         log.info("===== AI流式分析开始 =====");
@@ -282,6 +292,7 @@ public class AiModelServiceImpl implements AiModelService {
                     .baseUrl(config.getApiBaseUrl())
                     .modelName(config.getModelName())
                     .temperature(config.getTemperature())
+                    .timeout(resolveTimeout(config))
                     .build();
         }
         if (BusinessConstants.MODEL_TYPE_GEMINI.equalsIgnoreCase(modelType)) {
@@ -300,6 +311,7 @@ public class AiModelServiceImpl implements AiModelService {
                 .apiKey(config.getApiKey())
                 .modelName(config.getModelName())
                 .temperature(config.getTemperature());
+        applyOpenAiMaxTokens(builder, config.getMaxTokens());
         if (config.getTimeout() != null) {
             builder.timeout(java.time.Duration.ofSeconds(config.getTimeout()));
         }
@@ -312,6 +324,7 @@ public class AiModelServiceImpl implements AiModelService {
                     .baseUrl(config.getApiBaseUrl())
                     .modelName(config.getModelName())
                     .temperature(config.getTemperature())
+                    .timeout(resolveTimeout(config))
                     .build();
         }
         if (BusinessConstants.MODEL_TYPE_GEMINI.equalsIgnoreCase(modelType)) {
@@ -329,10 +342,28 @@ public class AiModelServiceImpl implements AiModelService {
                 .apiKey(config.getApiKey())
                 .modelName(config.getModelName())
                 .temperature(config.getTemperature());
+        applyOpenAiMaxTokens(builder, config.getMaxTokens());
         if (config.getTimeout() != null) {
             builder.timeout(Duration.ofSeconds(config.getTimeout()));
         }
         return builder.build();
+    }
+
+    private void applyOpenAiMaxTokens(OpenAiChatModel.OpenAiChatModelBuilder builder, Integer maxTokens) {
+        if (maxTokens != null && maxTokens > 0) {
+            builder.maxTokens(maxTokens);
+        }
+    }
+
+    private void applyOpenAiMaxTokens(OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder builder, Integer maxTokens) {
+        if (maxTokens != null && maxTokens > 0) {
+            builder.maxTokens(maxTokens);
+        }
+    }
+
+    private Duration resolveTimeout(AiModelConfig config) {
+        int timeoutSeconds = config.getTimeout() == null ? SystemConstants.AI_MODEL_TIMEOUT_SECONDS : config.getTimeout();
+        return Duration.ofSeconds(timeoutSeconds);
     }
 
     @Override
@@ -391,6 +422,7 @@ public class AiModelServiceImpl implements AiModelService {
                     .apiKey(request.getApiKey())
                     .modelName(request.getModelName())
                     .temperature(request.getTemperature());
+            applyOpenAiMaxTokens(builder, request.getMaxTokens());
             if (request.getTimeout() != null) {
                 builder.timeout(Duration.ofSeconds(request.getTimeout()));
             }

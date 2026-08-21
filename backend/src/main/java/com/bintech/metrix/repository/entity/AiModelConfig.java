@@ -48,6 +48,12 @@ public class AiModelConfig extends BaseEntity {
     private Double temperature;
 
     /**
+     * 最大生成 Token 数
+     */
+    @TableField(value = "max_tokens")
+    private Integer maxTokens;
+
+    /**
      * 是否激活
      */
     @TableField(value = "is_active")

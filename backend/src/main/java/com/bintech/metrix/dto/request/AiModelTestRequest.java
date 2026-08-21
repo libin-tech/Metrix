@@ -14,5 +14,6 @@ public class AiModelTestRequest {
     private String apiBaseUrl;
     private String apiKey;
     private Double temperature;
+    private Integer maxTokens;
     private Integer timeout;
 }
