@@ -196,15 +196,15 @@ body {
 .logo-text {
   font-size: 16px;
   font-weight: bold;
-  color: #182336;
+  color: #fff;
 }
 
 .header {
   height: 68px;
   line-height: normal;
-  background: rgba(255, 255, 255, .88);
+  background: #111d31;
   padding: 0;
-  border-bottom: 1px solid #e7ebf1;
+  border-bottom: 1px solid #273651;
   box-shadow: none;
   backdrop-filter: blur(12px);
 }
@@ -225,18 +225,20 @@ body {
   height: 68px;
   overflow-x: auto;
   line-height: 68px;
+  color: #d8e2f4;
   background: transparent;
   border-bottom: 0;
 }
 
 .main-menu .ant-menu-item {
   padding-inline: 13px;
-  color: #5d6c83;
+  color: #b7c4da;
   font-size: 13px;
 }
 
-.main-menu .ant-menu-item-selected { color: #4d70b7; font-weight: 650; }
-.main-menu .ant-menu-item::after { border-bottom-width: 2px; }
+.main-menu .ant-menu-item:hover,
+.main-menu .ant-menu-item-selected { color: #fff !important; font-weight: 650; }
+.main-menu .ant-menu-item::after { border-bottom-color: #8ba9e6; border-bottom-width: 2px; }
 
 .personal-center {
   flex-shrink: 0;
@@ -250,7 +252,7 @@ body {
   min-width: 174px;
   gap: 10px;
   padding: 8px;
-  color: #182336;
+  color: #eef4ff;
   text-align: left;
   background: transparent;
   border: 0;
@@ -258,7 +260,7 @@ body {
   cursor: pointer;
 }
 
-.personal-trigger:hover { background: #f2f5fa; }
+.personal-trigger:hover { background: rgba(255, 255, 255, .08); }
 
 .personal-avatar {
   flex-shrink: 0;
@@ -274,8 +276,8 @@ body {
 }
 
 .personal-copy strong { overflow: hidden; font-size: 12px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
-.personal-copy small { color: #7d8da4; font-size: 10px; }
-.personal-arrow { color: #8796aa; font-size: 11px; }
+.personal-copy small { color: #a9b8d1; font-size: 10px; }
+.personal-arrow { color: #aebcd3; font-size: 11px; }
 
 .personal-actions { display: grid; min-width: 174px; gap: 4px; }
 .personal-actions .ant-btn { display: flex; align-items: center; justify-content: flex-start; gap: 8px; }
