@@ -254,9 +254,10 @@ body {
 .personal-trigger {
   display: flex;
   align-items: center;
+  height: 76px;
   min-width: 174px;
   gap: 10px;
-  padding: 8px 4px;
+  padding: 0 4px;
   color: #eef4ff;
   text-align: left;
   cursor: pointer;
@@ -274,13 +275,12 @@ body {
 }
 
 .personal-copy {
-  display: grid;
+  display: block;
   flex: 1;
   min-width: 0;
-  gap: 1px;
 }
 
-.personal-copy strong { overflow: hidden; font-size: 12px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.personal-copy strong { display: block; overflow: hidden; color: inherit; font-size: 13px; font-weight: 650; line-height: 76px; text-overflow: ellipsis; white-space: nowrap; }
 .personal-actions { min-width: 222px; padding: 4px; }
 .personal-popover-profile { display: flex; align-items: center; gap: 10px; padding: 8px; color: #1d2a3e; }
 .personal-popover-profile strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
