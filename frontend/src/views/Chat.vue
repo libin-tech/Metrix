@@ -567,7 +567,7 @@ onMounted(() => {
 }
 
 .user-msg .msg-content-wrapper {
-  max-width: min(600px, calc(100% - 48px));
+  max-width: min(300px, calc(100% - 48px));
   text-align: right;
 }
 
@@ -611,14 +611,17 @@ onMounted(() => {
 }
 
 .user-msg .msg-content {
+  padding: 7px 8px;
+  font-size: 7px;
   color: #fff;
   background: linear-gradient(135deg, #5878c2, #6e8dca);
   border-radius: 14px 5px 14px 14px;
   box-shadow: 0 5px 14px rgba(73, 105, 170, .2);
 }
 
-.user-msg .msg-content :deep(p) { margin: 0; color: inherit; }
-.user-msg .msg-content :deep(a) { color: #fff; text-decoration: underline; }
+.user-msg .msg-content :deep(*) { color: inherit; }
+.user-msg .msg-content :deep(p) { margin: 0; }
+.user-msg .msg-content :deep(a) { text-decoration: underline; }
 .user-msg .msg-content :deep(code) { color: #eaf0ff; background: rgba(255, 255, 255, .13); }
 
 .msg-tokens {
