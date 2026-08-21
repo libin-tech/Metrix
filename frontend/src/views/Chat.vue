@@ -49,10 +49,10 @@
                :class="msg.role === 'user' ? 'user-msg' : 'assistant-msg'">
             <div class="msg-avatar">
               <a-avatar v-if="msg.role === 'user'" :style="{ backgroundColor: 'var(--primary-color)' }">U</a-avatar>
-              <a-avatar v-else :size="70" :src="'/Metrix-logo.png'" />
+              <a-avatar v-else :size="34" :src="'/Metrix-logo.png'" />
             </div>
             <div class="msg-content-wrapper">
-              <div class="msg-role-label">{{ msg.role === 'user' ? 'User' : 'Metrix AI' }}</div>
+              <div class="msg-role-label" :class="msg.role === 'user' ? 'user-role-label' : 'assistant-role-label'">{{ msg.role === 'user' ? 'User' : 'Metrix AI' }}</div>
               
               <template v-if="msg.role === 'assistant'">
                 <div v-if="msg.isStreaming" class="streaming-container">
@@ -95,7 +95,7 @@
                   <div v-else class="report-content markdown-rendered" v-html="renderMarkdown(msg.content)"></div>
                 </template>
 
-                <div v-if="msg.tokens && !msg.isStreaming" class="msg-tokens">Token: {{ msg.tokens }}</div>
+                <div v-if="msg.tokens && !msg.isStreaming" class="msg-tokens">{{ $t('chat.tokenLabel') }}: {{ msg.tokens }}</div>
               </template>
               
                <div v-else class="msg-content markdown-body">
@@ -527,23 +527,27 @@ onMounted(() => {
 
 .message-panel {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #dfe6ef;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(24, 43, 72, .05);
 }
 
 .message-list {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 28px clamp(20px, 4vw, 54px);
 }
 
 .message-item {
+  align-items: flex-start;
   display: flex;
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: 11px;
+  margin-bottom: 30px;
 }
 
 .message-item.user-msg {
@@ -554,44 +558,75 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
+.assistant-msg .msg-avatar :deep(.ant-avatar) { background: #fff; border: 1px solid #d8e2f1; box-shadow: 0 3px 9px rgba(24, 52, 89, .08); }
+.user-msg .msg-avatar :deep(.ant-avatar) { box-shadow: 0 3px 9px rgba(64, 98, 166, .25); font-size: 12px; font-weight: 700; }
+
 .msg-content-wrapper {
-  max-width: 75%;
+  min-width: 0;
+  max-width: min(900px, calc(100% - 48px));
 }
 
 .user-msg .msg-content-wrapper {
+  max-width: min(600px, calc(100% - 48px));
   text-align: right;
 }
 
 .msg-role-label {
-  font-size: 12px;
-  color: #999;
-  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  min-height: 20px;
+  margin-bottom: 7px;
+  color: #74839a;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+
+.assistant-role-label::before, .user-role-label::before {
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  content: '';
+  border-radius: 50%;
+}
+
+.assistant-role-label::before { background: #5878c2; box-shadow: 0 0 0 3px #edf3ff; }
+.user-role-label { justify-content: flex-end; color: #63779a; }
+.user-role-label::before { display: none; }
+
+.user-role-label::after {
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  content: '';
+  background: #87a0d4;
+  border-radius: 50%;
 }
 
 .msg-content {
-  background: #f5f5f5;
-  padding: 12px 16px;
-  border-radius: 12px;
+  padding: 13px 16px;
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.7;
   word-break: break-word;
 }
 
 .user-msg .msg-content {
-  background: #e6f7ff;
-  border-radius: 12px 4px 12px 12px;
+  color: #fff;
+  background: linear-gradient(135deg, #5878c2, #6e8dca);
+  border-radius: 14px 5px 14px 14px;
+  box-shadow: 0 5px 14px rgba(73, 105, 170, .2);
 }
 
-.assistant-msg .msg-content {
-  background: #f6ffed;
-  border-radius: 4px 12px 12px 12px;
-}
+.user-msg .msg-content :deep(p) { margin: 0; color: inherit; }
+.user-msg .msg-content :deep(a) { color: #fff; text-decoration: underline; }
+.user-msg .msg-content :deep(code) { color: #eaf0ff; background: rgba(255, 255, 255, .13); }
 
 .msg-tokens {
-  font-size: 11px;
-  color: #bbb;
-  margin-top: 4px;
-  text-align: right;
+  margin-top: 8px;
+  color: #8996a9;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  text-align: left;
 }
 
 .streaming-container {
@@ -781,11 +816,14 @@ onMounted(() => {
 }
 
 .report-content {
-  background: #f6ffed;
-  padding: 12px 16px;
-  border-radius: 4px 12px 12px 12px;
+  padding: 20px 22px;
+  color: #344257;
+  background: #fff;
+  border: 1px solid #dfe6ef;
+  border-radius: 5px 14px 14px;
+  box-shadow: 0 5px 16px rgba(35, 56, 89, .04);
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.72;
   word-break: break-word;
 }
 
