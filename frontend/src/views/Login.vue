@@ -222,7 +222,9 @@ const handleWechatLogin = async () => {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: #f0f2f5;
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(circle at 12% 12%, #dbe8ff 0, transparent 25%), radial-gradient(circle at 88% 82%, #e8eefb 0, transparent 29%), #f7f9fc;
 }
 
 .login-content {
@@ -248,17 +250,19 @@ const handleWechatLogin = async () => {
 }
 
 .login-form-wrap {
-  background: #fff;
-  padding: 40px 32px;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, .86);
+  padding: 42px 36px;
+  border: 1px solid rgba(218, 226, 239, .9);
+  border-radius: 18px;
+  box-shadow: 0 18px 50px rgba(38, 57, 91, .12);
+  backdrop-filter: blur(14px);
 }
 
 .form-title {
   text-align: center;
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 600;
-  color: #1a1a1a;
+  color: #182336;
   margin-bottom: 24px;
 }
 
@@ -267,6 +271,11 @@ const handleWechatLogin = async () => {
   gap: 8px;
   margin-bottom: 24px;
 }
+
+.login-tabs :deep(.ant-btn) { border-radius: 9px; }
+.login-form-wrap :deep(.ant-input),
+.login-form-wrap :deep(.ant-input-affix-wrapper) { border-color: #dce4ee; border-radius: 9px; }
+.login-form-wrap :deep(.ant-btn-primary) { background: #5878c2; border-color: #5878c2; box-shadow: none; }
 
 .agree-row {
   display: flex;
@@ -283,7 +292,7 @@ const handleWechatLogin = async () => {
   text-align: center;
   padding: 24px 16px;
   font-size: 13px;
-  color: #999;
+  color: #7d8a9c;
 }
 
 .footer-links {
@@ -314,7 +323,7 @@ const handleWechatLogin = async () => {
 
 .login-subtitle {
   font-size: 13px;
-  color: #888;
+  color: #718098;
   margin: 20px 0 0;
   line-height: 1.7;
   text-align: center;
@@ -334,8 +343,8 @@ const handleWechatLogin = async () => {
   width: 200px;
   height: 200px;
   margin: 0 auto 12px;
-  border: 1px solid #e8e8e8;
-  border-radius: 8px;
+  border: 1px solid #e0e7f1;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -377,7 +386,7 @@ const handleWechatLogin = async () => {
   padding: 8px 12px;
   background: #fff2f0;
   border: 1px solid #ffccc7;
-  border-radius: 4px;
+  border-radius: 8px;
   line-height: 1.5;
 }
 
@@ -394,13 +403,13 @@ const handleWechatLogin = async () => {
 
   .brand {
     text-align: center;
-    max-width: 400px;
+    max-width: 420px;
   }
 
   .brand-icon {
-    width: 500px;
-    height: 500px;
-    margin: 0 auto 32px;
+    width: 420px;
+    height: 420px;
+    margin: 0 auto 18px;
   }
 
   .brand-logo {

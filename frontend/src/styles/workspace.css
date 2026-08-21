@@ -1,0 +1,245 @@
+/* Shared visual language for Metrix as a personal research workspace. */
+:root {
+  --workspace-ink: #182336;
+  --workspace-muted: #718098;
+  --workspace-line: #e3e9f1;
+  --workspace-surface: #ffffff;
+  --workspace-canvas: #f7f9fc;
+  --workspace-accent: #5878c2;
+  --workspace-soft-accent: #edf3ff;
+  --workspace-radius: 14px;
+}
+
+html, body, #app { min-width: 320px; background: var(--workspace-canvas); }
+
+.sider .ant-menu-dark,
+.sider .ant-menu-dark .ant-menu-sub { background: #111d31 !important; }
+
+.sider .ant-menu-inline .ant-menu-item,
+.sider .ant-menu-inline .ant-menu-submenu-title {
+  width: calc(100% - 16px);
+  height: 42px;
+  margin: 4px 8px;
+  line-height: 42px;
+  border-radius: 8px;
+}
+
+.sider .ant-menu-dark .ant-menu-item-selected,
+.sider .ant-menu-dark > .ant-menu .ant-menu-item-selected {
+  background: rgba(128, 162, 225, .2) !important;
+}
+
+.sider .ant-menu-dark .ant-menu-item-selected::after { display: none; }
+.sider .ant-menu-dark .ant-menu-item:hover,
+.sider .ant-menu-dark .ant-menu-submenu-title:hover { background: rgba(255, 255, 255, .06) !important; }
+.sider .ant-menu-dark .ant-menu-item-selected { color: #dce8ff !important; }
+
+.content .ant-btn-primary {
+  background: var(--workspace-accent);
+  border-color: var(--workspace-accent);
+  box-shadow: none;
+}
+
+.content .ant-btn-primary:hover,
+.content .ant-btn-primary:focus { background: #4869b2; border-color: #4869b2; }
+
+.content .ant-btn,
+.content .ant-input,
+.content .ant-input-affix-wrapper,
+.content .ant-select-selector,
+.content .ant-picker { border-radius: 9px; }
+
+.content .ant-input,
+.content .ant-input-affix-wrapper,
+.content .ant-select-selector,
+.content .ant-picker {
+  border-color: #dce4ee !important;
+  box-shadow: none !important;
+}
+
+.content .ant-input:hover,
+.content .ant-input-affix-wrapper:hover,
+.content .ant-select:hover .ant-select-selector,
+.content .ant-picker:hover { border-color: #9dafce !important; }
+
+.content .ant-card {
+  overflow: hidden;
+  background: var(--workspace-surface);
+  border: 1px solid var(--workspace-line) !important;
+  border-radius: var(--workspace-radius) !important;
+  box-shadow: 0 1px 2px rgba(23, 37, 61, .02) !important;
+}
+
+.content .ant-card-head {
+  min-height: 58px;
+  padding: 0 22px;
+  color: var(--workspace-ink);
+  border-bottom-color: #edf0f5;
+}
+
+.content .ant-card-head-title { font-size: 15px; font-weight: 650; }
+.content .ant-card-body { padding: 22px; }
+
+.content .ant-table-wrapper .ant-table {
+  color: #354258;
+  background: transparent;
+  border: 0 !important;
+}
+
+.content .ant-table-wrapper .ant-table-container,
+.content .ant-table-wrapper .ant-table-bordered > .ant-table-container { border: 0 !important; }
+
+.content .ant-table-wrapper .ant-table-thead > tr > th {
+  padding: 12px 14px;
+  color: var(--workspace-muted);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+  background: #f7f9fc !important;
+  border-bottom: 1px solid var(--workspace-line) !important;
+}
+
+.content .ant-table-wrapper .ant-table-tbody > tr > td {
+  padding: 14px;
+  background: transparent !important;
+  border-bottom-color: #edf0f5 !important;
+}
+
+.content .ant-table-wrapper .ant-table-tbody > tr:hover > td { background: #f4f7fc !important; }
+.content .ant-table-wrapper .ant-pagination { margin: 20px 0 2px; }
+.content .ant-tag { border-radius: 99px; font-size: 11px; }
+
+.content .config-container,
+.content .page-container,
+.content .stock-basic-container,
+.content .account-management-page,
+.content .portfolio-page {
+  max-width: 1280px !important;
+  padding: 12px 4px 42px !important;
+  margin: 0 auto !important;
+}
+
+.content .config-header,
+.content .page-container .page-header,
+.content .stock-basic-container > .header,
+.content .account-management-page .page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 0 26px;
+  margin: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+}
+
+.content .config-header h2,
+.content .config-header h3,
+.content .page-container .page-title,
+.content .stock-basic-container > .header h2,
+.content .stock-basic-container > .header h3,
+.content .account-management-page .page-title {
+  margin: 0;
+  color: var(--workspace-ink);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -.03em;
+}
+
+.content .config-header h2::before,
+.content .config-header h3::before,
+.content .page-container .page-title::before,
+.content .stock-basic-container > .header h2::before,
+.content .stock-basic-container > .header h3::before,
+.content .account-management-page .page-title::before {
+  display: block;
+  margin-bottom: 7px;
+  color: #7888a1;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  content: 'PERSONAL WORKSPACE';
+}
+
+.content .config-container > .ant-table-wrapper,
+.content .page-container .table-container,
+.content .stock-basic-container > .ant-table-wrapper,
+.content .account-management-page .table-container {
+  padding: 8px;
+  overflow: hidden;
+  background: var(--workspace-surface);
+  border: 1px solid var(--workspace-line);
+  border-radius: var(--workspace-radius);
+}
+
+.content .portfolio-page .page-top-section,
+.content .portfolio-page .search-section,
+.content .portfolio-page .summary-section,
+.content .portfolio-page .holdings-list {
+  padding: 20px;
+  margin-bottom: 18px;
+  background: var(--workspace-surface);
+  border: 1px solid var(--workspace-line);
+  border-radius: var(--workspace-radius);
+  box-shadow: 0 1px 2px rgba(23, 37, 61, .02);
+}
+
+.content .portfolio-page .page-top-section { padding-bottom: 16px; }
+.content .portfolio-page .summary-card { border-radius: 11px !important; box-shadow: none !important; }
+
+.content .analysis-page,
+.content .market-review-page {
+  padding: 8px !important;
+  background: transparent !important;
+}
+
+.content .analysis-page .analysis-layout,
+.content .market-review-page .market-review-layout { gap: 18px !important; }
+
+.content .analysis-page .records-card,
+.content .market-review-page .records-card,
+.content .analysis-page .detail-card,
+.content .market-review-page .detail-card,
+.content .analysis-page .result-card {
+  border-radius: var(--workspace-radius) !important;
+}
+
+.content .analysis-page .records-list .active,
+.content .market-review-page .records-list .active { background: var(--workspace-soft-accent) !important; }
+
+.content .analysis-page .analysis-form-card .ant-card-body { padding: 18px 22px; }
+.content .analysis-page .overview-section,
+.content .market-review-page .review-meta { border-radius: 10px; }
+
+.content .chat-container { height: calc(100vh - 142px) !important; padding: 8px; }
+.content .chat-layout { gap: 18px !important; }
+.content .chat-container .session-panel,
+.content .chat-container .message-panel {
+  border: 1px solid var(--workspace-line);
+  border-radius: var(--workspace-radius);
+  box-shadow: 0 1px 2px rgba(23, 37, 61, .02);
+}
+
+.content .chat-container .session-toolbar { background: #f3f6fb; border-radius: 9px; }
+.content .chat-container .session-item { border-radius: 9px; }
+.content .chat-container .session-item.active { background: var(--workspace-soft-accent); border-left-color: var(--workspace-accent); }
+.content .chat-container .assistant-msg .msg-content,
+.content .chat-container .report-content,
+.content .chat-container .streaming-container { background: #f3f6fb; }
+.content .chat-container .user-msg .msg-content { background: #e8effd; }
+.content .chat-container .input-area { border-top-color: var(--workspace-line); border-radius: 0 0 var(--workspace-radius) var(--workspace-radius); }
+
+.content .ant-modal-content { border-radius: 16px; box-shadow: 0 20px 60px rgba(20, 35, 60, .18); }
+.content .ant-drawer-content { background: #fafbfd; }
+
+@media (max-width: 800px) {
+  .content { padding: 16px !important; }
+  .content .config-header,
+  .content .page-container .page-header,
+  .content .stock-basic-container > .header,
+  .content .account-management-page .page-header { align-items: flex-start; flex-direction: column; }
+  .content .chat-container { height: calc(100vh - 118px) !important; padding: 0; }
+  .content .chat-layout { gap: 10px !important; }
+}
