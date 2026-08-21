@@ -973,7 +973,7 @@ onMounted(async () => {
 }
 
 .profit-down {
-  color: #52c41a;
+  color: #006d2c;
   font-weight: 600;
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace;
 }

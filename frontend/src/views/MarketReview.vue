@@ -158,13 +158,13 @@ const statusText = (status) => {
 const summaryColor = (summary) => {
   if (!summary) return 'default'
   if (summary === '暴涨') return '#722ed1'
-  if (summary === '暴跌') return '#8c8c8c'
+  if (summary === '暴跌') return '#006d2c'
   if (summary === '大涨') return '#f5222d'
   if (summary === '大跌') return '#006d2c'
   if (summary === '小涨') return '#ff4d4f'
-  if (summary === '小跌') return '#52c41a'
+  if (summary === '小跌') return '#006d2c'
   if (summary === '微涨') return '#ffa39e'
-  if (summary === '微跌') return '#95de64'
+  if (summary === '微跌') return '#006d2c'
   return 'default'
 }
 

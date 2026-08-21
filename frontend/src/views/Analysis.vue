@@ -1639,7 +1639,7 @@ onUnmounted(() => {
 }
 
 .ph-price.up { color: #ff4757; }
-.ph-price.down { color: #2ed573; }
+.ph-price.down { color: #006d2c; }
 
 .price-hero-change {
   display: flex;
@@ -1655,14 +1655,14 @@ onUnmounted(() => {
   font-weight: 700;
 }
 .ph-change-pct.up { color: #ff4757; }
-.ph-change-pct.down { color: #2ed573; }
+.ph-change-pct.down { color: #006d2c; }
 
 .ph-change-amt {
   font-size: 12px;
   opacity: 0.8;
 }
 .ph-change-amt.up { color: #ff4757; }
-.ph-change-amt.down { color: #2ed573; }
+.ph-change-amt.down { color: #006d2c; }
 
 .price-hero-stats {
   display: flex;
@@ -1688,7 +1688,7 @@ onUnmounted(() => {
   font-weight: 600;
 }
 .ph-stat-value.high { color: #ff4757; }
-.ph-stat-value.low { color: #2ed573; }
+.ph-stat-value.low { color: #006d2c; }
 
 .price-hero-volume {
   display: flex;
@@ -1843,7 +1843,7 @@ onUnmounted(() => {
 }
 
 .cc-profit { color: #f5222d; }
-.cc-loss { color: #52c41a; }
+.cc-loss { color: #006d2c; }
 
 .cc-pl-divider {
   color: #ddd;
@@ -1995,7 +1995,7 @@ onUnmounted(() => {
 }
 
 .macd-value.macd-down {
-  color: #52c41a;
+  color: #006d2c;
 }
 
 .macd-signal-text {
@@ -2090,7 +2090,7 @@ onUnmounted(() => {
 }
 
 .change-down {
-  color: #389e0d;
+  color: #006d2c;
 }
 
 .sh-type-tag {
@@ -2240,7 +2240,7 @@ onUnmounted(() => {
 }
 
 .sector-performance.down {
-  color: #f5222d;
+  color: #006d2c;
 }
 
 .sector-correlation {
@@ -2645,7 +2645,7 @@ onUnmounted(() => {
 }
 
 .price-value.down {
-  color: #52c41a;
+  color: #006d2c;
 }
 
 .change-value {
@@ -2658,7 +2658,7 @@ onUnmounted(() => {
 }
 
 .change-value.down {
-  color: #52c41a;
+  color: #006d2c;
 }
 
 .change-amount {
@@ -2671,7 +2671,7 @@ onUnmounted(() => {
 }
 
 .change-amount.down {
-  color: #52c41a;
+  color: #006d2c;
 }
 
 .market-grid {
@@ -2705,7 +2705,7 @@ onUnmounted(() => {
 }
 
 .market-value.low {
-  color: #52c41a;
+  color: #006d2c;
 }
 
 /* 数据透视 */
@@ -2756,7 +2756,7 @@ onUnmounted(() => {
 }
 
 .pivot-value.down {
-  color: #52c41a;
+  color: #006d2c;
 }
 
 /* 筹码分布（独立区域） */
@@ -2806,7 +2806,7 @@ onUnmounted(() => {
 }
 
 .chip-metric-value.chip-loss {
-  color: #52c41a;
+  color: #006d2c;
 }
 
 .chip-distribution {
