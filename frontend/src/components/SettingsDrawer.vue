@@ -1,7 +1,7 @@
 <template>
   <a-drawer
     :open="open"
-    :width="'min(860px, 100vw)'"
+    :width="'min(1080px, 100vw)'"
     placement="right"
     class="settings-drawer"
     @update:open="$emit('update:open', $event)"
