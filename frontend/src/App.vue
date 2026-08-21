@@ -8,8 +8,8 @@
       <a-layout class="layout">
         <a-layout-header class="header">
           <div class="topbar-content">
-            <button type="button" class="logo" @click="navigate('/')">
-          <div class="logo-icon-box">M</div>
+            <button type="button" class="logo" aria-label="Metrix" @click="navigate('/')">
+          <div class="logo-icon-box"><RiseOutlined /></div>
               <span class="logo-text">{{ $t('layout.logo') }}</span>
             </button>
             <a-menu mode="horizontal" :selected-keys="[currentPath]" class="main-menu">
@@ -82,6 +82,7 @@ import {
   LineChartOutlined,
   LogoutOutlined,
   MessageOutlined,
+  RiseOutlined,
   SettingOutlined,
   UserOutlined,
   WalletOutlined
@@ -169,6 +170,7 @@ body {
 .logo {
   display: flex;
   align-items: center;
+  height: 76px;
   gap: 8px;
   padding: 0;
   color: inherit;
@@ -179,22 +181,23 @@ body {
 
 
 .logo-icon-box {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 9px;
-  background: linear-gradient(135deg, #4c77c7, #7e9edc);
+  background: linear-gradient(135deg, #c94755, #eb7f8a);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
-  font-weight: 700;
   flex-shrink: 0;
 }
 
+.logo-icon-box :deep(svg) { font-size: 17px; }
+
 .logo-text {
-  font-size: 16px;
-  font-weight: bold;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 76px;
   color: #fff;
 }
 
