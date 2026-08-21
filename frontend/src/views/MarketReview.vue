@@ -65,21 +65,26 @@
       <div class="right-panel">
         <a-card v-if="selectedRecord" :bordered="false" class="detail-card">
           <template #title>
-            <div class="detail-header">
-              <span>{{ selectedRecord.reviewName }}</span>
-              <a-button size="small" @click="refreshCurrentRecord">
-                <ReloadOutlined />
-              </a-button>
+            <div class="review-brief-heading">
+              <div>
+                <p class="review-kicker">{{ $t('marketReview.dailyBrief') }}</p>
+                <h1>{{ selectedRecord.reviewName }}</h1>
+              </div>
+              <time>{{ selectedRecord.reviewDate }}</time>
             </div>
+          </template>
+          <template #extra>
+            <a-button type="text" class="review-refresh-button" @click="refreshCurrentRecord">
+              <ReloadOutlined />
+            </a-button>
           </template>
 
           <div class="review-meta">
-            <span><b>{{ $t('marketReview.status') }}：</b>
+            <span class="review-meta-item">
               <span class="status-dot" :style="{ backgroundColor: statusDotColor(selectedRecord.status) }"></span>
               {{ statusText(selectedRecord.status) }}
             </span>
-            <span style="margin-left: 24px"><b>{{ $t('marketReview.reviewDate') }}：</b>{{ selectedRecord.reviewDate }}</span>
-            <span style="margin-left: 24px" v-if="selectedRecord.summary"><b>{{ $t('marketReview.summary') }}：</b>
+            <span class="review-meta-item" v-if="selectedRecord.summary">
               <a-tag :color="summaryColor(selectedRecord.summary)">{{ selectedRecord.summary }}</a-tag>
             </span>
           </div>
@@ -349,16 +354,16 @@ onUnmounted(() => {
 
 <style scoped>
 .market-review-page {
-  padding: 20px;
+  padding: 20px 24px;
   height: calc(100vh - 84px);
   overflow: hidden;
-  background: #f5f7fa;
+  background: #f7f9fc;
 }
 
 .market-review-layout {
   display: grid;
-  grid-template-columns: 360px 1fr;
-  gap: 20px;
+  grid-template-columns: 330px minmax(0, 1fr);
+  gap: 32px;
   height: 100%;
   overflow: hidden;
 }
@@ -372,7 +377,13 @@ onUnmounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  border: 1px solid #e1e7ef;
+  border-radius: 14px;
+  box-shadow: none;
 }
+
+.records-card :deep(.ant-card-head) { min-height: 62px; padding: 0 18px; border-bottom: 1px solid #e1e7ef; }
+.records-card :deep(.ant-card-head-title) { padding: 0; }
 
 .records-card :deep(.ant-card-body) {
   flex: 1;
@@ -386,6 +397,9 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
+  color: #1b2a42;
+  font-size: 15px;
 }
 
 .records-list {
@@ -394,9 +408,9 @@ onUnmounted(() => {
   min-height: 0;
 }
 
-.records-list .active {
-  background: #e6f7ff;
-}
+.records-list :deep(.ant-list-item) { padding: 14px 16px; margin: 2px 8px; border-radius: 10px; border-bottom: 0; transition: background .16s ease; }
+.records-list :deep(.ant-list-item:hover) { background: #f2f6fb; }
+.records-list .active { background: #eaf1fb; }
 
 .title-row {
   display: flex;
@@ -482,7 +496,13 @@ onUnmounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  background: transparent;
+  box-shadow: none;
 }
+
+.detail-card :deep(.ant-card-head) { min-height: 84px; padding: 0 16px 0 2px; border-bottom: 1px solid #dfe6ef; }
+.detail-card :deep(.ant-card-head-title) { padding: 18px 0; overflow: visible; white-space: normal; }
+.detail-card :deep(.ant-card-extra) { display: flex; align-items: center; padding: 0 0 0 20px; }
 
 .detail-card :deep(.ant-card-body) {
   flex: 1;
@@ -490,41 +510,52 @@ onUnmounted(() => {
   min-height: 0;
 }
 
-.detail-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
+.review-brief-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.review-kicker { margin: 0 0 5px; color: #72809a; font-size: 10px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+.review-brief-heading h1 { margin: 0; color: #1a2a43; font-size: 23px; line-height: 1.3; letter-spacing: -.03em; }
+.review-brief-heading time { color: #8491a5; font-size: 12px; white-space: nowrap; }
+.review-refresh-button { color: #5a7198; }
 
 .review-meta {
-  margin-bottom: 16px;
-  padding: 12px;
-  background: #fafafa;
-  border-radius: 4px;
-  font-size: 14px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 24px 0 16px;
+  font-size: 12px;
 }
 
+.review-meta-item { display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px; color: #60718a; background: #eef3f9; border-radius: 999px; }
+.review-meta-item .status-dot { margin-right: 7px; }
+.review-meta-item :deep(.ant-tag) { margin: 0; border: 0; border-radius: 999px; }
+
 .core-summary {
-  margin-bottom: 20px;
-  padding: 16px;
-  background: #fff7e6;
-  border: 1px solid #ffd591;
-  border-radius: 6px;
+  margin: 0 0 28px;
+  padding: 24px 26px;
+  color: #e8effa;
+  background: radial-gradient(circle at 88% 0%, #3c5787 0, transparent 34%), #1b2b45;
+  border: 0;
+  border-radius: 16px;
 }
 
 .core-summary-title {
-  font-weight: bold;
-  font-size: 15px;
-  color: #d46b08;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+  color: #9eb7e3;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
 }
 
 .core-summary-content {
   font-size: 14px;
-  line-height: 1.8;
-  color: #333;
+  line-height: 1.85;
+  color: #edf3fc;
   white-space: pre-wrap;
 }
+
+.core-summary-content :deep(p) { margin: 0 0 10px; }
+.core-summary-content :deep(p:last-child) { margin-bottom: 0; }
 
 .review-error {
   padding: 12px;
@@ -554,16 +585,21 @@ onUnmounted(() => {
 }
 
 .review-detail {
-  line-height: 1.8;
+  padding: 6px 4px 32px;
+  line-height: 1.9;
   font-size: 14px;
+  color: #38475e;
 }
 
 .review-detail :deep(h1),
 .review-detail :deep(h2),
 .review-detail :deep(h3) {
-  margin-top: 16px;
-  margin-bottom: 8px;
+  margin-top: 28px;
+  margin-bottom: 12px;
+  color: #243652;
 }
+
+.review-detail :deep(h1:first-child), .review-detail :deep(h2:first-child), .review-detail :deep(h3:first-child) { margin-top: 0; }
 
 .review-detail :deep(p) {
   margin-bottom: 8px;
@@ -583,7 +619,7 @@ onUnmounted(() => {
 }
 
 .review-detail :deep(th) {
-  background: #fafafa;
+  background: #eef3f9;
   font-weight: bold;
 }
 
@@ -599,5 +635,20 @@ onUnmounted(() => {
   padding: 12px;
   border-radius: 4px;
   overflow-x: auto;
+}
+
+@media (max-width: 900px) {
+  .market-review-page { height: auto; min-height: calc(100vh - 76px); padding: 18px; overflow: visible; }
+  .market-review-layout { grid-template-columns: 1fr; gap: 20px; height: auto; }
+  .left-panel, .right-panel, .records-card, .detail-card { height: auto; }
+  .records-list { max-height: 360px; }
+}
+
+@media (max-width: 640px) {
+  .detail-card :deep(.ant-card-head) { min-height: auto; padding: 0; }
+  .detail-card :deep(.ant-card-extra) { padding: 0 0 14px; }
+  .review-brief-heading { align-items: start; flex-direction: column; gap: 4px; }
+  .review-brief-heading h1 { font-size: 20px; }
+  .core-summary { padding: 20px; }
 }
 </style>

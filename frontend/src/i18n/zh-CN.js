@@ -416,6 +416,7 @@ export default {
     lastRefreshTime: '最近刷新',
   },
   marketReview: {
+    dailyBrief: '市场日评',
     title: '大盘复盘',
     trigger: '发起复盘',
     reviewDate: '复盘日期',

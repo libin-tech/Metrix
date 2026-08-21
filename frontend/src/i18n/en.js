@@ -416,6 +416,7 @@ export default {
     lastRefreshTime: 'Last Refresh',
   },
   marketReview: {
+    dailyBrief: 'Daily market brief',
     title: 'Market Review',
     trigger: 'Run Review',
     reviewDate: 'Review Date',
