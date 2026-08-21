@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -238,35 +239,35 @@ public class MarketDataServiceImpl implements MarketDataService {
 
         try {
             ProcessBuilder pb = new ProcessBuilder(command);
-            pb.redirectErrorStream(true);
             pb.environment().put("PYTHONIOENCODING", "utf-8");
 
             Process process = pb.start();
 
-            StringBuilder outputBuilder = new StringBuilder();
-            Thread reader = Thread.ofVirtual()
-                    .name("market-data-reader")
-                    .start(() -> {
-                        try (BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-                            String line;
-                            while ((line = br.readLine()) != null) {
-                                outputBuilder.append(line).append('\n');
-                            }
-                        } catch (IOException e) {
-                            log.warn("读取{}脚本输出流异常: {}", sourceName, e.getMessage());
-                        }
-                    });
+            StringBuilder standardOutput = new StringBuilder();
+            StringBuilder standardError = new StringBuilder();
+            Thread outputReader = startProcessReader(process.getInputStream(), standardOutput, sourceName, "标准输出");
+            Thread errorReader = startProcessReader(process.getErrorStream(), standardError, sourceName, "标准错误");
 
             boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
-            reader.join(SystemConstants.READER_JOIN_TIMEOUT_MILLIS);
 
             if (!finished) {
                 process.destroyForcibly();
+                process.waitFor();
+            }
+
+            outputReader.join(SystemConstants.READER_JOIN_TIMEOUT_MILLIS);
+            errorReader.join(SystemConstants.READER_JOIN_TIMEOUT_MILLIS);
+
+            if (!finished) {
                 log.error("{}", timeoutMsg);
                 throw new RuntimeException(timeoutMsg);
             }
 
-            String output = outputBuilder.toString().trim();
+            String output = standardOutput.toString().trim();
+            String errorOutput = standardError.toString().trim();
+            if (!errorOutput.isEmpty()) {
+                log.warn("{}脚本标准错误输出: {}", sourceName, errorOutput);
+            }
             if (output.isEmpty()) {
                 log.error("{}脚本输出为空", sourceName);
                 throw new RuntimeException(sourceName + "数据获取失败: 脚本输出为空");
@@ -289,6 +290,22 @@ public class MarketDataServiceImpl implements MarketDataService {
             log.error("执行{}脚本异常: {}", sourceName, e.getMessage(), e);
             throw new RuntimeException(sourceName + "数据获取异常: " + e.getMessage());
         }
+    }
+
+    private Thread startProcessReader(InputStream inputStream, StringBuilder output,
+                                      String sourceName, String streamName) {
+        return Thread.ofVirtual()
+                .name("market-data-" + streamName + "-reader")
+                .start(() -> {
+                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            output.append(line).append('\n');
+                        }
+                    } catch (IOException e) {
+                        log.warn("读取{}脚本{}异常: {}", sourceName, streamName, e.getMessage());
+                    }
+                });
     }
 
     @Override
