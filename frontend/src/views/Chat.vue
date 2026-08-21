@@ -611,7 +611,7 @@ onMounted(() => {
 }
 
 .user-msg .msg-content {
-  padding: 7px 8px;
+  padding: 12px 16px;
   font-size: 7px;
   color: #111827;
   background: #edf3ff;
