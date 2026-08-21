@@ -1,6 +1,6 @@
 <template>
   <div class="stock-basic-container">
-    <div class="header">
+    <div class="stock-basic-header">
       <h3>{{ $t('stockBasic.title') }}</h3>
       <div class="header-actions">
         <a-input-search
@@ -145,19 +145,19 @@ onMounted(() => {
   padding: 0;
 }
 
-.header {
+.stock-basic-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
 }
 
-.header h3 {
+.stock-basic-header h3 {
   margin: 0;
   color: #333;
 }
 
-.header-actions {
+.stock-basic-header .header-actions {
   display: flex;
   gap: 12px;
   align-items: center;

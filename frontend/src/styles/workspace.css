@@ -132,7 +132,7 @@ html, body, #app { min-width: 320px; background: var(--workspace-canvas); }
 
 .content .config-header,
 .content .page-container .page-header,
-.content .stock-basic-container > .header,
+.content .stock-basic-container > .stock-basic-header,
 .content .account-management-page .page-header {
   display: flex;
   align-items: center;
@@ -147,8 +147,8 @@ html, body, #app { min-width: 320px; background: var(--workspace-canvas); }
 .content .config-header h2,
 .content .config-header h3,
 .content .page-container .page-title,
-.content .stock-basic-container > .header h2,
-.content .stock-basic-container > .header h3,
+.content .stock-basic-container > .stock-basic-header h2,
+.content .stock-basic-container > .stock-basic-header h3,
 .content .account-management-page .page-title {
   margin: 0;
   color: var(--workspace-ink);
@@ -160,8 +160,8 @@ html, body, #app { min-width: 320px; background: var(--workspace-canvas); }
 .content .config-header h2::before,
 .content .config-header h3::before,
 .content .page-container .page-title::before,
-.content .stock-basic-container > .header h2::before,
-.content .stock-basic-container > .header h3::before,
+.content .stock-basic-container > .stock-basic-header h2::before,
+.content .stock-basic-container > .stock-basic-header h3::before,
 .content .account-management-page .page-title::before {
   display: block;
   margin-bottom: 7px;
@@ -268,7 +268,7 @@ html, body, #app { min-width: 320px; background: var(--workspace-canvas); }
   .content { padding: 16px !important; }
   .content .config-header,
   .content .page-container .page-header,
-  .content .stock-basic-container > .header,
+  .content .stock-basic-container > .stock-basic-header,
   .content .account-management-page .page-header { align-items: flex-start; flex-direction: column; }
   .content .chat-container { height: calc(100vh - 118px) !important; padding: 0; }
   .content .chat-layout { gap: 10px !important; }
