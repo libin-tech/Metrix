@@ -23,7 +23,7 @@
           <a-button @click="router.push('/settings/account-management')">
             <SettingOutlined /> {{ $t('portfolio.manageAccount') }}
           </a-button>
-          <a-button type="primary" ghost :loading="batchEvaluating" @click="handleBatchEvaluate">
+          <a-button type="primary" ghost class="batch-evaluate-button" :loading="batchEvaluating" @click="handleBatchEvaluate">
             <PlayCircleOutlined /> {{ $t('portfolio.batchEvaluate') }}
           </a-button>
           <a-button type="primary" @click="showAddHoldingModal = true">
@@ -803,6 +803,10 @@ onMounted(async () => {
   display: flex;
   align-items: flex-start;
   gap: 8px;
+}
+
+.batch-evaluate-button {
+  color: #fff !important;
 }
 
 .refresh-group {
