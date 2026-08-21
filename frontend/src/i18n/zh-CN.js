@@ -125,6 +125,29 @@ export default {
     chinextIndex: '创业板指',
     star50Index: '科创50',
   },
+  settingsHub: {
+    personalCenter: '个人中心',
+    title: '设置',
+    openSettings: '打开设置',
+    logout: '退出登录',
+    description: '管理你的研究环境、数据来源和系统访问权限。',
+    workspaceSection: '研究环境',
+    managementSection: '系统管理',
+    noAccess: '暂无可用设置项',
+    entries: {
+      aiModel: {title: 'AI 模型', description: '配置用于研究和问答的模型'},
+      notification: {title: '通知', description: '管理分析结果的推送方式'},
+      newsSource: {title: '新闻源', description: '配置研究使用的新闻数据'},
+      marketData: {title: '行情数据', description: '管理行情数据的接入来源'},
+      stockBasic: {title: '标的数据', description: '维护研究标的基础信息'},
+      accounts: {title: '账户', description: '管理券商账户与持仓归属'},
+      users: {title: '用户', description: '管理工作台访问用户'},
+      roles: {title: '角色', description: '维护权限角色与范围'},
+      menus: {title: '菜单', description: '管理系统功能入口'},
+      apis: {title: '接口', description: '维护接口权限配置'},
+      audit: {title: '审计日志', description: '查看系统访问记录'}
+    }
+  },
   analysis: {
     records: '评估记录',
     refresh: '刷新',

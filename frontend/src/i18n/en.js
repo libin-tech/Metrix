@@ -125,6 +125,29 @@ export default {
     chinextIndex: 'ChiNext',
     star50Index: 'STAR 50',
   },
+  settingsHub: {
+    personalCenter: 'Personal center',
+    title: 'Settings',
+    openSettings: 'Open settings',
+    logout: 'Log out',
+    description: 'Manage your research environment, data sources, and workspace access.',
+    workspaceSection: 'Research environment',
+    managementSection: 'System management',
+    noAccess: 'No settings available',
+    entries: {
+      aiModel: {title: 'AI models', description: 'Configure models for research and chat'},
+      notification: {title: 'Notifications', description: 'Manage analysis result delivery'},
+      newsSource: {title: 'News sources', description: 'Configure news data for research'},
+      marketData: {title: 'Market data', description: 'Manage market data connections'},
+      stockBasic: {title: 'Instruments', description: 'Maintain research instrument information'},
+      accounts: {title: 'Accounts', description: 'Manage broker accounts and holdings'},
+      users: {title: 'Users', description: 'Manage workspace users'},
+      roles: {title: 'Roles', description: 'Maintain roles and permissions'},
+      menus: {title: 'Menus', description: 'Manage system feature entry points'},
+      apis: {title: 'APIs', description: 'Maintain API permission settings'},
+      audit: {title: 'Audit log', description: 'Review workspace access history'}
+    }
+  },
   analysis: {
     records: 'Records',
     refresh: 'Refresh',

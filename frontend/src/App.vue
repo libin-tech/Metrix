@@ -33,65 +33,26 @@
             <FundOutlined />
             <span>{{ $t('menu.marketReview') }}</span>
           </a-menu-item>
-          <a-sub-menu v-if="showSettings" key="settings">
-            <template #title>
-              <SettingOutlined />
-              <span>{{ $t('menu.settings') }}</span>
-            </template>
-            <a-menu-item v-if="hasPerm('system:ai-model:view')" key="/settings/ai-model" @click="navigate('/settings/ai-model')">
-              <ApiOutlined />
-              <span>{{ $t('menu.aiModel') }}</span>
-            </a-menu-item>
-            <a-menu-item v-if="hasPerm('system:notification:view')" key="/settings/notification" @click="navigate('/settings/notification')">
-              <BellOutlined />
-              <span>{{ $t('menu.notification') }}</span>
-            </a-menu-item>
-            <a-menu-item v-if="hasPerm('system:news-source:view')" key="/settings/news-source" @click="navigate('/settings/news-source')">
-              <FileTextOutlined />
-              <span>{{ $t('menu.newsSource') }}</span>
-            </a-menu-item>
-            <a-menu-item v-if="hasPerm('system:market-data:view')" key="/settings/market-data" @click="navigate('/settings/market-data')">
-              <DatabaseOutlined />
-              <span>{{ $t('menu.marketData') }}</span>
-            </a-menu-item>
-            <a-menu-item v-if="hasPerm('system:stock-basic:view')" key="/settings/stock-basic" @click="navigate('/settings/stock-basic')">
-              <BookOutlined />
-              <span>{{ $t('menu.stockBasic') }}</span>
-            </a-menu-item>
-          </a-sub-menu>
-          <a-sub-menu v-if="showAdmin" key="admin">
-            <template #title>
-              <SafetyCertificateOutlined />
-              <span>{{ $t('menu.admin') }}</span>
-            </template>
-            <a-menu-item v-if="hasPerm('system:user:list')" key="/admin/users" @click="navigate('/admin/users')">
-              <TeamOutlined />
-              <span>{{ $t('menu.userManagement') }}</span>
-            </a-menu-item>
-            <a-menu-item v-if="hasPerm('system:role:list')" key="/admin/roles" @click="navigate('/admin/roles')">
-              <SafetyOutlined />
-              <span>{{ $t('menu.roleManagement') }}</span>
-            </a-menu-item>
-            <a-menu-item v-if="hasPerm('system:menu:list')" key="/admin/menus" @click="navigate('/admin/menus')">
-              <MenuOutlined />
-              <span>{{ $t('menu.menuManagement') }}</span>
-            </a-menu-item>
-            <a-menu-item v-if="hasPerm('system:api:list')" key="/admin/apis" @click="navigate('/admin/apis')">
-              <ApiOutlined />
-              <span>{{ $t('menu.apiManagement') }}</span>
-            </a-menu-item>
-            <a-menu-item v-if="hasPerm('system:audit:view')" key="/admin/audit-log" @click="navigate('/admin/audit-log')">
-              <FileTextOutlined />
-              <span>{{ $t('menu.auditLog') }}</span>
-            </a-menu-item>
-          </a-sub-menu>
         </a-menu>
-        <a-menu theme="dark" mode="inline" class="logout-menu">
-          <a-menu-item key="logout" @click="handleLogout">
-            <LogoutOutlined />
-            <span>{{ $t('menu.logout') }}</span>
-          </a-menu-item>
-        </a-menu>
+        <div class="personal-center">
+          <a-popover v-model:open="personalPopoverOpen" placement="topLeft" trigger="click" overlay-class-name="personal-center-popover">
+            <template #content>
+              <div class="personal-actions">
+                <a-button block type="primary" @click="openSettings">
+                  <SettingOutlined />{{ $t('settingsHub.openSettings') }}
+                </a-button>
+                <a-button block type="text" danger @click="handleLogout">
+                  <LogoutOutlined />{{ $t('settingsHub.logout') }}
+                </a-button>
+              </div>
+            </template>
+            <button type="button" class="personal-trigger">
+              <a-avatar :size="34" class="personal-avatar"><UserOutlined /></a-avatar>
+              <span v-show="!collapsed" class="personal-copy"><strong>{{ currentUser || $t('settingsHub.personalCenter') }}</strong><small>{{ $t('settingsHub.personalCenter') }}</small></span>
+              <DownOutlined v-show="!collapsed" class="personal-arrow" />
+            </button>
+          </a-popover>
+        </div>
       </a-layout-sider>
 
       <!-- 主内容区 -->
@@ -101,35 +62,6 @@
             <MenuFoldOutlined v-if="!collapsed" class="collapse-btn" @click="collapsed = !collapsed" />
             <MenuUnfoldOutlined v-else class="collapse-btn" @click="collapsed = !collapsed" />
             <span class="header-title">{{ pageTitle }}</span>
-            <div class="header-actions">
-              <a-dropdown>
-                <a-button class="lang-btn">
-                  <GlobalOutlined />
-                  <span>{{ locale === 'zh-CN' ? '中文' : 'English' }}</span>
-                </a-button>
-                <template #overlay>
-                  <a-menu @click="switchLang">
-                    <a-menu-item key="zh-CN">中文</a-menu-item>
-                    <a-menu-item key="en">English</a-menu-item>
-                  </a-menu>
-                </template>
-              </a-dropdown>
-              <a-dropdown>
-                <a-button class="user-btn">
-                  <UserOutlined />
-                  <span>{{ currentUser }}</span>
-                  <DownOutlined />
-                </a-button>
-                <template #overlay>
-                  <a-menu>
-                    <a-menu-item @click="handleLogout">
-                      <LogoutOutlined />
-                      {{ $t('menu.logout') }}
-                    </a-menu-item>
-                  </a-menu>
-                </template>
-              </a-dropdown>
-            </div>
           </div>
         </a-layout-header>
         <a-layout-content class="content">
@@ -142,6 +74,7 @@
           </div>
         </a-layout-content>
       </a-layout>
+      <SettingsDrawer v-model:open="settingsDrawerOpen" :permissions="permissions" />
     </a-layout>
     </a-config-provider>
   </div>
@@ -153,39 +86,32 @@ import {useRoute, useRouter} from 'vue-router'
 import {useI18n} from 'vue-i18n'
 import {message} from 'ant-design-vue'
 import {
-  ApiOutlined,
-  BellOutlined,
-  BookOutlined,
   ChromeOutlined,
-  DatabaseOutlined,
   DownOutlined,
-  FileTextOutlined,
   FundOutlined,
-  GlobalOutlined,
   HomeOutlined,
   LineChartOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
-  MenuOutlined,
   MenuUnfoldOutlined,
   MessageOutlined,
-  SafetyCertificateOutlined,
-  SafetyOutlined,
   SettingOutlined,
-  TeamOutlined,
   UserOutlined,
   WalletOutlined
 } from '@ant-design/icons-vue'
 
 import {getCurrentUser, getPermissions} from './api'
+import SettingsDrawer from './components/SettingsDrawer.vue'
 
-const {locale, t} = useI18n()
+const {t} = useI18n()
 const router = useRouter()
 const route = useRoute()
 const workspaceTheme = {token: {colorPrimary: '#5878c2'}}
 
 const collapsed = ref(false)
 const currentUser = ref('')
+const settingsDrawerOpen = ref(false)
+const personalPopoverOpen = ref(false)
 
 const isLoginPage = computed(() => route.path === '/login')
 const currentPath = computed(() => route.path)
@@ -193,16 +119,6 @@ const currentPath = computed(() => route.path)
 const permissions = ref([])
 const permSet = computed(() => new Set(permissions.value))
 const hasPerm = (code) => permSet.value.has(code)
-
-const showSettings = computed(() =>
-  ['system:ai-model:view', 'system:notification:view', 'system:news-source:view',
-   'system:market-data:view', 'system:stock-basic:view', 'system:account:view']
-    .some(code => permSet.value.has(code)))
-
-const showAdmin = computed(() =>
-  ['system:user:list', 'system:role:list', 'system:menu:list',
-   'system:api:list', 'system:stats:view', 'system:audit:view']
-    .some(code => permSet.value.has(code)))
 
 const fetchUser = async () => {
   if (!localStorage.getItem('token')) return
@@ -246,12 +162,13 @@ const navigate = (path) => {
   router.push(path)
 }
 
-const switchLang = ({key}) => {
-  locale.value = key
-  localStorage.setItem('locale', key)
+const openSettings = () => {
+  personalPopoverOpen.value = false
+  settingsDrawerOpen.value = true
 }
 
 const handleLogout = () => {
+  personalPopoverOpen.value = false
   localStorage.removeItem('token')
   message.success('退出成功')
   router.push('/login')
@@ -291,25 +208,18 @@ body {
 
 .sider {
   background: #111d31;
+}
+
+.sider .ant-layout-sider-children {
   display: flex;
   flex-direction: column;
+  height: 100%;
+  overflow: hidden;
 }
 
 .main-menu {
   flex: 1;
   overflow-y: auto;
-}
-
-.logout-menu {
-  position: fixed;
-  bottom: 0;
-  width: 200px;
-  background: #111d31;
-  border-top: 1px solid #273651;
-}
-
-.sider.collapsed .logout-menu {
-  width: 80px;
 }
 
 .logo {
@@ -354,7 +264,7 @@ body {
 .header-content {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   height: 64px;
   padding: 0 24px;
 }
@@ -372,24 +282,53 @@ body {
   color: #46536a;
 }
 
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.personal-center {
+  flex-shrink: 0;
+  padding: 12px 8px;
+  border-top: 1px solid #273651;
 }
 
-.lang-btn {
+.personal-trigger {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 12px;
+  width: 100%;
+  gap: 10px;
+  padding: 8px;
+  color: #eef4ff;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 9px;
+  cursor: pointer;
 }
 
-.user-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 16px;
+.personal-trigger:hover { background: rgba(255, 255, 255, .07); }
+
+.personal-avatar {
+  flex-shrink: 0;
+  color: #e8f0ff;
+  background: linear-gradient(135deg, #5e7ec5, #8fa7d9);
+}
+
+.personal-copy {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 1px;
+}
+
+.personal-copy strong { overflow: hidden; font-size: 12px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.personal-copy small { color: #9fb0cb; font-size: 10px; }
+.personal-arrow { color: #8da0bf; font-size: 11px; }
+
+.personal-actions { display: grid; min-width: 174px; gap: 4px; }
+.personal-actions .ant-btn { display: flex; align-items: center; justify-content: flex-start; gap: 8px; }
+.personal-actions .ant-btn-primary { justify-content: center; }
+.personal-center-popover .ant-popover-inner { padding: 8px; border-radius: 12px; }
+.personal-center-popover .ant-popover-inner-content { padding: 0; }
+
+@media (max-width: 800px) {
+  .header-content { padding: 0 16px; }
 }
 
 .content {

@@ -233,6 +233,27 @@ html, body, #app { min-width: 320px; background: var(--workspace-canvas); }
 .content .ant-modal-content { border-radius: 16px; box-shadow: 0 20px 60px rgba(20, 35, 60, .18); }
 .content .ant-drawer-content { background: #fafbfd; }
 
+/* Settings pages are rendered in a teleported right-side drawer, outside .content. */
+.settings-drawer .ant-drawer-content { background: #f7f9fc; }
+.settings-drawer .ant-drawer-header { background: #fff; border-bottom-color: var(--workspace-line); }
+.settings-drawer .ant-drawer-body { padding: 24px; }
+.settings-drawer .ant-btn-primary { background: var(--workspace-accent); border-color: var(--workspace-accent); box-shadow: none; }
+.settings-drawer .ant-input,
+.settings-drawer .ant-input-affix-wrapper,
+.settings-drawer .ant-select-selector,
+.settings-drawer .ant-picker { border-color: #dce4ee !important; border-radius: 9px; box-shadow: none !important; }
+.settings-drawer .ant-table-container,
+.settings-drawer .ant-table-bordered > .ant-table-container { border: 0 !important; }
+.settings-drawer .ant-table-thead > tr > th { color: var(--workspace-muted); font-size: 11px; font-weight: 750; letter-spacing: .055em; text-transform: uppercase; background: #f7f9fc !important; border-bottom-color: var(--workspace-line) !important; }
+.settings-drawer .ant-table-tbody > tr > td { border-bottom-color: #edf0f5 !important; }
+.settings-drawer .config-container,
+.settings-drawer .page-container,
+.settings-drawer .stock-basic-container,
+.settings-drawer .account-management-page { max-width: none !important; padding: 0 !important; margin: 0 !important; }
+.settings-drawer .table-container,
+.settings-drawer .config-container > .ant-table-wrapper,
+.settings-drawer .stock-basic-container > .ant-table-wrapper { padding: 8px; overflow: auto; background: #fff; border: 1px solid var(--workspace-line); border-radius: var(--workspace-radius); }
+
 @media (max-width: 800px) {
   .content { padding: 16px !important; }
   .content .config-header,
