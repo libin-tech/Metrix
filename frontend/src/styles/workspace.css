@@ -8,7 +8,7 @@
   --workspace-accent: #5878c2;
   --workspace-soft-accent: #edf3ff;
   --workspace-radius: 14px;
-  --workspace-content-width: 1240px;
+  --workspace-content-width: 1440px;
 }
 
 html, body, #app { min-width: 320px; background: var(--workspace-canvas); }
