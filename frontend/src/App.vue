@@ -223,7 +223,9 @@ body {
   flex: 1;
   min-width: 0;
   height: 68px;
-  overflow-x: auto;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  scrollbar-width: none;
   line-height: 68px;
   color: #d8e2f4;
   background: transparent;
@@ -239,6 +241,7 @@ body {
 .main-menu .ant-menu-item:hover,
 .main-menu .ant-menu-item-selected { color: #fff !important; font-weight: 650; }
 .main-menu .ant-menu-item::after { border-bottom-color: #8ba9e6; border-bottom-width: 2px; }
+.main-menu::-webkit-scrollbar { display: none; }
 
 .personal-center {
   flex-shrink: 0;
@@ -290,6 +293,7 @@ body {
   .logo-text, .personal-copy, .personal-arrow { display: none; }
   .personal-trigger { min-width: auto; padding: 6px; }
   .main-menu .ant-menu-item { padding-inline: 10px; }
+  .main-menu { overflow-x: auto; }
 }
 
 .content {
