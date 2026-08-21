@@ -235,6 +235,10 @@ body {
 }
 
 .main-menu .ant-menu-item {
+  height: 76px;
+  margin-top: 0;
+  margin-bottom: 0;
+  line-height: 76px;
   padding-inline: 13px;
   color: #b7c4da;
   font-size: 13px;
