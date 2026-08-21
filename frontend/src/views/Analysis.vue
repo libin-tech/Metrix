@@ -107,9 +107,21 @@
         <div class="bottom-section">
           <a-card 
             v-if="selectedRecord" 
-            :title="`${selectedRecord.stockCode} - ${selectedRecord.stockName}`"
+            :bordered="false"
             class="result-card"
           >
+            <template #title>
+              <div class="brief-heading">
+                <div>
+                  <p class="brief-kicker">{{ $t('analysis.researchBrief') }}</p>
+                  <div class="brief-identity">
+                    <span>{{ selectedRecord.stockCode }}</span>
+                    <strong>{{ selectedRecord.stockName }}</strong>
+                  </div>
+                </div>
+                <time>{{ formatTime(selectedRecord.createTime) }}</time>
+              </div>
+            </template>
             <template #extra>
               <a-space>
                 <a-button
@@ -2999,6 +3011,70 @@ onUnmounted(() => {
 }
 
 @media (max-width: 1100px) {
+}
+
+/* 投研简报：以判断和证据为主线，弱化后台式卡片堆叠。 */
+.analysis-page { background: #f7f9fc; }
+.analysis-layout { gap: 28px; }
+.records-card,
+.analysis-form-card,
+.result-card { box-shadow: none; }
+.analysis-form-card { border: 1px solid #e2e8f1; border-radius: 14px; }
+.result-card { background: transparent; }
+.result-card :deep(.ant-card-head) { min-height: 78px; padding: 0 8px 0 0; border-bottom: 1px solid #dfe6ef; }
+.result-card :deep(.ant-card-head-title) { padding: 16px 0; overflow: visible; white-space: normal; }
+.result-card :deep(.ant-card-extra) { padding: 0; }
+.result-card :deep(.ant-card-body) { overflow: hidden; padding: 0; }
+.brief-heading { display: flex; align-items: end; justify-content: space-between; gap: 18px; }
+.brief-kicker { margin: 0 0 5px; color: #72809a; font-size: 10px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+.brief-identity { display: flex; align-items: baseline; gap: 10px; color: #17263d; }
+.brief-identity span { color: #667894; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+.brief-identity strong { font-size: 23px; letter-spacing: -.035em; }
+.brief-heading time { padding-bottom: 2px; color: #8491a5; font-size: 12px; white-space: nowrap; }
+.overview-content { padding: 24px 0 0; }
+.price-hero { padding: 23px 26px; margin: 0 0 26px; color: #182a45; background: radial-gradient(circle at 90% 5%, #dfe9fb 0, transparent 31%), #edf3fb; border: 1px solid #dbe5f1; border-radius: 16px; }
+.ph-label, .ph-stat-label, .ph-vol-label { color: #72819a; }
+.ph-price { color: #1f3151; }
+.ph-price.up, .ph-change-pct.up, .ph-change-amt.up, .ph-stat-value.high { color: #c94755; }
+.ph-price.down, .ph-change-pct.down, .ph-change-amt.down, .ph-stat-value.low { color: #006d2c; }
+.ph-change-amt { color: #697b94; opacity: 1; }
+.price-hero-change, .price-hero-stats, .price-hero-volume { border-left-color: #ced9e8; }
+.ph-stock-code, .ph-stock-name { color: #263a59; }
+.overview-cols { grid-template-columns: minmax(0, 1.12fr) minmax(300px, .88fr); gap: 38px; }
+.overview-col { gap: 0; }
+.overview-col:nth-child(3) { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(280px, .8fr); gap: 38px; }
+.overview-section { padding: 22px 0; background: transparent; border: 0; border-top: 1px solid #dfe6ef; border-radius: 0; }
+.overview-col:first-child .overview-section:first-child { padding: 22px; background: #f0f4fa; border: 0; border-radius: 15px; }
+.section-title { gap: 8px; margin-bottom: 14px; color: #40536f; font-size: 11px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+.section-title :deep(svg) { color: #6884b9; font-size: 15px; }
+.core-insight-text { color: #35445b; font-size: 14px; line-height: 1.82; }
+.sectors-inline :deep(.ant-tag) { padding: 3px 9px; margin: 0; color: #49658f; background: #edf3fb; border: 0; border-radius: 999px; }
+.sr-card, .cc-cell { background: #f5f7fa; }
+.bp-grid { gap: 9px; }
+.bp-card { padding: 11px 10px; border-radius: 10px; }
+.bp-header { margin-bottom: 5px; font-size: 11px; }
+.bp-price { font-size: 18px; }
+.bp-desc { line-height: 1.45; }
+.shareholder-table { border-top: 1px solid #e0e6ef; }
+.sh-row { padding: 7px 2px; border-bottom-color: #e7ecf2; }
+.sh-row.sh-header { color: #77859a; background: transparent; border-bottom-color: #dce3ed; }
+.news-item-compact { padding: 11px 12px; background: #f7f9fc; border: 0; border-radius: 10px; }
+.news-item-compact:hover { border: 0; background: #edf3fb; box-shadow: none; }
+
+@media (max-width: 1024px) {
+  .overview-cols, .overview-col:nth-child(3) { grid-template-columns: 1fr; }
+  .overview-col:nth-child(3) { display: flex; }
+}
+
+@media (max-width: 768px) {
+  .analysis-page { height: auto; min-height: calc(100vh - 76px); overflow: visible; }
+  .analysis-layout { gap: 18px; }
+  .brief-heading { align-items: start; flex-direction: column; gap: 4px; }
+  .brief-identity strong { font-size: 20px; }
+  .result-card :deep(.ant-card-head) { min-height: auto; padding: 0; }
+  .result-card :deep(.ant-card-extra) { padding: 0 0 14px; }
+  .overview-content { padding-top: 18px; }
+  .price-hero { padding: 20px; }
 }
 </style>
 

@@ -141,6 +141,7 @@ export default {
     }
   },
   analysis: {
+    researchBrief: 'Research brief',
     records: 'Records',
     refresh: 'Refresh',
     seconds: 's',

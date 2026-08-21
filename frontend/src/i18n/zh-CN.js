@@ -141,6 +141,7 @@ export default {
     }
   },
   analysis: {
+    researchBrief: '投研摘要',
     records: '评估记录',
     refresh: '刷新',
     seconds: '秒',
