@@ -168,7 +168,6 @@ html, body, #app { min-width: 320px; background: var(--workspace-canvas); }
 .content .stock-basic-container > .ant-table-wrapper,
 .content .account-management-page .table-container {
   padding: 8px;
-  overflow: hidden;
   background: var(--workspace-surface);
   border: 1px solid var(--workspace-line);
   border-radius: var(--workspace-radius);
