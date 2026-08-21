@@ -200,7 +200,7 @@ body {
 }
 
 .header {
-  height: 68px;
+  height: 76px;
   line-height: normal;
   background: #111d31;
   padding: 0;
@@ -213,7 +213,7 @@ body {
   display: flex;
   align-items: center;
   gap: 30px;
-  height: 68px;
+  height: 76px;
   max-width: 1440px;
   padding: 0 32px;
   margin: 0 auto;
@@ -222,11 +222,11 @@ body {
 .main-menu {
   flex: 1;
   min-width: 0;
-  height: 68px;
+  height: 76px;
   overflow-x: hidden;
   overflow-y: hidden;
   scrollbar-width: none;
-  line-height: 68px;
+  line-height: 76px;
   color: #d8e2f4;
   background: transparent;
   border-bottom: 0;
@@ -299,7 +299,7 @@ body {
 .content {
   padding: 22px 32px;
   background: #f7f9fc;
-  min-height: calc(100vh - 68px);
+  min-height: calc(100vh - 76px);
   display: flex;
   flex-direction: column;
 }
