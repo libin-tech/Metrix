@@ -4,13 +4,11 @@
       <!-- 左侧：分析记录列表 -->
       <div class="left-panel">
         <a-card :title="$t('analysis.records')" :bordered="false" class="records-card" :body-style="{ flex: '1', overflow: 'hidden', display: 'flex', flexDirection: 'column' }">
-          <div class="records-header">
-            <a-space>
-              <a-button type="primary" size="small" @click="refreshRecords">
-                <ReloadOutlined /> {{ $t('analysis.refresh') }}
-              </a-button>
-            </a-space>
-          </div>
+          <template #extra>
+            <a-button type="text" size="small" class="records-refresh-button" @click="refreshRecords">
+              <ReloadOutlined /> {{ $t('analysis.refresh') }}
+            </a-button>
+          </template>
 
           <!-- 分析记录列表 -->
           <div class="records-list" v-if="analysisRecords.length > 0" @scroll="handleScroll">
@@ -1227,13 +1225,6 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   min-height: 0;
-}
-
-.records-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
 }
 
 .queue-status {
@@ -3023,14 +3014,17 @@ onUnmounted(() => {
 .result-card { background: transparent; }
 .result-card :deep(.ant-card-head) { min-height: 78px; padding: 0 8px 0 0; border-bottom: 1px solid #dfe6ef; }
 .result-card :deep(.ant-card-head-title) { padding: 16px 0; overflow: visible; white-space: normal; }
-.result-card :deep(.ant-card-extra) { padding: 0; }
+.result-card :deep(.ant-card-extra), .records-card :deep(.ant-card-extra) { display: flex; align-items: center; padding: 0; }
 .result-card :deep(.ant-card-body) { overflow: hidden; padding: 0; }
-.brief-heading { display: flex; align-items: end; justify-content: space-between; gap: 18px; }
+.brief-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
 .brief-kicker { margin: 0 0 5px; color: #72809a; font-size: 10px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
 .brief-identity { display: flex; align-items: baseline; gap: 10px; color: #17263d; }
 .brief-identity span { color: #667894; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
 .brief-identity strong { font-size: 23px; letter-spacing: -.035em; }
-.brief-heading time { padding-bottom: 2px; color: #8491a5; font-size: 12px; white-space: nowrap; }
+.brief-heading time { color: #8491a5; font-size: 12px; white-space: nowrap; }
+.records-card :deep(.ant-card-head) { display: flex; align-items: center; min-height: 58px; padding: 0 16px; border-bottom: 1px solid #e1e7ef; }
+.records-card :deep(.ant-card-head-title) { padding: 0; }
+.records-refresh-button { color: #5a7198; }
 .overview-content { padding: 24px 0 0; }
 .price-hero { padding: 23px 26px; margin: 0 0 26px; color: #182a45; background: radial-gradient(circle at 90% 5%, #dfe9fb 0, transparent 31%), #edf3fb; border: 1px solid #dbe5f1; border-radius: 16px; }
 .ph-label, .ph-stat-label, .ph-vol-label { color: #72819a; }
