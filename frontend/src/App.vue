@@ -46,11 +46,11 @@
                 </a-button>
               </div>
             </template>
-                <button type="button" class="personal-trigger">
+                <div class="personal-trigger" role="button" tabindex="0" @keydown.enter="$event.currentTarget.click()">
               <a-avatar :size="34" class="personal-avatar"><UserOutlined /></a-avatar>
                   <span class="personal-copy"><strong>{{ currentUser || $t('settingsHub.personalCenter') }}</strong><small>{{ $t('settingsHub.personalCenter') }}</small></span>
                   <DownOutlined class="personal-arrow" />
-            </button>
+                </div>
           </a-popover>
             </div>
           </div>
@@ -254,21 +254,22 @@ body {
   align-items: center;
   min-width: 174px;
   gap: 10px;
-  padding: 8px;
+  padding: 8px 4px;
   color: #eef4ff;
   text-align: left;
-  background: transparent;
-  border: 0;
-  border-radius: 9px;
   cursor: pointer;
+  transition: color .18s ease;
 }
 
-.personal-trigger:hover { background: rgba(255, 255, 255, .08); }
+.personal-trigger:hover .personal-avatar { box-shadow: 0 0 0 3px rgba(143, 175, 231, .22); transform: scale(1.04); }
+.personal-trigger:hover .personal-copy strong { color: #fff; }
+.personal-trigger:hover .personal-arrow { color: #fff; transform: translateY(1px); }
 
 .personal-avatar {
   flex-shrink: 0;
   color: #edf3ff;
   background: linear-gradient(135deg, #5e7ec5, #8fa7d9);
+  transition: box-shadow .18s ease, transform .18s ease;
 }
 
 .personal-copy {
@@ -280,7 +281,7 @@ body {
 
 .personal-copy strong { overflow: hidden; font-size: 12px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
 .personal-copy small { color: #a9b8d1; font-size: 10px; }
-.personal-arrow { color: #aebcd3; font-size: 11px; }
+.personal-arrow { color: #aebcd3; font-size: 11px; transition: color .18s ease, transform .18s ease; }
 
 .personal-actions { display: grid; min-width: 174px; gap: 4px; }
 .personal-actions .ant-btn { display: flex; align-items: center; justify-content: flex-start; gap: 8px; }
