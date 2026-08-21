@@ -6,13 +6,13 @@
     <!-- 主应用布局 -->
     <a-config-provider v-else :theme="workspaceTheme">
       <a-layout class="layout">
-      <!-- 侧边栏 -->
-      <a-layout-sider v-model:collapsed="collapsed" :width="200" class="sider">
-        <div class="logo">
+        <a-layout-header class="header">
+          <div class="topbar-content">
+            <button type="button" class="logo" @click="navigate('/')">
           <div class="logo-icon-box">M</div>
-          <span v-show="!collapsed" class="logo-text">{{ $t('layout.logo') }}</span>
-        </div>
-        <a-menu theme="dark" mode="inline" :selected-keys="[currentPath]" class="main-menu">
+              <span class="logo-text">{{ $t('layout.logo') }}</span>
+            </button>
+            <a-menu mode="horizontal" :selected-keys="[currentPath]" class="main-menu">
           <a-menu-item key="/" @click="navigate('/')">
             <HomeOutlined />
             <span>{{ $t('menu.home') }}</span>
@@ -33,9 +33,9 @@
             <FundOutlined />
             <span>{{ $t('menu.marketReview') }}</span>
           </a-menu-item>
-        </a-menu>
-        <div class="personal-center">
-          <a-popover v-model:open="personalPopoverOpen" placement="topLeft" trigger="click" overlay-class-name="personal-center-popover">
+            </a-menu>
+            <div class="personal-center">
+              <a-popover v-model:open="personalPopoverOpen" placement="bottomRight" trigger="click" overlay-class-name="personal-center-popover">
             <template #content>
               <div class="personal-actions">
                 <a-button block type="primary" @click="openSettings">
@@ -46,22 +46,13 @@
                 </a-button>
               </div>
             </template>
-            <button type="button" class="personal-trigger">
+                <button type="button" class="personal-trigger">
               <a-avatar :size="34" class="personal-avatar"><UserOutlined /></a-avatar>
-              <span v-show="!collapsed" class="personal-copy"><strong>{{ currentUser || $t('settingsHub.personalCenter') }}</strong><small>{{ $t('settingsHub.personalCenter') }}</small></span>
-              <DownOutlined v-show="!collapsed" class="personal-arrow" />
+                  <span class="personal-copy"><strong>{{ currentUser || $t('settingsHub.personalCenter') }}</strong><small>{{ $t('settingsHub.personalCenter') }}</small></span>
+                  <DownOutlined class="personal-arrow" />
             </button>
           </a-popover>
-        </div>
-      </a-layout-sider>
-
-      <!-- 主内容区 -->
-      <a-layout>
-        <a-layout-header class="header">
-          <div class="header-content">
-            <MenuFoldOutlined v-if="!collapsed" class="collapse-btn" @click="collapsed = !collapsed" />
-            <MenuUnfoldOutlined v-else class="collapse-btn" @click="collapsed = !collapsed" />
-            <span class="header-title">{{ pageTitle }}</span>
+            </div>
           </div>
         </a-layout-header>
         <a-layout-content class="content">
@@ -75,7 +66,6 @@
         </a-layout-content>
       </a-layout>
       <SettingsDrawer v-model:open="settingsDrawerOpen" :permissions="permissions" />
-    </a-layout>
     </a-config-provider>
   </div>
 </template>
@@ -92,8 +82,6 @@ import {
   HomeOutlined,
   LineChartOutlined,
   LogoutOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
   MessageOutlined,
   SettingOutlined,
   UserOutlined,
@@ -108,7 +96,6 @@ const router = useRouter()
 const route = useRoute()
 const workspaceTheme = {token: {colorPrimary: '#5878c2'}}
 
-const collapsed = ref(false)
 const currentUser = ref('')
 const settingsDrawerOpen = ref(false)
 const personalPopoverOpen = ref(false)
@@ -131,32 +118,6 @@ const fetchUser = async () => {
     currentUser.value = me.data?.nickname || me.data?.username || ''
   } catch { /* ignore */ }
 }
-
-const pageTitleMap = {
-  '/': () => t('menu.home'),
-  '/home': () => t('menu.home'),
-  '/dashboard': () => t('menu.home'),
-  '/analysis': () => t('menu.analysis'),
-  '/portfolio': () => t('menu.portfolio'),
-  '/chat': () => t('menu.chat'),
-  '/market-review': () => t('menu.marketReview'),
-  '/settings/ai-model': () => t('menu.aiModel'),
-  '/settings/notification': () => t('menu.notification'),
-  '/settings/news-source': () => t('menu.newsSource'),
-  '/settings/market-data': () => t('menu.marketData'),
-  '/settings/stock-basic': () => t('menu.stockBasic'),
-  '/settings/account-management': () => t('menu.accountManagement'),
-  '/admin/users': () => t('menu.userManagement'),
-  '/admin/roles': () => t('menu.roleManagement'),
-  '/admin/menus': () => t('menu.menuManagement'),
-  '/admin/apis': () => t('menu.apiManagement'),
-  '/admin/audit-log': () => t('menu.auditLog')
-}
-
-const pageTitle = computed(() => {
-  const keyFn = pageTitleMap[route.path]
-  return keyFn ? keyFn() : t('layout.pageTitleDefault')
-})
 
 const navigate = (path) => {
   router.push(path)
@@ -203,33 +164,18 @@ body {
 }
 
 .layout {
-  height: 100vh;
-}
-
-.sider {
-  background: #111d31;
-}
-
-.sider .ant-layout-sider-children {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
-}
-
-.main-menu {
-  flex: 1;
-  overflow-y: auto;
+  min-height: 100vh;
 }
 
 .logo {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 8px;
-  height: 64px;
-  padding: 16px;
-  border-bottom: 1px solid #273651;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
 }
 
 
@@ -250,10 +196,12 @@ body {
 .logo-text {
   font-size: 16px;
   font-weight: bold;
-  color: white;
+  color: #182336;
 }
 
 .header {
+  height: 68px;
+  line-height: normal;
   background: rgba(255, 255, 255, .88);
   padding: 0;
   border-bottom: 1px solid #e7ebf1;
@@ -261,40 +209,48 @@ body {
   backdrop-filter: blur(12px);
 }
 
-.header-content {
+.topbar-content {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  height: 64px;
-  padding: 0 24px;
+  gap: 30px;
+  height: 68px;
+  max-width: 1440px;
+  padding: 0 32px;
+  margin: 0 auto;
 }
 
-.collapse-btn {
-  font-size: 16px;
-  margin-right: 16px;
-  cursor: pointer;
-  color: #666;
+.main-menu {
+  flex: 1;
+  min-width: 0;
+  height: 68px;
+  overflow-x: auto;
+  line-height: 68px;
+  background: transparent;
+  border-bottom: 0;
 }
 
-.header-title {
-  font-size: 15px;
-  font-weight: 650;
-  color: #46536a;
+.main-menu .ant-menu-item {
+  padding-inline: 13px;
+  color: #5d6c83;
+  font-size: 13px;
 }
+
+.main-menu .ant-menu-item-selected { color: #4d70b7; font-weight: 650; }
+.main-menu .ant-menu-item::after { border-bottom-width: 2px; }
 
 .personal-center {
   flex-shrink: 0;
-  padding: 12px 8px;
-  border-top: 1px solid #273651;
+  padding: 0;
+  border: 0;
 }
 
 .personal-trigger {
   display: flex;
   align-items: center;
-  width: 100%;
+  min-width: 174px;
   gap: 10px;
   padding: 8px;
-  color: #eef4ff;
+  color: #182336;
   text-align: left;
   background: transparent;
   border: 0;
@@ -302,11 +258,11 @@ body {
   cursor: pointer;
 }
 
-.personal-trigger:hover { background: rgba(255, 255, 255, .07); }
+.personal-trigger:hover { background: #f2f5fa; }
 
 .personal-avatar {
   flex-shrink: 0;
-  color: #e8f0ff;
+  color: #edf3ff;
   background: linear-gradient(135deg, #5e7ec5, #8fa7d9);
 }
 
@@ -318,8 +274,8 @@ body {
 }
 
 .personal-copy strong { overflow: hidden; font-size: 12px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
-.personal-copy small { color: #9fb0cb; font-size: 10px; }
-.personal-arrow { color: #8da0bf; font-size: 11px; }
+.personal-copy small { color: #7d8da4; font-size: 10px; }
+.personal-arrow { color: #8796aa; font-size: 11px; }
 
 .personal-actions { display: grid; min-width: 174px; gap: 4px; }
 .personal-actions .ant-btn { display: flex; align-items: center; justify-content: flex-start; gap: 8px; }
@@ -328,13 +284,16 @@ body {
 .personal-center-popover .ant-popover-inner-content { padding: 0; }
 
 @media (max-width: 800px) {
-  .header-content { padding: 0 16px; }
+  .topbar-content { gap: 16px; padding: 0 16px; }
+  .logo-text, .personal-copy, .personal-arrow { display: none; }
+  .personal-trigger { min-width: auto; padding: 6px; }
+  .main-menu .ant-menu-item { padding-inline: 10px; }
 }
 
 .content {
   padding: 22px 32px;
   background: #f7f9fc;
-  min-height: calc(100vh - 64px);
+  min-height: calc(100vh - 68px);
   display: flex;
   flex-direction: column;
 }
