@@ -613,16 +613,17 @@ onMounted(() => {
 .user-msg .msg-content {
   padding: 7px 8px;
   font-size: 7px;
-  color: #fff;
-  background: linear-gradient(135deg, #5878c2, #6e8dca);
+  color: #111827;
+  background: #edf3ff;
+  border: 1px solid #d6e2f7;
   border-radius: 14px 5px 14px 14px;
-  box-shadow: 0 5px 14px rgba(73, 105, 170, .2);
+  box-shadow: 0 4px 10px rgba(73, 105, 170, .08);
 }
 
 .user-msg .msg-content :deep(*) { color: inherit; }
 .user-msg .msg-content :deep(p) { margin: 0; }
 .user-msg .msg-content :deep(a) { text-decoration: underline; }
-.user-msg .msg-content :deep(code) { color: #eaf0ff; background: rgba(255, 255, 255, .13); }
+.user-msg .msg-content :deep(code) { color: #111827; background: rgba(255, 255, 255, .32); }
 
 .msg-tokens {
   margin-top: 8px;
