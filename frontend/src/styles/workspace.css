@@ -8,9 +8,19 @@
   --workspace-accent: #5878c2;
   --workspace-soft-accent: #edf3ff;
   --workspace-radius: 14px;
+  --workspace-content-width: 1240px;
 }
 
 html, body, #app { min-width: 320px; background: var(--workspace-canvas); }
+
+.content > :not(.app-footer) {
+  width: 100%;
+  max-width: var(--workspace-content-width);
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.content .app-footer { width: 100%; max-width: var(--workspace-content-width); margin-right: auto; margin-left: auto; }
 
 .sider .ant-menu-dark,
 .sider .ant-menu-dark .ant-menu-sub { background: #111d31 !important; }
@@ -115,7 +125,7 @@ html, body, #app { min-width: 320px; background: var(--workspace-canvas); }
 .content .stock-basic-container,
 .content .account-management-page,
 .content .portfolio-page {
-  max-width: 1280px !important;
+  max-width: var(--workspace-content-width) !important;
   padding: 12px 4px 42px !important;
   margin: 0 auto !important;
 }
