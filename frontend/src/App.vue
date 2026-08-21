@@ -4,7 +4,7 @@
     <router-view v-if="isLoginPage" />
 
     <!-- 主应用布局 -->
-    <a-config-provider v-else :theme="themeConfig">
+    <a-config-provider v-else :theme="workspaceTheme">
       <a-layout class="layout">
       <!-- 侧边栏 -->
       <a-layout-sider v-model:collapsed="collapsed" :width="200" class="sider">
@@ -103,20 +103,6 @@
             <span class="header-title">{{ pageTitle }}</span>
             <div class="header-actions">
               <a-dropdown>
-                <a-button class="theme-btn">
-                  <BgColorsOutlined />
-                </a-button>
-                <template #overlay>
-                  <a-menu @click="({key}) => selectTheme(key)">
-                    <a-menu-item v-for="t in themeList" :key="t.key">
-                      <span class="theme-swatch" :style="{background: t.primary}"></span>
-                      {{ t.name }}
-                      <CheckOutlined v-if="t.key === currentTheme" class="theme-check" />
-                    </a-menu-item>
-                  </a-menu>
-                </template>
-              </a-dropdown>
-              <a-dropdown>
                 <a-button class="lang-btn">
                   <GlobalOutlined />
                   <span>{{ locale === 'zh-CN' ? '中文' : 'English' }}</span>
@@ -169,9 +155,7 @@ import {message} from 'ant-design-vue'
 import {
   ApiOutlined,
   BellOutlined,
-  BgColorsOutlined,
   BookOutlined,
-  CheckOutlined,
   ChromeOutlined,
   DatabaseOutlined,
   DownOutlined,
@@ -193,15 +177,12 @@ import {
   WalletOutlined
 } from '@ant-design/icons-vue'
 
-import {useTheme} from './composables/useTheme.js'
 import {getCurrentUser, getPermissions} from './api'
 
 const {locale, t} = useI18n()
 const router = useRouter()
 const route = useRoute()
-const {currentTheme, THEMES, select: selectTheme, themeConfig} = useTheme()
-
-const themeList = Object.entries(THEMES).map(([key, val]) => ({key, ...val}))
+const workspaceTheme = {token: {colorPrimary: '#5878c2'}}
 
 const collapsed = ref(false)
 const currentUser = ref('')
@@ -277,6 +258,8 @@ const handleLogout = () => {
 }
 
 onMounted(() => {
+  document.documentElement.classList.remove('theme-blue', 'theme-green', 'theme-purple', 'theme-orange', 'theme-cyan')
+  localStorage.removeItem('metrix-theme')
   fetchUser()
 })
 
@@ -433,79 +416,4 @@ body {
   color: #ccc;
 }
 
-.theme-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: none;
-  font-size: 18px;
-  cursor: pointer;
-  background: transparent;
-  color: #607087;
-}
-
-.theme-btn:hover {
-  color: var(--primary-color);
-}
-
-.theme-swatch {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  margin-right: 8px;
-  vertical-align: middle;
-  border: 1px solid rgba(0,0,0,0.1);
-}
-
-.theme-check {
-  float: right;
-  color: var(--primary-color);
-  line-height: 22px;
-}
-
-/* Theme color variables */
-:root,
-html.theme-blue {
-  --primary-color: #1890ff;
-  --primary-hover: #40a9ff;
-  --primary-bg: #e6f7ff;
-}
-
-html.theme-green {
-  --primary-color: #52c41a;
-  --primary-hover: #73d13d;
-  --primary-bg: #f6ffed;
-}
-
-html.theme-purple {
-  --primary-color: #722ed1;
-  --primary-hover: #9254de;
-  --primary-bg: #f9f0ff;
-}
-
-html.theme-orange {
-  --primary-color: #fa8c16;
-  --primary-hover: #ffa940;
-  --primary-bg: #fff7e6;
-}
-
-html.theme-cyan {
-  --primary-color: #13c2c2;
-  --primary-hover: #36cfc9;
-  --primary-bg: #e6fffb;
-}
-
-:root {
-  --bg-body: #f5f7fa;
-  --bg-content: #f5f7fa;
-  --bg-header: #fff;
-  --bg-card: #fff;
-  --text-primary: #333;
-  --text-secondary: #666;
-  --border-color: #f0f0f0;
-  --header-shadow: rgba(0, 0, 0, 0.1);
-}
 </style>
