@@ -1,116 +1,131 @@
 <template>
   <div class="portfolio-page">
-    <!-- Top Section -->
-    <div class="page-top-section">
-      <div class="top-row">
-        <div class="top-left">
-          <h3 class="page-title">
+    <section class="portfolio-hero">
+      <div class="hero-top-row">
+        <div class="hero-title-block">
+          <p class="hero-eyebrow">{{ $t('portfolio.overview') }}</p>
+          <h1 class="page-title">
             <WalletOutlined /> {{ $t('portfolio.title') }}
             <a-button type="text" class="eye-btn" @click="showSensitiveInfo = !showSensitiveInfo">
               <EyeOutlined v-if="showSensitiveInfo" />
               <EyeInvisibleOutlined v-else />
             </a-button>
             <span class="title-count" v-if="holdings.length > 0">{{ uniqueStockCount }}</span>
-          </h3>
+          </h1>
         </div>
         <div class="top-actions">
-          <div class="refresh-group">
-            <a-button :loading="refreshing" @click="handleRefreshPrices">
-              <ReloadOutlined /> {{ $t('portfolio.refreshPrices') }}
-            </a-button>
-            <span class="refresh-hint">{{ $t('portfolio.refreshHint') }}</span>
-          </div>
-          <a-button @click="router.push('/settings/account-management')">
+          <a-button class="hero-secondary-action" @click="router.push('/settings/account-management')">
             <SettingOutlined /> {{ $t('portfolio.manageAccount') }}
+          </a-button>
+          <a-button class="hero-secondary-action" :loading="refreshing" @click="handleRefreshPrices">
+            <ReloadOutlined /> {{ $t('portfolio.refreshPrices') }}
           </a-button>
           <a-button type="primary" ghost class="batch-evaluate-button" :loading="batchEvaluating" @click="handleBatchEvaluate">
             <PlayCircleOutlined /> {{ $t('portfolio.batchEvaluate') }}
           </a-button>
-          <a-button type="primary" @click="showAddHoldingModal = true">
+          <a-button type="primary" class="hero-primary-action" @click="showAddHoldingModal = true">
             <PlusOutlined /> {{ $t('portfolio.addHolding') }}
           </a-button>
         </div>
       </div>
-      <div class="disclaimer-row">
+      <div class="hero-meta-row">
+        <span class="refresh-hint"><ReloadOutlined /> {{ $t('portfolio.refreshHint') }}</span>
+        <span class="hero-meta-divider" aria-hidden="true"></span>
         <InfoCircleOutlined class="disclaimer-icon" />
         <span class="disclaimer-text">{{ $t('portfolio.disclaimer') }}</span>
       </div>
-    </div>
+    </section>
 
-    <!-- Search Bar -->
-    <div class="search-section">
-      <a-space class="search-bar" wrap>
-        <a-select
-          v-model:value="searchAccountId"
-          :placeholder="$t('portfolio.searchAccountPlaceholder')"
-          allow-clear
-          class="search-account-select"
-          @change="loadHoldings"
-        >
-          <a-select-option :value="null">{{ $t('portfolio.allAccounts') }}</a-select-option>
-          <a-select-option v-for="a in accounts" :key="a.id" :value="a.id">
-            {{ a.brokerName }}{{ a.accountNumber ? ' (' + getLastFour(a.accountNumber) + ')' : '' }}
-          </a-select-option>
-        </a-select>
-        <a-input-search
-          v-model:value="searchKeyword"
-          :placeholder="$t('portfolio.searchPlaceholder')"
-          allow-clear
-          class="search-input"
-          @search="loadHoldings"
-          @press-enter="loadHoldings"
-        >
-          <template #prefix><SearchOutlined /></template>
-        </a-input-search>
-      </a-space>
-    </div>
-
-    <!-- Portfolio Summary -->
     <div v-if="summary" class="summary-section">
-      <a-row :gutter="16">
-        <a-col :span="6">
-          <div class="summary-card">
+      <div class="summary-grid">
+        <div class="summary-card summary-card-primary">
             <div class="summary-label">{{ $t('portfolio.totalMarketValue') }}</div>
             <div class="summary-value" :class="{ 'sensitive-hidden-text': !showSensitiveInfo }">
               <template v-if="showSensitiveInfo">{{ formatPrice(summary.totalMarketValue) }}</template>
               <template v-else>***</template>
             </div>
-          </div>
-        </a-col>
-        <a-col :span="6">
-          <div class="summary-card">
+        </div>
+        <div class="summary-card">
             <div class="summary-label">{{ $t('portfolio.totalProfitLossPct') }}</div>
             <div class="summary-value" :class="getProfitClass(summary.totalProfitLossPercent)">
               {{ formatSignedPercent(summary.totalProfitLossPercent) }}
             </div>
-          </div>
-        </a-col>
-        <a-col :span="6">
-          <div class="summary-card">
+        </div>
+        <div class="summary-card">
             <div class="summary-label">{{ $t('portfolio.totalProfitLossAmt') }}</div>
             <div class="summary-value" :class="getProfitClass(summary.totalProfitLossAmount)">
               <template v-if="showSensitiveInfo">{{ formatSignedPrice(summary.totalProfitLossAmount) }}</template>
               <template v-else>***</template>
             </div>
+        </div>
+        <div class="summary-card summary-break-even">
+          <div class="summary-label summary-break-even-label">
+            {{ $t('portfolio.breakEvenDifficulty') }}
+            <a-popover
+              v-model:open="breakEvenPopoverOpen"
+              trigger="click"
+              placement="bottomRight"
+              overlay-class-name="break-even-popover"
+              :overlay-style="{ maxWidth: 'calc(100vw - 24px)' }"
+              @open-change="handleBreakEvenPopoverChange"
+            >
+              <template #content>
+                <div class="break-even-popover-content">
+                  <div class="break-even-popover-heading">
+                    <strong>{{ $t('portfolio.breakEvenAnalysisTitle') }}</strong>
+                    <span>{{ $t('portfolio.breakEvenAnalysisHint') }}</span>
+                  </div>
+                  <div ref="breakEvenChartRef" class="break-even-chart"></div>
+                </div>
+              </template>
+              <QuestionCircleOutlined class="break-even-help" />
+            </a-popover>
           </div>
-        </a-col>
-        <a-col :span="6">
-          <div class="summary-card">
-            <div class="summary-label">{{ $t('portfolio.lastRefreshTime') }}</div>
-            <div class="summary-value summary-time">
-              {{ summary.refreshTime ? formatTime(summary.refreshTime) : '-' }}
-            </div>
-          </div>
-        </a-col>
-      </a-row>
+          <div class="summary-value" :class="breakEvenDifficulty === 0 ? 'profit-up' : 'profit-down'">{{ formatBreakEvenDifficulty(breakEvenDifficulty) }}</div>
+          <div class="summary-break-even-analysis">{{ getBreakEvenAnalysis(breakEvenDifficulty) }}</div>
+        </div>
+      </div>
     </div>
+
+    <section class="portfolio-controls">
+      <div class="holdings-heading">
+        <div><p class="section-kicker">{{ $t('portfolio.overview') }}</p><h2>{{ $t('portfolio.holdingsDetail') }}</h2></div>
+        <span class="holding-total">{{ uniqueStockCount }}</span>
+      </div>
+      <div class="holdings-actions">
+        <span class="holdings-refresh-time"><ReloadOutlined /> {{ $t('portfolio.lastRefreshTime') }}：{{ summary?.refreshTime ? formatTime(summary.refreshTime) : '-' }}</span>
+        <a-space class="search-bar" wrap>
+          <a-select
+            v-model:value="searchAccountId"
+            :placeholder="$t('portfolio.searchAccountPlaceholder')"
+            allow-clear
+            class="search-account-select"
+            @change="loadHoldings"
+          >
+            <a-select-option :value="null">{{ $t('portfolio.allAccounts') }}</a-select-option>
+            <a-select-option v-for="a in accounts" :key="a.id" :value="a.id">
+              {{ a.brokerName }}{{ a.accountNumber ? ' (' + getLastFour(a.accountNumber) + ')' : '' }}
+            </a-select-option>
+          </a-select>
+          <a-input-search
+            v-model:value="searchKeyword"
+            :placeholder="$t('portfolio.searchPlaceholder')"
+            allow-clear
+            class="search-input"
+            @search="loadHoldings"
+            @press-enter="loadHoldings"
+          >
+            <template #prefix><SearchOutlined /></template>
+          </a-input-search>
+        </a-space>
+      </div>
+    </section>
 
     <!-- Loading State -->
     <div v-if="loading" class="loading-container">
       <a-spin :tip="$t('portfolio.loading')" size="large" />
     </div>
 
-    <!-- Holdings List -->
     <div v-else-if="holdings.length > 0" class="holdings-list">
       <a-table
         :dataSource="holdings"
@@ -166,6 +181,9 @@
             </span>
             <span v-else-if="showSensitiveInfo" class="price-na">--</span>
             <span v-else class="sensitive-hidden">***</span>
+          </template>
+          <template v-if="column.key === 'breakEvenGain'">
+            <span :class="getBreakEvenClass(record)">{{ formatBreakEvenGain(record) }}</span>
           </template>
           <template v-if="column.key === 'action'">
             <a-space>
@@ -263,7 +281,11 @@
 </template>
 
 <script setup>
-import {computed, onMounted, onUnmounted, ref} from 'vue'
+import {computed, nextTick, onMounted, onUnmounted, ref} from 'vue'
+import {init, use} from 'echarts/core'
+import {LineChart} from 'echarts/charts'
+import {GridComponent, TooltipComponent} from 'echarts/components'
+import {CanvasRenderer} from 'echarts/renderers'
 import {useRouter} from 'vue-router'
 import {useI18n} from 'vue-i18n'
 import {message} from 'ant-design-vue'
@@ -275,6 +297,7 @@ import {
   InfoCircleOutlined,
   PlayCircleOutlined,
   PlusOutlined,
+  QuestionCircleOutlined,
   ReloadOutlined,
   SearchOutlined,
   SettingOutlined,
@@ -292,6 +315,8 @@ import {
   refreshPortfolioPrices,
   searchStocks
 } from '../api'
+
+use([LineChart, GridComponent, TooltipComponent, CanvasRenderer])
 
 const router = useRouter()
 const { t } = useI18n()
@@ -312,6 +337,9 @@ const submittingHolding = ref(false)
 const showAddHoldingModal = ref(false)
 const evaluating = ref(new Set())
 const batchEvaluating = ref(false)
+const breakEvenChartRef = ref(null)
+const breakEvenPopoverOpen = ref(false)
+let breakEvenChart = null
 
 const batchAccountId = ref(undefined)
 const batchItems = ref([])
@@ -373,7 +401,28 @@ const columns = computed(() => [
     align: 'right',
     sorter: (a, b) => (parseFloat(a.profitLossAmount) || 0) - (parseFloat(b.profitLossAmount) || 0)
   },
+  { title: t('portfolio.colBreakEvenGain'), key: 'breakEvenGain', width: 120, align: 'right' },
   { title: t('portfolio.colAction'), key: 'action', width: 120, align: 'center' }
+])
+
+const breakEvenDifficulty = computed(() => {
+  const marketValue = Number(summary.value?.totalMarketValue)
+  const profitLossAmount = Number(summary.value?.totalProfitLossAmount)
+  const totalCost = marketValue - profitLossAmount
+  if (!Number.isFinite(marketValue) || !Number.isFinite(totalCost) || marketValue <= 0 || totalCost <= 0) return null
+  return Math.max(0, (totalCost / marketValue - 1) * 100)
+})
+
+const breakEvenGuide = computed(() => [
+  { loss: 10, gain: 11.11, assessment: t('portfolio.breakEvenGuide10') },
+  { loss: 20, gain: 25, assessment: t('portfolio.breakEvenGuide20') },
+  { loss: 30, gain: 42.86, assessment: t('portfolio.breakEvenGuide30') },
+  { loss: 40, gain: 66.67, assessment: t('portfolio.breakEvenGuide40') },
+  { loss: 50, gain: 100, assessment: t('portfolio.breakEvenGuide50') },
+  { loss: 60, gain: 150, assessment: t('portfolio.breakEvenGuide60') },
+  { loss: 70, gain: 233.33, assessment: t('portfolio.breakEvenGuide70') },
+  { loss: 80, gain: 400, assessment: t('portfolio.breakEvenGuide80') },
+  { loss: 90, gain: 900, assessment: t('portfolio.breakEvenGuide90') }
 ])
 
 const getLastFour = (num) => {
@@ -410,6 +459,101 @@ const formatSignedPrice = (val) => {
   if (isNaN(num)) return '--'
   const sign = num >= 0 ? '+' : ''
   return `${sign}${num.toFixed(3)}`
+}
+
+const getBreakEvenGain = (record) => {
+  const profitLossPercent = Number(record.profitLossPercent)
+  if (Number.isFinite(profitLossPercent) && profitLossPercent > 0) return null
+  const currentPrice = Number(record.currentPrice)
+  const cost = Number(record.cost)
+  if (!Number.isFinite(currentPrice) || !Number.isFinite(cost) || currentPrice <= 0 || cost <= 0) return null
+  return Math.max(0, (cost / currentPrice - 1) * 100)
+}
+
+const formatBreakEvenGain = (record) => {
+  const breakEvenGain = getBreakEvenGain(record)
+  if (breakEvenGain == null) return '--'
+  return `${breakEvenGain.toFixed(2)}%`
+}
+
+const getBreakEvenClass = (record) => {
+  const breakEvenGain = getBreakEvenGain(record)
+  if (breakEvenGain == null) return 'price-na'
+  return 'break-even-gain'
+}
+
+const formatBreakEvenDifficulty = (value) => {
+  if (value == null) return '--'
+  return `${value.toFixed(2)}%`
+}
+
+const formatGuideGain = (value) => `${value % 1 === 0 ? value.toFixed(0) : value.toFixed(2)}%`
+
+const getBreakEvenAnalysis = (value) => {
+  if (value == null) return '--'
+  if (value === 0) return t('portfolio.breakEvenNoRecoveryNeeded')
+  return breakEvenGuide.value.find(item => value <= item.gain)?.assessment || t('portfolio.breakEvenGuide90')
+}
+
+const renderBreakEvenChart = () => {
+  if (!breakEvenChartRef.value) return
+  if (!breakEvenChart) {
+    breakEvenChart = init(breakEvenChartRef.value)
+  }
+  const guide = breakEvenGuide.value
+  breakEvenChart.setOption({
+    animationDuration: 500,
+    grid: { top: 26, right: 28, bottom: 38, left: 54 },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#17243a',
+      borderWidth: 0,
+      textStyle: { color: '#fff' },
+      formatter: (params) => {
+        const item = guide[params[0].dataIndex]
+        return `${t('portfolio.lossDrawdown')}：-${item.loss}%<br/>${t('portfolio.requiredGain')}：${formatGuideGain(item.gain)}<br/>${item.assessment}`
+      }
+    },
+    xAxis: {
+      type: 'category',
+      data: guide.map(item => `-${item.loss}%`),
+      boundaryGap: false,
+      axisLine: { lineStyle: { color: '#dbe3ee' } },
+      axisTick: { show: false },
+      axisLabel: { color: '#7c8aa0', fontSize: 11 }
+    },
+    yAxis: {
+      type: 'value',
+      name: t('portfolio.requiredGain'),
+      nameTextStyle: { color: '#7c8aa0', fontSize: 11, padding: [0, 0, 0, -6] },
+      min: 0,
+      max: 900,
+      axisLabel: { color: '#7c8aa0', fontSize: 11, formatter: '{value}%' },
+      splitLine: { lineStyle: { color: '#edf1f6', type: 'dashed' } }
+    },
+    series: [{
+      type: 'line',
+      smooth: true,
+      data: guide.map(item => item.gain),
+      symbol: 'circle',
+      symbolSize: 7,
+      lineStyle: { width: 3, color: '#d7505d' },
+      itemStyle: { color: '#d7505d', borderColor: '#fff', borderWidth: 2 },
+      areaStyle: { color: 'rgba(215, 80, 93, .13)' }
+    }]
+  })
+}
+
+const resizeBreakEvenChart = () => breakEvenChart?.resize()
+
+const handleBreakEvenPopoverChange = (open) => {
+  if (!open) return
+  nextTick(() => {
+    window.requestAnimationFrame(() => {
+      renderBreakEvenChart()
+      window.requestAnimationFrame(resizeBreakEvenChart)
+    })
+  })
 }
 
 const formatTime = (time) => {
@@ -711,6 +855,9 @@ onUnmounted(() => {
     clearInterval(refreshPollTimer)
     refreshPollTimer = null
   }
+  window.removeEventListener('resize', resizeBreakEvenChart)
+  breakEvenChart?.dispose()
+  breakEvenChart = null
 })
 
 const handleDelete = async (id) => {
@@ -732,6 +879,7 @@ onMounted(async () => {
   await loadAccounts()
   await loadHoldings()
   batchItems.value = [createEmptyBatchItem()]
+  window.addEventListener('resize', resizeBreakEvenChart)
 })
 </script>
 
@@ -1029,4 +1177,11 @@ onMounted(async () => {
   font-size: 13px;
   color: #bbb;
 }
+
+.portfolio-page { padding: 8px 0 38px; color: #182336; }
+.portfolio-hero { position: relative; overflow: hidden; min-height: 194px; padding: 30px 32px 68px; color: #fff; background: radial-gradient(circle at 86% -35%, #5578b7 0, transparent 38%), radial-gradient(circle at 18% 120%, #294166 0, transparent 45%), #17243a; border-radius: 18px; }.portfolio-hero::after { position: absolute; right: 7%; bottom: -64px; width: 210px; height: 210px; content: ''; border: 1px solid rgba(185, 211, 255, .15); border-radius: 50%; box-shadow: 0 0 0 30px rgba(185, 211, 255, .04), 0 0 0 64px rgba(185, 211, 255, .025); }.hero-top-row { position: relative; z-index: 1; display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }.hero-eyebrow, .section-kicker { margin: 0 0 7px; color: #91acd7; font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }.page-title { display: flex; align-items: center; margin: 0; color: #fff; font-size: clamp(26px, 3vw, 34px); font-weight: 750; letter-spacing: -.04em; }.page-title .anticon { margin-right: 10px; color: #a9c4ff; }.eye-btn { margin-left: 8px; color: #b9c8e1; }.eye-btn:hover { color: #fff; }.title-count, .holding-total { color: #1b3153; background: #dce9ff; border-radius: 999px; }.title-count { min-width: 25px; height: 25px; margin-left: 10px; font-size: 12px; font-weight: 700; }.top-actions { position: relative; z-index: 1; align-items: center; gap: 10px; }.hero-secondary-action { color: #e4edff; background: rgba(255, 255, 255, .08); border-color: rgba(220, 233, 255, .26); }.hero-secondary-action:hover { color: #fff !important; background: rgba(255, 255, 255, .16); border-color: rgba(220, 233, 255, .5); }.batch-evaluate-button { color: #203b61 !important; background: #d7e7ff; border-color: #d7e7ff; }.hero-primary-action { box-shadow: 0 8px 20px rgba(0, 0, 0, .18); }.hero-meta-row { position: relative; z-index: 1; display: flex; align-items: center; gap: 9px; margin-top: 27px; color: #c2d1e8; font-size: 12px; }.refresh-hint { display: inline-flex; align-items: center; gap: 5px; color: #b8c9e3; font-size: 12px; }.hero-meta-divider { width: 1px; height: 13px; background: rgba(220, 233, 255, .28); }.disclaimer-icon { color: #f3d987; }.disclaimer-text { color: #c2d1e8; }
+.summary-section { position: relative; z-index: 2; margin: -42px 24px 22px; }.summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }.summary-card { min-height: 115px; padding: 20px 21px; text-align: left; background: rgba(255, 255, 255, .96); border: 1px solid #e6ebf2; border-radius: 14px; box-shadow: 0 12px 28px rgba(30, 48, 77, .09); }.summary-card-primary { color: #fff; background: linear-gradient(135deg, #2f5e9b, #1d365a); border-color: transparent; }.summary-card-primary .summary-label { color: #c7d9f6; }.summary-label { margin-bottom: 10px; color: #7a879a; font-size: 12px; font-weight: 650; }.summary-value { color: #213653; font-size: 23px; font-weight: 750; letter-spacing: -.025em; }.summary-card-primary .summary-value { color: #fff; }.summary-break-even-label { display: flex; align-items: center; gap: 5px; }.break-even-help { color: #a07b80; font-size: 13px; cursor: pointer; transition: color .2s ease; }.break-even-help:hover { color: #d7505d; }.summary-break-even-analysis { min-height: 32px; margin-top: 7px; color: #8b7680; font-size: 12px; line-height: 1.45; }.sensitive-hidden-text { color: #a9bddb !important; }.break-even-popover-content { width: min(680px, calc(100vw - 48px)); }.break-even-popover-heading { display: grid; gap: 4px; padding: 2px 4px 0; }.break-even-popover-heading strong { color: #362832; font-size: 15px; }.break-even-popover-heading span { color: #8c7780; font-size: 12px; line-height: 1.5; }.break-even-chart { width: 100%; height: 300px; }.break-even-gain { color: #d7505d; font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace; font-weight: 700; }
+.portfolio-controls, .holdings-list { margin: 0 24px 18px; background: #fff; border: 1px solid #e4e9f0; border-radius: 14px; box-shadow: 0 8px 24px rgba(30, 48, 77, .045); }.portfolio-controls { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding: 19px 22px; }.holdings-heading { display: flex; align-items: flex-end; gap: 11px; }.holdings-heading h2 { margin: 0; color: #1d2c43; font-size: 18px; letter-spacing: -.025em; }.section-kicker { margin-bottom: 5px; color: #8393aa; }.holding-total { display: grid; place-items: center; min-width: 26px; height: 26px; margin-bottom: 1px; padding: 0 7px; font-size: 12px; font-weight: 750; }.holdings-actions { display: flex; align-items: center; justify-content: flex-end; gap: 16px; }.holdings-refresh-time { display: inline-flex; align-items: center; gap: 5px; color: #7d8da3; font-size: 12px; white-space: nowrap; }.search-bar { width: auto; }.search-account-select { width: 190px; }.search-input { width: 280px; }.holdings-list { padding: 8px 18px 14px; }.holdings-table :deep(.ant-table) { background: transparent; }.holdings-table :deep(.ant-table-thead > tr > th) { padding: 15px 11px; color: #8390a2; font-size: 11px; font-weight: 750; letter-spacing: .055em; text-transform: uppercase; background: transparent; border-bottom: 1px solid #dfe6ef; }.holdings-table :deep(.ant-table-tbody > tr > td) { padding: 17px 11px; font-size: 14px; border-bottom-color: #edf1f5; }.holdings-table :deep(.ant-table-tbody > tr:hover > td) { background: #f4f8ff !important; }.broker-name, .stock-code { color: #263957; }.stock-name { color: #263957; font-size: 15px; font-weight: 650; }.account-suffix { color: #8794a7; }.profit-up { color: #d7505d; }.profit-down { color: #087443; }.loading-container, .empty-state { margin: 0 24px; background: #fff; border: 1px solid #e4e9f0; box-shadow: 0 8px 24px rgba(30, 48, 77, .045); }.empty-state { min-height: 330px; border-radius: 14px; }.empty-icon { color: #aebdd0; }.empty-text { color: #4c5d75; font-weight: 650; }.empty-hint { color: #8491a3; }
+@media (max-width: 1100px) { .portfolio-hero { padding: 26px 24px 64px; }.top-actions { flex-wrap: wrap; justify-content: flex-end; }.summary-section { margin-right: 16px; margin-left: 16px; }.summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }.portfolio-controls, .holdings-list, .loading-container, .empty-state { margin-right: 16px; margin-left: 16px; }.portfolio-controls { align-items: flex-start; flex-direction: column; }.holdings-actions, .search-bar { width: 100%; }.holdings-actions { justify-content: space-between; } }
+@media (max-width: 760px) { .portfolio-page { padding-top: 0; }.portfolio-hero { padding: 22px 18px 58px; border-radius: 0 0 16px 16px; }.hero-top-row { align-items: stretch; flex-direction: column; }.top-actions { justify-content: flex-start; }.hero-meta-row { align-items: flex-start; flex-wrap: wrap; }.hero-meta-divider { display: none; }.summary-section { margin: -36px 12px 16px; }.summary-grid { grid-template-columns: 1fr; gap: 12px; }.portfolio-controls, .holdings-list, .loading-container, .empty-state { margin-right: 12px; margin-left: 12px; }.break-even-chart { height: 250px; }.portfolio-controls, .holdings-actions { align-items: flex-start; flex-direction: column; }.holdings-actions { gap: 12px; }.portfolio-controls { padding: 17px; }.search-bar :deep(.ant-space-item), .search-account-select, .search-input { width: 100%; }.holdings-list { padding: 6px 10px 12px; }.page-title { font-size: 28px; } }
 </style>
