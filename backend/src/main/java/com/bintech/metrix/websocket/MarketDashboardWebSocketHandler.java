@@ -3,10 +3,12 @@ package com.bintech.metrix.websocket;
 import cn.hutool.json.JSONUtil;
 import cn.hutool.json.JSONObject;
 import com.bintech.metrix.constants.ApiConstants;
+import com.bintech.metrix.constants.CacheConstants;
 import com.bintech.metrix.constants.SystemConstants;
 import com.bintech.metrix.service.MarketActivityService;
 import com.bintech.metrix.service.MarketIndexService;
 import com.bintech.metrix.service.MarketInsightService;
+import com.bintech.metrix.service.RedisCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -32,6 +34,7 @@ public class MarketDashboardWebSocketHandler extends TextWebSocketHandler {
     private final MarketActivityService marketActivityService;
     private final MarketIndexService marketIndexService;
     private final MarketInsightService marketInsightService;
+    private final RedisCacheService redisCacheService;
     private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
 
     @Override
@@ -57,7 +60,7 @@ public class MarketDashboardWebSocketHandler extends TextWebSocketHandler {
     /**
      * 向所有订阅者推送市场快照和当天成交额。
      */
-    public void refreshOverviewAndBroadcast() {
+    public synchronized void refreshOverviewAndBroadcast() {
         if (sessions.isEmpty()) {
             return;
         }
@@ -68,12 +71,13 @@ public class MarketDashboardWebSocketHandler extends TextWebSocketHandler {
     /**
      * 向所有订阅者推送龙虎榜、板块及股票池数据。
      */
-    public void refreshInsightsAndBroadcast() {
+    public synchronized void refreshInsightsAndBroadcast() {
         if (sessions.isEmpty()) {
             return;
         }
         try {
             Map<String, Object> insights = extractData(marketInsightService.getMarketInsights());
+            cacheData(CacheConstants.MARKET_DASHBOARD_INSIGHTS_LAST_SUCCESS_KEY, insights);
             sessions.values().forEach(session -> send(session,
                     createMessage(SystemConstants.MARKET_DASHBOARD_INSIGHTS_MESSAGE_TYPE, insights)));
         } catch (RuntimeException exception) {
@@ -82,16 +86,22 @@ public class MarketDashboardWebSocketHandler extends TextWebSocketHandler {
     }
 
     private void pushInitialSnapshot(WebSocketSession session, Long userId) {
-        sendOverview(session, userId, fetchOverviewCommonData());
-        refreshInsightsForSession(session);
+        sendCachedOverview(session, userId);
+        sendCachedInsights(session);
+        if (requiresOverviewInitialization(userId)) {
+            refreshOverviewAndBroadcast();
+        }
+        if (getCachedData(CacheConstants.MARKET_DASHBOARD_INSIGHTS_LAST_SUCCESS_KEY) == null) {
+            refreshInsightsAndBroadcast();
+        }
     }
 
     private Map<String, Object> fetchOverviewCommonData() {
         Map<String, Object> overview = new HashMap<>();
         putOverviewData(overview, SystemConstants.MARKET_DASHBOARD_ACTIVITY_KEY,
-                marketActivityService::getMarketActivity);
+                CacheConstants.MARKET_DASHBOARD_ACTIVITY_LAST_SUCCESS_KEY, marketActivityService::getMarketActivity);
         putOverviewData(overview, SystemConstants.MARKET_DASHBOARD_INDEX_KEY,
-                marketIndexService::getMarketIndex);
+                CacheConstants.MARKET_DASHBOARD_INDEX_LAST_SUCCESS_KEY, marketIndexService::getMarketIndex);
         return overview;
     }
 
@@ -101,27 +111,87 @@ public class MarketDashboardWebSocketHandler extends TextWebSocketHandler {
         }
         Map<String, Object> overview = new HashMap<>(overviewCommonData);
         putOverviewData(overview, SystemConstants.MARKET_DASHBOARD_TURNOVER_KEY,
-                () -> marketIndexService.getMarketTurnover(userId));
+                null, () -> marketIndexService.getMarketTurnover(userId));
         if (!overview.isEmpty()) {
             send(session, createMessage(SystemConstants.MARKET_DASHBOARD_OVERVIEW_MESSAGE_TYPE, overview));
         }
     }
 
     private void putOverviewData(Map<String, Object> overview, String dataKey,
-                                 Supplier<Map<String, Object>> dataSupplier) {
+                                 String cacheKey, Supplier<Map<String, Object>> dataSupplier) {
         try {
-            overview.put(dataKey, extractData(dataSupplier.get()));
+            Map<String, Object> data = extractData(dataSupplier.get());
+            overview.put(dataKey, data);
+            if (cacheKey != null) {
+                cacheData(cacheKey, data);
+            }
         } catch (RuntimeException exception) {
             log.warn("获取市场工作台{}数据失败: {}", dataKey, exception.getMessage());
         }
     }
 
-    private void refreshInsightsForSession(WebSocketSession session) {
+    private void sendCachedOverview(WebSocketSession session, Long userId) {
+        Map<String, Object> overview = getCachedOverviewCommonData();
+        putCachedTurnoverData(overview, userId);
+        if (!overview.isEmpty()) {
+            send(session, createMessage(SystemConstants.MARKET_DASHBOARD_OVERVIEW_MESSAGE_TYPE, overview));
+        }
+    }
+
+    private void putCachedTurnoverData(Map<String, Object> overview, Long userId) {
         try {
-            Map<String, Object> insights = extractData(marketInsightService.getMarketInsights());
-            send(session, createMessage(SystemConstants.MARKET_DASHBOARD_INSIGHTS_MESSAGE_TYPE, insights));
+            Map<String, Object> turnover = marketIndexService.getCachedMarketTurnover(userId);
+            if (turnover != null) {
+                overview.put(SystemConstants.MARKET_DASHBOARD_TURNOVER_KEY, extractData(turnover));
+            }
         } catch (RuntimeException exception) {
-            log.warn("推送市场工作台洞察数据失败: {}", exception.getMessage());
+            log.warn("读取市场成交额缓存失败: {}", exception.getMessage());
+        }
+    }
+
+    private void sendCachedInsights(WebSocketSession session) {
+        Map<String, Object> insights = getCachedData(CacheConstants.MARKET_DASHBOARD_INSIGHTS_LAST_SUCCESS_KEY);
+        if (insights != null) {
+            send(session, createMessage(SystemConstants.MARKET_DASHBOARD_INSIGHTS_MESSAGE_TYPE, insights));
+        }
+    }
+
+    private boolean requiresOverviewInitialization(Long userId) {
+        return getCachedData(CacheConstants.MARKET_DASHBOARD_ACTIVITY_LAST_SUCCESS_KEY) == null
+                || getCachedData(CacheConstants.MARKET_DASHBOARD_INDEX_LAST_SUCCESS_KEY) == null
+                || marketIndexService.getCachedMarketTurnover(userId) == null;
+    }
+
+    private Map<String, Object> getCachedOverviewCommonData() {
+        Map<String, Object> overview = new HashMap<>();
+        putCachedOverviewData(overview, SystemConstants.MARKET_DASHBOARD_ACTIVITY_KEY,
+                CacheConstants.MARKET_DASHBOARD_ACTIVITY_LAST_SUCCESS_KEY);
+        putCachedOverviewData(overview, SystemConstants.MARKET_DASHBOARD_INDEX_KEY,
+                CacheConstants.MARKET_DASHBOARD_INDEX_LAST_SUCCESS_KEY);
+        return overview;
+    }
+
+    private void putCachedOverviewData(Map<String, Object> overview, String dataKey, String cacheKey) {
+        Map<String, Object> cachedData = getCachedData(cacheKey);
+        if (cachedData != null) {
+            overview.put(dataKey, cachedData);
+        }
+    }
+
+    private void cacheData(String cacheKey, Map<String, Object> data) {
+        redisCacheService.setJson(cacheKey, data);
+    }
+
+    private Map<String, Object> getCachedData(String cacheKey) {
+        String cachedValue = redisCacheService.get(cacheKey);
+        if (cachedValue == null || cachedValue.isBlank()) {
+            return null;
+        }
+        try {
+            return new HashMap<>(JSONUtil.parseObj(cachedValue));
+        } catch (RuntimeException exception) {
+            log.warn("市场工作台缓存数据无效: {}", exception.getMessage());
+            return null;
         }
     }
 

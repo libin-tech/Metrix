@@ -14,4 +14,12 @@ public interface MarketIndexService {
      * @return 市场成交额数据
      */
     Map<String, Object> getMarketTurnover(Long userId);
+
+    /**
+     * 获取最近一次成功缓存的市场成交额，不触发上游数据源请求。
+     *
+     * @param userId 当前登录用户 ID
+     * @return 缓存的市场成交额数据；不存在时返回 {@code null}
+     */
+    Map<String, Object> getCachedMarketTurnover(Long userId);
 }

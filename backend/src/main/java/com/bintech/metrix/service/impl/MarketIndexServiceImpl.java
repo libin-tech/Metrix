@@ -225,7 +225,8 @@ public class MarketIndexServiceImpl implements MarketIndexService {
         return LocalDate.now(ZoneId.of(SystemConstants.MARKET_TIME_ZONE_ID)).toString().equals(tradeDate);
     }
 
-    private Map<String, Object> getCachedMarketTurnover(Long userId) {
+    @Override
+    public Map<String, Object> getCachedMarketTurnover(Long userId) {
         String cacheValue = redisCacheService.get(getMarketTurnoverLastSuccessKey(userId));
         if (cacheValue == null || cacheValue.isBlank()) {
             cacheValue = redisCacheService.get(CacheConstants.MARKET_TURNOVER_LEGACY_LAST_SUCCESS_KEY);
