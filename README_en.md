@@ -57,9 +57,10 @@ Metrix = Metric + Matrix — an asset evaluation tool from the perspective of qu
 ### Local Development
 
 ```bash
-# 0. install AKshare and tikflow
+# 0. Install AKShare, Tickflow, and Baostock
 pip install akshare --upgrade
 pip install "tickflow[all]" --upgrade
+pip install baostock --upgrade
 # 1. Configure database
 cp .env.example .env
 # Edit .env with your PostgreSQL connection info

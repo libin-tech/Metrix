@@ -76,6 +76,8 @@ public class MarketReviewDataFetcher {
             if (output.isEmpty()) {
                 throw new RuntimeException("指数脚本输出为空");
             }
+
+            log.info("指数脚本输出: {}", output);
             JSONObject json = new JSONObject(output);
             if (!"success".equals(json.getStr("status"))) {
                 throw new RuntimeException("指数数据获取失败: " + json.getStr("message"));

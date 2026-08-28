@@ -4,6 +4,7 @@ import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
+import com.bintech.metrix.constants.CacheConstants;
 import com.bintech.metrix.dto.request.PortfolioHoldingRequest;
 import com.bintech.metrix.dto.response.PortfolioHoldingListResponse;
 import com.bintech.metrix.dto.response.PortfolioHoldingVO;
@@ -15,6 +16,7 @@ import com.bintech.metrix.repository.entity.PortfolioHolding;
 import com.bintech.metrix.repository.entity.StockBasic;
 import com.bintech.metrix.service.MarketDataService;
 import com.bintech.metrix.service.PortfolioHoldingService;
+import com.bintech.metrix.service.RedisCacheService;
 import com.bintech.metrix.service.StockBasicService;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
@@ -24,9 +26,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
@@ -50,8 +52,8 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
     private final BrokerAccountDao accountDao;
     private final StockBasicService stockBasicService;
     private final MarketDataService marketDataService;
+    private final RedisCacheService redisCacheService;
 
-    private final ConcurrentHashMap<Long, PortfolioHoldingVO> priceRefreshCache = new ConcurrentHashMap<>();
     private final ExecutorService refreshExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
     @PreDestroy
@@ -137,7 +139,7 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
                 try {
                     fetchCurrentPrice(vo, capturedUserId);
                     persistCachedPrice(holdingId, vo.getCurrentPrice());
-                    priceRefreshCache.put(vo.getId(), vo);
+                    cachePriceRefreshResult(capturedUserId, vo);
                 } catch (Exception e) {
                     log.warn("异步刷新 {} 行情失败: {}", vo.getStockCode(), e.getMessage());
                 }
@@ -151,14 +153,25 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
      */
     @Override
     public Map<Long, PortfolioHoldingVO> pollRefreshedPrices(List<Long> ids) {
+        Long userId = StpUtil.getLoginIdAsLong();
         Map<Long, PortfolioHoldingVO> result = new HashMap<>();
         for (Long id : ids) {
-            PortfolioHoldingVO vo = priceRefreshCache.remove(id);
+            PortfolioHoldingVO vo = redisCacheService.getAndDeleteJson(getPriceRefreshCacheKey(userId, id),
+                    PortfolioHoldingVO.class);
             if (vo != null) {
                 result.put(id, vo);
             }
         }
         return result;
+    }
+
+    private void cachePriceRefreshResult(Long userId, PortfolioHoldingVO vo) {
+        redisCacheService.setJson(getPriceRefreshCacheKey(userId, vo.getId()), vo,
+                Duration.ofSeconds(CacheConstants.PORTFOLIO_PRICE_REFRESH_TTL_SECONDS));
+    }
+
+    private String getPriceRefreshCacheKey(Long userId, Long holdingId) {
+        return CacheConstants.PORTFOLIO_PRICE_REFRESH_KEY_PREFIX + userId + ":" + holdingId;
     }
 
     private PortfolioHoldingVO buildBaseVO(PortfolioHolding h, Map<Long, BrokerAccount> accountMap) {

@@ -74,7 +74,7 @@ public class MarketDataServiceImpl implements MarketDataService {
         command.add(config.getApiKey());
         command.addAll(Arrays.asList(scriptArgs));
 
-        log.info("执行TickFlow脚本: {}", String.join(" ", command));
+        log.info("执行TickFlow脚本: {}", scriptPath);
 
         return runScript(command, "TickFlow", timeoutSeconds);
     }
@@ -197,6 +197,11 @@ public class MarketDataServiceImpl implements MarketDataService {
     }
 
     @Override
+    public MarketDataConfig getActiveTickFlowConfig(Long userId) {
+        return getTickFlowConfig(userId);
+    }
+
+    @Override
     public Map<String, Object> fetchRealTimeData(StockBasic stockBasic) {
         Long userId = StpUtil.getLoginIdAsLong();
         return fetchRealTimeData(stockBasic, userId);
@@ -306,18 +311,6 @@ public class MarketDataServiceImpl implements MarketDataService {
                         log.warn("读取{}脚本{}异常: {}", sourceName, streamName, e.getMessage());
                     }
                 });
-    }
-
-    @Override
-    public Map<String, Object> fetchDepthData(StockBasic stockBasic) {
-        Long userId = StpUtil.getLoginIdAsLong();
-        return fetchDepthData(stockBasic, userId);
-    }
-
-    @Override
-    public Map<String, Object> fetchDepthData(StockBasic stockBasic, Long userId) {
-        log.info("开始查询市场深度（五档行情）: stockCode={}", stockBasic.getTsCode());
-        return runPythonScript("depth", userId, "--symbol", stockBasic.getTsCode());
     }
 
     @Override

@@ -9,7 +9,6 @@ import com.bintech.metrix.exception.FrozenUserException;
 import com.bintech.metrix.repository.entity.User;
 import com.bintech.metrix.service.UserService;
 import com.bintech.metrix.service.WechatAuthService;
-import com.bintech.metrix.service.impl.WechatAuthServiceImpl;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -57,8 +56,7 @@ public class AuthController {
             return ApiResponse.error("验证码不能为空");
         }
 
-        String openid = WechatAuthServiceImpl.LOGIN_CACHE.get(code, false);
-        if (openid == null) {
+        if (!wechatAuthService.isLoginCodeValid(code)) {
             return ApiResponse.error("验证码无效或已过期，请重新获取");
         }
 

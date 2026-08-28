@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --experimental-default-type=module --test src/composables/*.test.js"
   },
   "dependencies": {
     "@ant-design/icons-vue": "^7.0.0",

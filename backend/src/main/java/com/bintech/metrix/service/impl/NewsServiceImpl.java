@@ -200,7 +200,7 @@ public class NewsServiceImpl implements NewsService {
                 return null;
             }
 
-            log.debug("AKShare新闻脚本原始输出: {}", output);
+            log.info("AKShare新闻脚本原始输出: {}", output);
 
             JSONObject json = JSONUtil.parseObj(output);
             if (!ApiConstants.STATUS_SUCCESS.equals(json.getStr(ApiConstants.KEY_STATUS))) {

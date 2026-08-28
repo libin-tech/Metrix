@@ -3,7 +3,7 @@ package com.bintech.metrix.controller;
 import cn.hutool.core.util.RandomUtil;
 import com.bintech.metrix.config.WechatConfig;
 import com.bintech.metrix.constants.BusinessConstants;
-import com.bintech.metrix.service.impl.WechatAuthServiceImpl;
+import com.bintech.metrix.service.WechatAuthService;
 import com.bintech.metrix.util.MessageUtil;
 import com.bintech.metrix.util.SHA1Util;
 import com.bintech.metrix.util.WechatCryptoUtil;
@@ -20,6 +20,7 @@ import java.util.Map;
 public class WechatController {
 
     private final WechatConfig wechatConfig;
+    private final WechatAuthService wechatAuthService;
 
     @GetMapping("/callback")
     public String verifyCallback(
@@ -99,7 +100,7 @@ public class WechatController {
 
         if ("text".equals(msgType) && BusinessConstants.WECHAT_LOGIN_TRIGGER_KEYWORD.equals(content)) {
             String code = RandomUtil.randomNumbers(BusinessConstants.LOGIN_CODE_LENGTH);
-            WechatAuthServiceImpl.LOGIN_CACHE.put(code, fromUser);
+            wechatAuthService.cacheLoginCode(code, fromUser);
             log.info("微信验证码已生成: openid={}, code={}", fromUser, code);
 
             return MessageUtil.textMessageToXml(fromUser, toUser,

@@ -113,91 +113,78 @@ public class ChatServiceImpl implements ChatService {
                 userMsg.setStockName(stockName);
                 messageDao.updateById(userMsg);
                 chatSessionService.updateSessionName(sessionId, "帮我分析下 " + stockName);
-                sendStep(emitter, "✅ **Step 1/6** 🔍 解析股票名称：" + stockName);
+                sendStep(emitter, "✅ **Step 1/7** 🔍 解析股票名称：" + stockName);
 
                 Map<String, Object> marketData = null;
-                Map<String, Object> depthData = null;
                 Map<String, Object> klinesData = null;
                 Map<String, Object> newsData = null;
                 Map<String, Object> chipData = null;
                 Map<String, Object> topFreeShareholdersData = null;
 
                 long t2 = System.currentTimeMillis();
-                sendStep(emitter, "**Step 2/8** 📊 获取实时行情...");
+                sendStep(emitter, "**Step 2/7** 📊 获取实时行情...");
                 try {
                     marketData = marketDataService.fetchRealTimeData(stockBasic, userId);
-                    sendStep(emitter, "✅ **Step 2/8** 📊 获取实时行情完成");
+                    sendStep(emitter, "✅ **Step 2/7** 📊 获取实时行情完成");
                     addStepRecord(stepRecords, 2, "获取实时行情", System.currentTimeMillis() - t2, "completed");
                 } catch (Exception e) {
                     log.warn("获取实时行情失败: {}", e.getMessage());
-                    sendStep(emitter, "⚠️ **Step 2/8** 📊 获取实时行情失败");
+                    sendStep(emitter, "⚠️ **Step 2/7** 📊 获取实时行情失败");
                     addStepRecord(stepRecords, 2, "获取实时行情", System.currentTimeMillis() - t2, "failed");
                 }
 
-                long t3 = System.currentTimeMillis();
-                sendStep(emitter, "**Step 3/8** 📈 获取深度行情...");
-                try {
-                    depthData = marketDataService.fetchDepthData(stockBasic, userId);
-                    sendStep(emitter, "✅ **Step 3/8** 📈 获取深度行情完成");
-                    addStepRecord(stepRecords, 3, "获取深度行情", System.currentTimeMillis() - t3, "completed");
-                } catch (Exception e) {
-                    log.warn("获取深度数据失败: {}", e.getMessage());
-                    sendStep(emitter, "⚠️ **Step 3/8** 📈 获取深度行情失败");
-                    addStepRecord(stepRecords, 3, "获取深度行情", System.currentTimeMillis() - t3, "failed");
-                }
-
                 long t4 = System.currentTimeMillis();
-                sendStep(emitter, "**Step 4/8** 📉 获取K线数据...");
+                sendStep(emitter, "**Step 3/7** 📉 获取K线数据...");
                 try {
                     klinesData = marketDataService.fetchKlinesData(stockBasic, 60, userId);
-                    sendStep(emitter, "✅ **Step 4/8** 📉 获取K线数据完成");
-                    addStepRecord(stepRecords, 4, "获取K线数据", System.currentTimeMillis() - t4, "completed");
+                    sendStep(emitter, "✅ **Step 3/7** 📉 获取K线数据完成");
+                    addStepRecord(stepRecords, 3, "获取K线数据", System.currentTimeMillis() - t4, "completed");
                 } catch (Exception e) {
                     log.warn("获取K线数据失败: {}", e.getMessage());
-                    sendStep(emitter, "⚠️ **Step 4/8** 📉 获取K线数据失败");
-                    addStepRecord(stepRecords, 4, "获取K线数据", System.currentTimeMillis() - t4, "failed");
+                    sendStep(emitter, "⚠️ **Step 3/7** 📉 获取K线数据失败");
+                    addStepRecord(stepRecords, 3, "获取K线数据", System.currentTimeMillis() - t4, "failed");
                 }
 
                 long t5 = System.currentTimeMillis();
-                sendStep(emitter, "**Step 5/8** 📰 获取新闻舆情...");
+                sendStep(emitter, "**Step 4/7** 📰 获取新闻舆情...");
                 try {
                     newsData = newsService.fetchStockNews(stockBasic, userId);
-                    sendStep(emitter, "✅ **Step 5/8** 📰 获取新闻舆情完成");
-                    addStepRecord(stepRecords, 5, "获取新闻舆情", System.currentTimeMillis() - t5, "completed");
+                    sendStep(emitter, "✅ **Step 4/7** 📰 获取新闻舆情完成");
+                    addStepRecord(stepRecords, 4, "获取新闻舆情", System.currentTimeMillis() - t5, "completed");
                 } catch (Exception e) {
                     log.warn("获取新闻数据失败: {}", e.getMessage());
-                    sendStep(emitter, "⚠️ **Step 5/8** 📰 获取新闻舆情失败");
-                    addStepRecord(stepRecords, 5, "获取新闻舆情", System.currentTimeMillis() - t5, "failed");
+                    sendStep(emitter, "⚠️ **Step 4/7** 📰 获取新闻舆情失败");
+                    addStepRecord(stepRecords, 4, "获取新闻舆情", System.currentTimeMillis() - t5, "failed");
                 }
 
                 long t6 = System.currentTimeMillis();
-                sendStep(emitter, "**Step 6/8** 📊 获取筹码分布...");
+                sendStep(emitter, "**Step 5/7** 📊 获取筹码分布...");
                 try {
                     chipData = marketDataService.fetchChipData(stockBasic, userId);
-                    sendStep(emitter, "✅ **Step 6/8** 📊 获取筹码分布完成");
-                    addStepRecord(stepRecords, 6, "获取筹码分布", System.currentTimeMillis() - t6, "completed");
+                    sendStep(emitter, "✅ **Step 5/7** 📊 获取筹码分布完成");
+                    addStepRecord(stepRecords, 5, "获取筹码分布", System.currentTimeMillis() - t6, "completed");
                 } catch (Exception e) {
                     log.warn("获取筹码分布失败: {}", e.getMessage());
-                    sendStep(emitter, "⚠️ **Step 6/8** 📊 获取筹码分布失败");
-                    addStepRecord(stepRecords, 6, "获取筹码分布", System.currentTimeMillis() - t6, "failed");
+                    sendStep(emitter, "⚠️ **Step 5/7** 📊 获取筹码分布失败");
+                    addStepRecord(stepRecords, 5, "获取筹码分布", System.currentTimeMillis() - t6, "failed");
                 }
 
                 long t7 = System.currentTimeMillis();
-                sendStep(emitter, "**Step 7/8** 👤 获取股东数据...");
+                sendStep(emitter, "**Step 6/7** 👤 获取股东数据...");
                 try {
                     topFreeShareholdersData = marketDataService.fetchTopFreeShareholdersData(stockBasic, userId);
-                    sendStep(emitter, "✅ **Step 7/8** 👤 获取股东数据完成");
-                    addStepRecord(stepRecords, 7, "获取股东数据", System.currentTimeMillis() - t7, "completed");
+                    sendStep(emitter, "✅ **Step 6/7** 👤 获取股东数据完成");
+                    addStepRecord(stepRecords, 6, "获取股东数据", System.currentTimeMillis() - t7, "completed");
                 } catch (Exception e) {
                     log.warn("获取股东数据失败: {}", e.getMessage());
-                    sendStep(emitter, "⚠️ **Step 7/8** 👤 获取股东数据失败");
-                    addStepRecord(stepRecords, 7, "获取股东数据", System.currentTimeMillis() - t7, "failed");
+                    sendStep(emitter, "⚠️ **Step 6/7** 👤 获取股东数据失败");
+                    addStepRecord(stepRecords, 6, "获取股东数据", System.currentTimeMillis() - t7, "failed");
                 }
 
                 long t8 = System.currentTimeMillis();
-                sendStep(emitter, "**Step 8/8** 🤖 AI总结分析中...");
+                sendStep(emitter, "**Step 7/7** 🤖 AI总结分析中...");
 
-                String prompt = promptBuilder.build(content, stockBasic, marketData, depthData, newsData, klinesData, chipData, topFreeShareholdersData);
+                String prompt = promptBuilder.build(content, stockBasic, marketData, newsData, klinesData, chipData, topFreeShareholdersData);
 
                 aiModelService.generateAnalysisStreaming(prompt, modelType, userId,
                         partialResponse -> sendReport(emitter, partialResponse),

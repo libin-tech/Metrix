@@ -17,6 +17,8 @@ public final class SystemConstants {
     /* ==================== 毫秒转换 ==================== */
     public static final int MILLIS_PER_SECOND = 1000;
     public static final int READER_JOIN_TIMEOUT_MILLIS = 5000;
+    public static final int MARKET_TURNOVER_REFRESH_INTERVAL_MILLIS = 5 * 60 * MILLIS_PER_SECOND;
+    public static final int MARKET_INSIGHTS_REFRESH_INTERVAL_MILLIS = 30 * 60 * MILLIS_PER_SECOND;
 
     /* ==================== 验证限制 ==================== */
     public static final int MAX_MODEL_TYPE_LENGTH = 50;
@@ -34,9 +36,18 @@ public final class SystemConstants {
     /* ==================== K线相关 ==================== */
     public static final String KLINE_PERIOD_DAY = "1d";
     public static final int KLINE_DISPLAY_COUNT = 30;
-
-    /* ==================== 盘口深度 ==================== */
-    public static final int DEPTH_MAX_LEVELS = 5;
+    public static final int MARKET_TURNOVER_HISTORY_SIZE = 60;
+    public static final int MARKET_TURNOVER_LATEST_COUNT = 1;
+    public static final String MARKET_TURNOVER_SHANGHAI_SYMBOL = "000001.SH";
+    public static final String MARKET_TURNOVER_SHENZHEN_SYMBOL = "399001.SZ";
+    public static final String MARKET_DASHBOARD_WEBSOCKET_PATH = "/api/ws/market-dashboard";
+    public static final String MARKET_DASHBOARD_WEBSOCKET_TOKEN_PARAMETER = "token";
+    public static final String MARKET_DASHBOARD_OVERVIEW_MESSAGE_TYPE = "overview";
+    public static final String MARKET_DASHBOARD_INSIGHTS_MESSAGE_TYPE = "insights";
+    public static final String MARKET_DASHBOARD_ACTIVITY_KEY = "marketActivity";
+    public static final String MARKET_DASHBOARD_INDEX_KEY = "marketIndex";
+    public static final String MARKET_DASHBOARD_TURNOVER_KEY = "marketTurnover";
+    public static final String MARKET_TIME_ZONE_ID = "Asia/Shanghai";
 
     /* ==================== Markdown渲染 ==================== */
     public static final String MARKDOWN_H1_PREFIX = "#";

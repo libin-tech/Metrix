@@ -67,8 +67,8 @@ public class StockAdvisorPromptBuilder {
      * 构建完整的聊天提示词
      */
     public String build(String userMessage, StockBasic stockBasic,
-                        Map<String, Object> marketData, Map<String, Object> depthData,
-                        Map<String, Object> newsData, Map<String, Object> klinesData,
+                        Map<String, Object> marketData, Map<String, Object> newsData,
+                        Map<String, Object> klinesData,
                         Map<String, Object> chipData,
                         Map<String, Object> topFreeShareholdersData) {
         List<String> missing = new ArrayList<>();
@@ -96,7 +96,6 @@ public class StockAdvisorPromptBuilder {
         prompt.append("上市日期：").append(stockBasic.getListDate() != null ? stockBasic.getListDate() : "未知").append("\n\n");
 
         appendMarketData(prompt, marketData);
-        appendDepthData(prompt, depthData);
         appendNewsData(prompt, newsData);
         appendKlinesData(prompt, klinesData);
         appendChipData(prompt, chipData);
@@ -195,41 +194,6 @@ public class StockAdvisorPromptBuilder {
             prompt.append("\n");
         } catch (Exception e) {
             log.warn("解析行情数据失败: {}", e.getMessage());
-        }
-    }
-
-    private void appendDepthData(StringBuilder prompt, Map<String, Object> depthData) {
-        if (depthData == null) return;
-        try {
-            JSONObject json = new JSONObject(depthData);
-            if (!ApiConstants.STATUS_SUCCESS.equals(json.getStr(ApiConstants.KEY_STATUS))) return;
-            Object dataObj = json.get("data");
-            if (!(dataObj instanceof JSONObject data)) return;
-
-            prompt.append("【五档深度行情】\n");
-            JSONArray askPrices = data.getJSONArray("ask_prices");
-            JSONArray askVolumes = data.getJSONArray("ask_volumes");
-            if (askPrices != null && askVolumes != null && !askPrices.isEmpty()) {
-                prompt.append("卖盘：\n");
-                for (int i = 0; i < Math.min(askPrices.size(), 5); i++) {
-                    prompt.append("  档").append(i + 1).append(": 价格=")
-                            .append(askPrices.getDouble(i, 0.0))
-                            .append(", 数量=").append(askVolumes.getLong(i, 0L)).append("\n");
-                }
-            }
-            JSONArray bidPrices = data.getJSONArray("bid_prices");
-            JSONArray bidVolumes = data.getJSONArray("bid_volumes");
-            if (bidPrices != null && bidVolumes != null && !bidPrices.isEmpty()) {
-                prompt.append("买盘：\n");
-                for (int i = 0; i < Math.min(bidPrices.size(), 5); i++) {
-                    prompt.append("  档").append(i + 1).append(": 价格=")
-                            .append(bidPrices.getDouble(i, 0.0))
-                            .append(", 数量=").append(bidVolumes.getLong(i, 0L)).append("\n");
-                }
-            }
-            prompt.append("\n");
-        } catch (Exception e) {
-            log.warn("解析深度数据失败: {}", e.getMessage());
         }
     }
 

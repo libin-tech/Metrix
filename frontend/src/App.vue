@@ -337,7 +337,15 @@ body {
 
 .content {
   padding: 22px 32px;
-  background: #f7f9fc;
+  background-color: #f3f6fb;
+  background-image:
+    radial-gradient(circle at 8% -12%, rgba(126, 161, 220, .20) 0, rgba(126, 161, 220, 0) 34%),
+    radial-gradient(circle at 96% 8%, rgba(198, 216, 244, .54) 0, rgba(198, 216, 244, 0) 31%),
+    linear-gradient(rgba(139, 162, 199, .055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(139, 162, 199, .055) 1px, transparent 1px);
+  background-position: center, center, -1px -1px, -1px -1px;
+  background-size: auto, auto, 34px 34px, 34px 34px;
+  background-attachment: fixed;
   min-height: calc(100vh - 76px);
   display: flex;
   flex-direction: column;

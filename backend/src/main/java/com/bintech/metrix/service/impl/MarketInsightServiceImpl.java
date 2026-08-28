@@ -76,7 +76,7 @@ public class MarketInsightServiceImpl implements MarketInsightService {
             if (output.isEmpty()) {
                 throw new RuntimeException(SOURCE_NAME + "数据获取失败: 脚本输出为空");
             }
-
+            log.info("脚本输出: {}", output);
             JSONObject response = JSONUtil.parseObj(output);
             if (!ApiConstants.STATUS_SUCCESS.equals(response.getStr(ApiConstants.KEY_STATUS))) {
                 String message = response.getStr(ApiConstants.KEY_MESSAGE, SOURCE_NAME + "脚本执行失败");

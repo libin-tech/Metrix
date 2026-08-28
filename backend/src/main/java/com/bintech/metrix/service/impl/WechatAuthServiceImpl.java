@@ -2,10 +2,9 @@ package com.bintech.metrix.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import cn.dev33.satoken.stp.parameter.SaLoginParameter;
-import cn.hutool.cache.CacheUtil;
-import cn.hutool.cache.impl.TimedCache;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.crypto.digest.DigestUtil;
+import com.bintech.metrix.constants.CacheConstants;
 import com.bintech.metrix.dto.response.UserLoginResponse;
 import com.bintech.metrix.enums.UserRole;
 import com.bintech.metrix.enums.UserStatus;
@@ -17,11 +16,13 @@ import com.bintech.metrix.repository.entity.SystemRole;
 import com.bintech.metrix.repository.entity.SystemUserRole;
 import com.bintech.metrix.repository.entity.User;
 import com.bintech.metrix.service.WechatAuthService;
+import com.bintech.metrix.service.RedisCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 @Slf4j
@@ -34,6 +35,7 @@ public class WechatAuthServiceImpl implements WechatAuthService {
     private final UserDao userDao;
     private final SystemRoleDao systemRoleDao;
     private final SystemUserRoleDao systemUserRoleDao;
+    private final RedisCacheService redisCacheService;
 
     private void assignDefaultRole(Long userId) {
         SystemRole userRole = systemRoleDao.selectByRoleCode("USER");
@@ -46,10 +48,15 @@ public class WechatAuthServiceImpl implements WechatAuthService {
         systemUserRoleDao.insert(sur);
     }
 
-    public static final TimedCache<String, String> LOGIN_CACHE = CacheUtil.newTimedCache(300_000);
+    @Override
+    public void cacheLoginCode(String code, String openid) {
+        redisCacheService.set(getLoginCodeCacheKey(code), openid,
+                Duration.ofSeconds(CacheConstants.WECHAT_LOGIN_CODE_TTL_SECONDS));
+    }
 
-    static {
-        LOGIN_CACHE.schedulePrune(1_000);
+    @Override
+    public boolean isLoginCodeValid(String code) {
+        return redisCacheService.hasKey(getLoginCodeCacheKey(code));
     }
 
     /**
@@ -58,12 +65,10 @@ public class WechatAuthServiceImpl implements WechatAuthService {
     @Override
     @Transactional
     public UserLoginResponse loginByCode(String code) {
-        String openid = LOGIN_CACHE.get(code, false);
+        String openid = redisCacheService.getAndDelete(getLoginCodeCacheKey(code));
         if (openid == null) {
             throw new RuntimeException("验证码无效或已过期，请重新获取");
         }
-
-        LOGIN_CACHE.remove(code);
 
         User user = userDao.selectByOpenid(openid);
 
@@ -103,5 +108,9 @@ public class WechatAuthServiceImpl implements WechatAuthService {
                 user.getNickname(),
                 user.getAvatar()
         );
+    }
+
+    private String getLoginCodeCacheKey(String code) {
+        return CacheConstants.WECHAT_LOGIN_CODE_KEY_PREFIX + code;
     }
 }

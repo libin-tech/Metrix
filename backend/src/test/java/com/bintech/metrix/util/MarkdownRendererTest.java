@@ -177,16 +177,4 @@ class MarkdownRendererTest {
         assertTrue(result.contains("| 涨跌幅 | 5.00% |"), "应包含涨跌幅");
     }
 
-    @Test
-    @DisplayName("测试渲染深度数据")
-    void testRenderDepthData() {
-        String depthDataJson = "{\"status\":\"success\",\"data\":{\"ask_prices\":[15.74,15.75],\"ask_volumes\":[1282,842],\"bid_prices\":[15.73,15.72],\"bid_volumes\":[892,4358]}}";
-        String result = MarkdownRenderer.renderDepthData(depthDataJson);
-        
-        assertTrue(result.contains("## 五档行情"), "应包含五档行情标题");
-        assertTrue(result.contains("### 卖盘"), "应包含卖盘标题");
-        assertTrue(result.contains("### 买盘"), "应包含买盘标题");
-        assertTrue(result.contains("| 1 | 15.74 | 1282 |"), "应包含卖盘数据");
-        assertTrue(result.contains("| 1 | 15.73 | 892 |"), "应包含买盘数据");
-    }
 }

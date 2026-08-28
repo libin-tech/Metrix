@@ -14,6 +14,11 @@ spring:
     hikari:
       maximum-pool-size: 10
       minimum-idle: 5
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
 
 mybatis-plus:
   type-aliases-package: com.bintech.metrix.repository
@@ -40,6 +45,11 @@ python:
   executable: python
   tickflow-script-path: python-service/tickflow.py
   akshare-script-path: python-service/akshare.py
+
+market-turnover:
+  tickflow-klines-script-path: ${TICKFLOW_KLINES_SCRIPT_PATH:python-service/tickflow_klines.py}
+  baostock-market-turnover-script-path: ${BAOSTOCK_MARKET_TURNOVER_SCRIPT_PATH:python-service/baostock_market_turnover.py}
+  timeout-seconds: ${TICKFLOW_TIMEOUT_SECONDS:60}
 
 logging:
   level:

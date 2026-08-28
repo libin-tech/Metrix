@@ -47,7 +47,7 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
 
     /**
      * 执行股票全维度分析
-     * <p>按序采集实时行情、五档深度、K线、筹码分布、十大流通股东、新闻舆情，
+     * <p>按序采集实时行情、K线、筹码分布、十大流通股东、新闻舆情，
      * 构建AI提示词并调用模型生成分析报告，最后从报告中提取核心洞察和概览数据。</p>
      */
     @Override
@@ -64,18 +64,12 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
         log.info("使用动态获取的模型类型进行分析: {}, userId={}", modelType, userId);
 
         Map<String, Object> marketData = marketDataService.fetchRealTimeData(stockBasic, userId);
-        Map<String, Object> depthData = null;
-        try {
-            depthData = marketDataService.fetchDepthData(stockBasic, userId);
-        } catch (Exception e) {
-            log.warn("获取五档深度行情失败，跳过: {}", e.getMessage());
-        }
         Map<String, Object> klinesData = marketDataService.fetchKlinesData(stockBasic, BusinessConstants.DEFAULT_KLINE_LIMIT, userId);
         Map<String, Object> chipData = marketDataService.fetchChipData(stockBasic, userId);
         Map<String, Object> topFreeShareholdersData = marketDataService.fetchTopFreeShareholdersData(stockBasic, userId);
         Map<String, Object> newsSummary = newsCollector.collect(stockBasic, modelType, userId);
 
-        String prompt = analysisPromptBuilder.build(stockBasic, analysisType, marketData, depthData, klinesData, newsSummary, chipData, topFreeShareholdersData);
+        String prompt = analysisPromptBuilder.build(stockBasic, analysisType, marketData, klinesData, newsSummary, chipData, topFreeShareholdersData);
         String content = aiModelService.generateAnalysis(prompt, modelType, userId);
         String coreInsight = analysisOverviewBuilder.generateCoreInsight(content, modelType, userId);
         AnalysisOverview overview = analysisOverviewBuilder.build(marketData, klinesData, content, coreInsight, chipData, topFreeShareholdersData);
@@ -83,7 +77,6 @@ public class StockAnalysisServiceImpl implements StockAnalysisService {
         record.setAnalysisResult(content);
         record.setAnalysisOverview(JSONUtil.toJsonStr(overview));
         record.setMarketData(marketData != null ? JSONUtil.toJsonStr(marketData) : null);
-        record.setDepthData(depthData != null ? JSONUtil.toJsonStr(depthData) : null);
         record.setKlinesData(klinesData != null ? JSONUtil.toJsonStr(klinesData) : null);
         record.setNewsSummary(newsSummary != null ? JSONUtil.toJsonStr(newsSummary) : null);
         record.setUpdateTime(LocalDateTime.now());

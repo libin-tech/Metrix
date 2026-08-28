@@ -1,15 +1,16 @@
 package com.bintech.metrix.client;
 
-import cn.hutool.cache.CacheUtil;
-import cn.hutool.cache.impl.TimedCache;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.bintech.metrix.config.WechatConfig;
+import com.bintech.metrix.constants.CacheConstants;
+import com.bintech.metrix.service.RedisCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Duration;
 import java.util.Map;
 
 @Slf4j
@@ -19,15 +20,12 @@ public class WechatApiClient {
 
     private static final String ACCESS_TOKEN_URL = "https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid={appid}&secret={secret}";
     private static final String USER_INFO_URL = "https://api.weixin.qq.com/cgi-bin/user/info?access_token={token}&openid={openid}&lang=zh_CN";
-    private static final long TOKEN_CACHE_TTL = 7000_000L;
-
     private final RestTemplate restTemplate;
     private final WechatConfig wechatConfig;
-
-    private final TimedCache<String, String> tokenCache = CacheUtil.newTimedCache(TOKEN_CACHE_TTL);
+    private final RedisCacheService redisCacheService;
 
     public String getAccessToken() {
-        String cached = tokenCache.get("access_token", false);
+        String cached = redisCacheService.get(CacheConstants.WECHAT_ACCESS_TOKEN_KEY);
         if (cached != null) {
             return cached;
         }
@@ -38,7 +36,8 @@ public class WechatApiClient {
             JSONObject json = JSONUtil.parseObj(response);
             if (json.containsKey("access_token")) {
                 String token = json.getStr("access_token");
-                tokenCache.put("access_token", token);
+                redisCacheService.set(CacheConstants.WECHAT_ACCESS_TOKEN_KEY, token,
+                        Duration.ofSeconds(CacheConstants.WECHAT_ACCESS_TOKEN_TTL_SECONDS));
                 log.info("微信access_token获取成功");
                 return token;
             } else {

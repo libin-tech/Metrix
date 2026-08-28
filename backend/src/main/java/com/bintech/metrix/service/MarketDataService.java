@@ -10,7 +10,7 @@ import java.util.Map;
 /**
  * 市场数据服务接口
  *
- * <p>提供配置管理和行情数据获取功能，包括实时行情、深度数据、K线、筹码分布等。
+ * <p>提供配置管理和行情数据获取功能，包括实时行情、K线、筹码分布等。
  */
 public interface MarketDataService {
 
@@ -28,6 +28,8 @@ public interface MarketDataService {
 
     boolean hasActiveConfig(Long userId);
 
+    MarketDataConfig getActiveTickFlowConfig(Long userId);
+
     Map<String, Object> fetchRealTimeData(StockBasic stockBasic);
 
     Map<String, Object> fetchRealTimeData(StockBasic stockBasic, Long userId);
@@ -35,10 +37,6 @@ public interface MarketDataService {
     Map<String, Object> fetchChipData(StockBasic stockBasic);
 
     Map<String, Object> fetchChipData(StockBasic stockBasic, Long userId);
-
-    Map<String, Object> fetchDepthData(StockBasic stockBasic);
-
-    Map<String, Object> fetchDepthData(StockBasic stockBasic, Long userId);
 
     Map<String, Object> fetchKlinesData(StockBasic stockBasic, int limit);
 

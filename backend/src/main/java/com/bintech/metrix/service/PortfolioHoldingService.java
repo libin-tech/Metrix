@@ -28,7 +28,7 @@ public interface PortfolioHoldingService {
      * 刷新实时行情（异步）
      *
      * <p>查询有成本&数量的前10只标的，将每只标的的行情获取提交到虚拟线程池异步执行，
-     * 完成后结果存入 {@code priceRefreshCache} 供轮询消费。立即返回持仓VO列表（行情字段为空）。
+     * 完成后结果存入 Redis 供轮询消费。立即返回持仓VO列表（行情字段为空）。
      *
      * @return 持仓VO列表（不含实时行情）
      */

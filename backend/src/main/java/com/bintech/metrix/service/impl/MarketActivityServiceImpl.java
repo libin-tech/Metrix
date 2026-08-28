@@ -83,6 +83,8 @@ public class MarketActivityServiceImpl implements MarketActivityService {
                 throw new RuntimeException(sourceName + "数据获取失败: 脚本输出为空");
             }
 
+            log.info("{}脚本输出: {}", sourceName, output);
+
             JSONObject json = JSONUtil.parseObj(output);
 
             if (!ApiConstants.STATUS_SUCCESS.equals(json.getStr(ApiConstants.KEY_STATUS))) {

@@ -12,6 +12,7 @@ import os
 import signal
 import sys
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+from datetime import datetime, timezone, timedelta
 from functools import wraps
 
 _script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -20,6 +21,7 @@ from tickflow import TickFlow
 sys.path.insert(0, _script_dir)
 
 TIMEOUT_SECONDS = 120
+MARKET_TIME_ZONE = timezone(timedelta(hours=8))
 
 
 class ScriptTimeoutError(Exception):
@@ -158,16 +160,77 @@ def calc_macd(closes):
     }
 
 
+def to_number(value):
+    try:
+        amount = float(value)
+        return amount if amount >= 0 else None
+    except (TypeError, ValueError):
+        return None
+
+
+def format_trade_date(timestamp):
+    numeric_timestamp = float(timestamp)
+    seconds = numeric_timestamp / 1000 if numeric_timestamp > 10_000_000_000 else numeric_timestamp
+    return datetime.fromtimestamp(seconds, tz=MARKET_TIME_ZONE).date().isoformat()
+
+
+def build_market_turnover(tf, symbols, period, count):
+    """按交易日合并沪深指数K线成交额。"""
+    amounts_by_symbol = []
+    for symbol in symbols:
+        klines = tf.klines.get(symbol, period=period, count=count)
+        timestamps = klines.get("timestamp", [])
+        amounts = klines.get("amount", [])
+        if not timestamps or len(timestamps) != len(amounts):
+            raise RuntimeError(f"{symbol} 未返回完整K线成交额数据")
+
+        daily_amounts = {}
+        for timestamp, amount in zip(timestamps, amounts):
+            numeric_amount = to_number(amount)
+            if numeric_amount is not None:
+                daily_amounts[format_trade_date(timestamp)] = numeric_amount
+        if not daily_amounts:
+            raise RuntimeError(f"{symbol} 未返回有效K线成交额数据")
+        amounts_by_symbol.append(daily_amounts)
+
+    shared_dates = set.intersection(*(set(amounts.keys()) for amounts in amounts_by_symbol))
+    history = [
+        {"date": trade_date, "amount": round(sum(amounts[trade_date] for amounts in amounts_by_symbol))}
+        for trade_date in sorted(shared_dates)[-count:]
+    ]
+    if not history:
+        raise RuntimeError("未获取到沪深两市共同交易日成交额")
+
+    current = history[-1]["amount"]
+    previous = history[-2]["amount"] if len(history) > 1 else current
+    return {"amount": current, "difference": current - previous, "history": history}
+
+
 @with_timeout
 def main():
     parser = argparse.ArgumentParser(description="TickFlow K线数据（含MACD）")
     parser.add_argument("--api-key", required=True, help="TickFlow API key")
-    parser.add_argument("--symbol", required=True, help="股票代码")
+    symbol_group = parser.add_mutually_exclusive_group(required=True)
+    symbol_group.add_argument("--symbol", help="股票代码")
+    symbol_group.add_argument("--symbols", help="多个股票代码，使用逗号分隔")
     parser.add_argument("--period", default="1d", help="K线周期，如 1d, 1w")
     parser.add_argument("--count", type=int, default=60, help="K线条数")
+    parser.add_argument("--market-turnover", action="store_true", help="合并多个指数的市场成交额")
     args = parser.parse_args()
 
     tf = TickFlow(api_key=args.api_key)
+    if args.market_turnover:
+        if not args.symbols:
+            raise RuntimeError("市场成交额模式必须传入多个指数代码")
+        symbols = [symbol.strip() for symbol in args.symbols.split(",") if symbol.strip()]
+        if len(symbols) < 2:
+            raise RuntimeError("市场成交额至少需要两个指数代码")
+        result = build_market_turnover(tf, symbols, args.period, args.count)
+        print(json.dumps({"status": "success", "data": result}, ensure_ascii=False), flush=True)
+        return
+
+    if not args.symbol:
+        raise RuntimeError("K线查询必须传入股票代码")
     klines = tf.klines.get(args.symbol, period=args.period, count=args.count)
     closes = klines.get("close", [])
     result = {

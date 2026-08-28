@@ -1,6 +1,5 @@
 package com.bintech.metrix.util;
 
-import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.bintech.metrix.constants.SystemConstants;
@@ -162,73 +161,6 @@ public class MarkdownRenderer {
             return result.toString();
         } catch (Exception e) {
             return "市场数据解析失败: " + e.getMessage();
-        }
-    }
-
-    /**
-     * 渲染深度数据为Markdown格式
-     * 
-     * @param depthDataJson 深度数据JSON字符串
-     * @return Markdown格式的深度数据
-     */
-    public static String renderDepthData(String depthDataJson) {
-        if (depthDataJson == null || depthDataJson.isEmpty()) {
-            return "暂无深度数据";
-        }
-        
-        try {
-            JSONObject depthData = JSONUtil.parseObj(depthDataJson);
-            String status = depthData.getStr("status", "");
-            
-            if (!"success".equals(status)) {
-                return "深度数据获取失败";
-            }
-            
-            JSONObject data = depthData.getJSONObject("data");
-            if (data == null) {
-                return "深度数据为空";
-            }
-            
-            StringBuilder result = new StringBuilder();
-            result.append("## 五档行情\n\n");
-            
-            // 卖盘
-            result.append("### 卖盘（按价格从高到低）\n\n");
-            result.append("| 档位 | 价格 | 数量 |\n");
-            result.append("|------|------|------|\n");
-            
-            JSONArray askPrices = data.getJSONArray("ask_prices");
-            JSONArray askVolumes = data.getJSONArray("ask_volumes");
-            
-            if (askPrices != null && askVolumes != null) {
-                for (int i = 0; i < Math.min(askPrices.size(), SystemConstants.DEPTH_MAX_LEVELS); i++) {
-                    double price = askPrices.getDouble(i, 0.0);
-                    long volume = askVolumes.getLong(i, 0L);
-                    result.append("| ").append(i + 1).append(" | ").append(String.format("%.2f", price))
-                          .append(" | ").append(volume).append(" |\n");
-                }
-            }
-            
-            // 买盘
-            result.append("\n### 买盘（按价格从高到低）\n\n");
-            result.append("| 档位 | 价格 | 数量 |\n");
-            result.append("|------|------|------|\n");
-            
-            JSONArray bidPrices = data.getJSONArray("bid_prices");
-            JSONArray bidVolumes = data.getJSONArray("bid_volumes");
-            
-            if (bidPrices != null && bidVolumes != null) {
-                for (int i = 0; i < Math.min(bidPrices.size(), SystemConstants.DEPTH_MAX_LEVELS); i++) {
-                    double price = bidPrices.getDouble(i, 0.0);
-                    long volume = bidVolumes.getLong(i, 0L);
-                    result.append("| ").append(i + 1).append(" | ").append(String.format("%.2f", price))
-                          .append(" | ").append(volume).append(" |\n");
-                }
-            }
-            
-            return result.toString();
-        } catch (Exception e) {
-            return "深度数据解析失败: " + e.getMessage();
         }
     }
 

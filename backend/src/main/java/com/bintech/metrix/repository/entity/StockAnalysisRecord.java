@@ -57,12 +57,6 @@ public class StockAnalysisRecord extends BaseEntity {
     /**
      * 市场数据（JSON格式）
      */
-    @TableField(value = "depth_data")
-    private String depthData;
-
-    /**
-     * 市场数据（JSON格式）
-     */
     @TableField(value = "klines_data")
     private String klinesData;
 

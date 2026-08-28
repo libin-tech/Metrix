@@ -19,11 +19,11 @@ import java.util.Map;
 public class AnalysisPromptBuilder {
 
     /**
-     * 构建AI分析提示词，整合行情、深度、K线、舆情、筹码、股东数据为完整上下文
+     * 构建AI分析提示词，整合行情、K线、舆情、筹码、股东数据为完整上下文
      */
     public String build(StockBasic stockBasic, String analysisType,
-                        Map<String, Object> marketData, Map<String, Object> depthData,
-                        Map<String, Object> klinesData, Map<String, Object> newsSummary,
+                        Map<String, Object> marketData, Map<String, Object> klinesData,
+                        Map<String, Object> newsSummary,
                         Map<String, Object> chipData,
                         Map<String, Object> topFreeShareholdersData) {
         StringBuilder prompt = new StringBuilder();
@@ -31,7 +31,6 @@ public class AnalysisPromptBuilder {
         prompt.append("现在，你需要对").append(stockBasic.getName()).append("(").append(stockBasic.getSymbol()).append(")进行").append(analysisType).append("分析。");
 
         appendMarketData(prompt, marketData);
-        appendDepthData(prompt, depthData);
         appendKlinesData(prompt, klinesData);
         appendChipData(prompt, chipData);
         appendTopFreeShareholdersData(prompt, topFreeShareholdersData);
@@ -47,7 +46,7 @@ public class AnalysisPromptBuilder {
         prompt.append("7. 仓位建议：给出仓位建议，建议仓位大小、仓位类型（多仓、空仓、多空）\n");
         prompt.append("8. 基本面分析（包含十大流通股东分析）\n");
         prompt.append("9. 技术面分析（结合K线形态、MACD指标和成交量）\n");
-        prompt.append("10. 市场情绪分析（结合五档行情和资金流向）\n");
+        prompt.append("10. 市场情绪分析（结合资金流向）\n");
         prompt.append("11. 投资建议\n");
         prompt.append("12. 风险提示\n");
         prompt.append("13. 走势预测: 给出一周内、一月内的股票走势\n");
@@ -85,64 +84,6 @@ public class AnalysisPromptBuilder {
             prompt.append("涨跌幅: ").append(ext != null ? getBigDecimalOrUnknown(ext, "change_pct") : "未知").append("%\n\n");
         } catch (Exception e) {
             log.error("解析市场数据失败: {}", e.getMessage(), e);
-        }
-    }
-
-    private void appendDepthData(StringBuilder prompt, Map<String, Object> depthData) {
-        if (depthData == null) return;
-
-        JSONObject depthDataJson = new JSONObject(depthData);
-        log.info("深度数据: {}", JSONUtil.toJsonStr(depthDataJson));
-
-        try {
-            if (!ApiConstants.STATUS_SUCCESS.equals(depthDataJson.get(ApiConstants.KEY_STATUS))) return;
-            Object dataObj = depthDataJson.get("data");
-            if (!(dataObj instanceof JSONObject data)) return;
-
-            prompt.append("【市场深度-五档行情】\n");
-            JSONArray askPrices = data.getJSONArray("ask_prices");
-            JSONArray askVolumes = data.getJSONArray("ask_volumes");
-            if (askPrices != null && askVolumes != null && !askPrices.isEmpty()) {
-                prompt.append("卖盘（按价格从高到低）：\n");
-                int count = Math.min(askPrices.size(), SystemConstants.DEPTH_MAX_LEVELS);
-                for (int i = 0; i < count; i++) {
-                    prompt.append(String.format("  档%d: 价格=%.2f, 数量=%d\n",
-                            i + 1, askPrices.getDouble(i, 0.0), askVolumes.getLong(i, 0L)));
-                }
-            } else {
-                appendDepthLegacy(prompt, data, "asks", "卖盘");
-            }
-
-            JSONArray bidPrices = data.getJSONArray("bid_prices");
-            JSONArray bidVolumes = data.getJSONArray("bid_volumes");
-            if (bidPrices != null && bidVolumes != null && !bidPrices.isEmpty()) {
-                prompt.append("买盘（按价格从高到低）：\n");
-                int count = Math.min(bidPrices.size(), SystemConstants.DEPTH_MAX_LEVELS);
-                for (int i = 0; i < count; i++) {
-                    prompt.append(String.format("  档%d: 价格=%.2f, 数量=%d\n",
-                            i + 1, bidPrices.getDouble(i, 0.0), bidVolumes.getLong(i, 0L)));
-                }
-            } else {
-                appendDepthLegacy(prompt, data, "bids", "买盘");
-            }
-            prompt.append("\n");
-        } catch (Exception e) {
-            log.error("解析深度数据失败: {}", e.getMessage(), e);
-        }
-    }
-
-    private void appendDepthLegacy(StringBuilder prompt, JSONObject data, String arrayKey, String label) {
-        JSONArray items = data.getJSONArray(arrayKey);
-        if (items == null || items.isEmpty()) {
-            prompt.append(label + "：无数据\n");
-            return;
-        }
-        prompt.append(String.format("%s（按价格从高到低）：\n", label));
-        int count = Math.min(items.size(), SystemConstants.DEPTH_MAX_LEVELS);
-        for (int i = 0; i < count; i++) {
-            JSONObject item = items.getJSONObject(i);
-            prompt.append(String.format("  档%d: 价格=%.2f, 数量=%d\n",
-                    i + 1, item.getDouble("price", 0.0), item.getLong("size", 0L)));
         }
     }
 
