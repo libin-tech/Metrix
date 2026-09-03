@@ -48,6 +48,10 @@ public class MarketReview extends BaseEntity {
     @TableField(value = "core_summary")
     private String coreSummary;
 
+    /** AI分析提示词 */
+    @TableField(value = "prompt")
+    private String prompt;
+
     /** 错误信息 */
     @TableField(value = "error_message")
     private String errorMessage;

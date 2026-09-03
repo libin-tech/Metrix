@@ -202,8 +202,8 @@ public class MarketReviewServiceImpl implements MarketReviewService {
 
     /**
      * 执行大盘复盘核心流程：
-     * 1. 获取四大指数行情和K线数据
-     * 2. 构建提示词调用AI生成复盘报告
+     * 1. 获取四大指数行情、K线及近60日市场成交额数据
+     * 2. 构建并保存提示词后调用AI生成复盘报告
      * 3. 计算涨跌幅均值并生成摘要标签
      * 4. 提取核心总结并推送飞书
      */
@@ -213,17 +213,28 @@ public class MarketReviewServiceImpl implements MarketReviewService {
         log.info("开始执行大盘复盘: reviewId={}, reviewDate={}, userId={}", reviewId, reviewDate, userId);
 
         Map<String, Object> indexData;
+        Map<String, Object> marketTurnoverData;
         try {
             indexData = marketReviewDataFetcher.fetchIndexData(reviewDate);
             if (indexData.isEmpty()) {
                 throw new RuntimeException("获取指数数据失败");
             }
+            marketTurnoverData = marketReviewDataFetcher.fetchMarketTurnoverData(reviewDate);
         } catch (Exception e) {
-            failReview(reviewId, "获取指数数据失败: " + e.getMessage());
+            failReview(reviewId, "获取大盘数据失败: " + e.getMessage());
             return;
         }
 
-        String prompt = marketReviewPromptBuilder.build(indexData, reviewDate);
+        String prompt = marketReviewPromptBuilder.build(indexData, marketTurnoverData, reviewDate);
+        MarketReview review = marketReviewDao.selectById(reviewId);
+        if (review == null) {
+            log.warn("大盘复盘记录不存在，无法提交AI分析: id={}", reviewId);
+            return;
+        }
+        review.setPrompt(prompt);
+        review.setUpdateTime(LocalDateTime.now());
+        marketReviewDao.updateById(review);
+
         String modelType = aiModelService.getActiveModelType(userId);
 
         String content;
@@ -239,11 +250,6 @@ public class MarketReviewServiceImpl implements MarketReviewService {
         String coreSummary = extractCoreSummary(content);
         LocalDateTime now = LocalDateTime.now();
 
-        MarketReview review = marketReviewDao.selectById(reviewId);
-        if (review == null) {
-            log.warn("大盘复盘记录不存在，无法更新: id={}", reviewId);
-            return;
-        }
         review.setReviewTime(now);
         review.setDetail(content);
         review.setSummary(summary);

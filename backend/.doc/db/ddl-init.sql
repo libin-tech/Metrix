@@ -550,6 +550,7 @@ create table market_review
     detail        text,
     summary       varchar(50),
     core_summary  text,
+    prompt        text,
     error_message text,
     user_id       bigint      default null,
     create_time   timestamp,
@@ -574,6 +575,8 @@ comment on column market_review.detail is '复盘详情（Markdown格式）';
 comment on column market_review.summary is '总结，格式：小幅下跌/大幅上涨/小幅上涨/大幅下跌';
 
 comment on column market_review.core_summary is '核心总结（500字内Markdown格式）';
+
+comment on column market_review.prompt is 'AI分析提示词';
 
 comment on column market_review.error_message is '错误信息';
 
@@ -913,4 +916,3 @@ comment on column system_user_role.role_id is '角色ID';
 
 alter table system_user_role
     owner to postgres;
-

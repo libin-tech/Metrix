@@ -13,9 +13,9 @@ public class MarketReviewPromptBuilder {
     private static final List<String> INDEX_NAMES = List.of("上证指数", "深证成指", "创业板指", "科创50");
 
     /**
-     * 构建大盘复盘 AI 提示词，包含四大指数的实时行情和近30日K线数据
+     * 构建大盘复盘 AI 提示词，包含四大指数行情、近30日K线和市场近60日量能数据
      */
-    public String build(Map<String, Object> indexData, String reviewDate) {
+    public String build(Map<String, Object> indexData, Map<String, Object> marketTurnoverData, String reviewDate) {
         StringBuilder prompt = new StringBuilder();
         prompt.append("你是一名20年专业的金融从业分析师。请对").append(reviewDate).append("的A股市场进行大盘复盘分析。\n\n");
 
@@ -55,13 +55,23 @@ public class MarketReviewPromptBuilder {
             prompt.append("\n");
         }
 
+        prompt.append("【市场近60个交易日量能数据】\n");
+        prompt.append("日期 | 沪深两市成交量 | 沪深两市成交额\n");
+        List<Map<String, Object>> turnoverHistory = (List<Map<String, Object>>) marketTurnoverData.get("history");
+        for (Map<String, Object> turnover : turnoverHistory) {
+            prompt.append(turnover.get("date")).append(" | ")
+                    .append(turnover.get("volume")).append(" | ")
+                    .append(turnover.get("amount")).append("\n");
+        }
+        prompt.append("\n");
+
         prompt.append("请提供以下分析内容：\n");
         prompt.append("1. 大盘走势回顾：总结今日各指数的整体表现，分析主要驱动因素\n");
         prompt.append("2. 板块热点分析：分析今日领涨和领跌板块及原因\n");
         prompt.append("3. 市场情绪研判：基于成交量、涨跌家数等判断市场情绪\n");
         prompt.append("4. 重大事件解读：分析今日影响市场的重大事件或政策\n");
         prompt.append("5. 技术面分析：结合K线形态、均线系统等判断趋势\n");
-        prompt.append("6. 资金面分析：分析资金流向和成交量变化\n");
+        prompt.append("6. 资金面分析：分析资金流向，以及近60日成交额的放量、缩量与量价配合变化\n");
         prompt.append("7. 后市展望：对未来一段时间的市场走势做出判断\n");
         prompt.append("8. 投资策略建议：给出短期和中期的投资策略建议\n");
         prompt.append("请使用中文回答。");
