@@ -19,6 +19,14 @@ spring:
       host: ${REDIS_HOST:127.0.0.1}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${MAIL_SMTP_AUTH:true}
+      mail.smtp.starttls.enable: ${MAIL_SMTP_STARTTLS_ENABLE:true}
 
 mybatis-plus:
   type-aliases-package: com.bintech.metrix.repository
@@ -35,11 +43,10 @@ sa-token:
   token-style: jwt
   jwt-secret-key: aa3e7c8f2b9d4a6e8f0c1d2b3a4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0
 
-wechat:
-  app-id: ${WECHAT_APP_ID:}
-  app-secret: ${WECHAT_APP_SECRET:}
-  token: ${WECHAT_TOKEN:}
-  encoding-aes-key: ${WECHAT_ENCODING_AES_KEY:}
+auth:
+  # 本地联调可设置 AUTH_CAPTCHA_ENABLED=false，跳过所有图形验证码校验。
+  captcha-enabled: ${AUTH_CAPTCHA_ENABLED:true}
+  mail-from: ${AUTH_MAIL_FROM:}
 
 python:
   executable: python

@@ -1,19 +1,19 @@
 <template>
   <div class="app-container">
     <!-- 登录页面 - 独立显示 -->
-    <router-view v-if="isLoginPage" />
+    <router-view v-if="isStandalonePage" />
 
     <!-- 主应用布局 -->
     <a-config-provider v-else :theme="workspaceTheme">
       <a-layout class="layout">
         <a-layout-header class="header">
           <div class="topbar-content">
-            <button type="button" class="logo" aria-label="Metrix" @click="navigate('/')">
+            <button type="button" class="logo" aria-label="Metrix" @click="navigate('/workspace')">
           <div class="logo-icon-box"><RiseOutlined /></div>
               <span class="logo-text">{{ $t('layout.logo') }}</span>
             </button>
             <a-menu mode="horizontal" :selected-keys="[currentPath]" class="main-menu">
-          <a-menu-item key="/" @click="navigate('/')">
+          <a-menu-item key="/workspace" @click="navigate('/workspace')">
             <HomeOutlined />
             <span>{{ $t('menu.home') }}</span>
           </a-menu-item>
@@ -105,7 +105,7 @@ const currentUser = ref('')
 const settingsDrawerOpen = ref(false)
 const personalPopoverOpen = ref(false)
 
-const isLoginPage = computed(() => route.path === '/login')
+const isStandalonePage = computed(() => route.path === '/' || route.path === '/login')
 const currentPath = computed(() => route.path)
 
 const permissions = ref([])
@@ -121,6 +121,7 @@ const fetchUser = async () => {
   try {
     const me = await getCurrentUser()
     currentUser.value = me.data?.nickname || me.data?.username || ''
+    if (me.data?.role) localStorage.setItem('userRole', me.data.role)
   } catch { /* ignore */ }
 }
 
@@ -142,6 +143,7 @@ const switchLanguage = () => {
 const handleLogout = () => {
   personalPopoverOpen.value = false
   localStorage.removeItem('token')
+  localStorage.removeItem('userRole')
   message.success('退出成功')
   router.push('/login')
 }

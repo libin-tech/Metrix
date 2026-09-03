@@ -46,6 +46,7 @@ Metrix = Metric（指标） + Matrix（矩阵）
 - **多模型支持** — 支持 OpenAI 兼容接口和 Ollama 本地模型
 - **国际化** — 支持中文和英文界面
 - **权限管理** — 基于 RBAC 的权限系统，支持角色/菜单/接口三级权限控制，接口粒度的注解鉴权，动态菜单展示
+- **账号与验证** — 管理员使用账号、密码和图形验证码登录；普通用户通过邮箱注册、邮箱验证码和密码登录，支持重置密码与隐私政策确认
 
 ## 快速开始
 
@@ -84,6 +85,14 @@ npm run dev
 ```
 
 前端默认运行在 `http://localhost:5173`，后端 API 在 `http://localhost:8080`。
+
+### 已有数据库升级
+
+从旧版本升级时，在发布应用前执行对应的增量脚本。账号体系升级需要执行：
+
+```bash
+psql -h 127.0.0.1 -U postgres -d stock_analysis -f backend/.doc/db/V1.6.3_user_privacy_agreement.sql
+```
 
 ### Docker 部署
 
@@ -164,6 +173,14 @@ Metrix/
 | `POSTGRES_USERNAME` | `postgres` | 数据库用户名 |
 | `POSTGRES_PASSWORD` | `postgres` | 数据库密码 |
 
+### 认证、验证码与邮件
+
+完整配置示例见 [`backend/.env.example`](./backend/.env.example)。普通用户注册时必须勾选隐私政策；系统将把同意状态和时间写入 `users.privacy_agreed`、`users.privacy_agreed_time`。
+
+- `AUTH_CAPTCHA_ENABLED=true`：管理员登录、普通用户登录和发送邮箱验证码均须校验图形验证码。仅本地联调可设为 `false`，前后端会同时跳过该校验。
+- `MAIL_HOST`、`MAIL_PORT`、`MAIL_USERNAME`、`MAIL_PASSWORD`、`AUTH_MAIL_FROM`：SMTP 发信配置。邮箱验证码发送采用独立执行器，并在服务端限制同一邮箱每分钟一次。
+- 普通用户登录后自动获得非管理端权限；管理端路由与 `/api/admin/**` 接口仅向管理员开放。
+
 ### AI 模型配置
 
 通过前端配置页可管理 AI 模型：
@@ -186,8 +203,13 @@ Metrix/
 
 | 端点 | 说明 |
 |------|------|
-| `POST /api/auth/login` | 用户登录 |
-| `POST /api/auth/login-by-code` | 微信扫码登录 |
+| `POST /api/auth/admin/login` | 管理员账号、密码、图形验证码登录 |
+| `POST /api/auth/user/login` | 普通用户邮箱、密码、图形验证码登录 |
+| `POST /api/auth/user/register` | 普通用户注册（需邮箱验证码和隐私政策同意） |
+| `POST /api/auth/user/password/reset` | 校验邮箱验证码后重置普通用户密码 |
+| `POST /api/auth/email-code` | 发送注册或重置密码邮箱验证码（受图形验证码及频率限制） |
+| `GET /api/auth/captcha` | 获取图形验证码 |
+| `GET /api/auth/verification-config` | 获取图形验证码启用状态 |
 | `GET  /api/auth/permissions` | 获取当前用户权限列表 |
 | `POST /api/analysis` | 提交分析任务 |
 | `GET  /api/analysis` | 分析记录列表 |

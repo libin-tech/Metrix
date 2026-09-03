@@ -24,6 +24,11 @@ public class RedisCacheServiceImpl implements RedisCacheService {
     }
 
     @Override
+    public boolean setIfAbsent(String key, String value, Duration timeout) {
+        return Boolean.TRUE.equals(stringRedisTemplate.opsForValue().setIfAbsent(key, value, timeout));
+    }
+
+    @Override
     public String get(String key) {
         return stringRedisTemplate.opsForValue().get(key);
     }
@@ -31,6 +36,11 @@ public class RedisCacheServiceImpl implements RedisCacheService {
     @Override
     public String getAndDelete(String key) {
         return stringRedisTemplate.opsForValue().getAndDelete(key);
+    }
+
+    @Override
+    public void delete(String key) {
+        stringRedisTemplate.delete(key);
     }
 
     @Override

@@ -43,6 +43,7 @@ Metrix = Metric + Matrix — an asset evaluation tool from the perspective of qu
 - **Multi-Model Support** — OpenAI-compatible APIs and local Ollama models
 - **i18n** — Chinese and English UI
 - **Permission Management** — RBAC-based permission system with role/menu/API three-level access control, annotation-based API authorization, and dynamic menu rendering
+- **Accounts and verification** — Administrators sign in with an account, password, and CAPTCHA; users register and sign in by email, with password reset and Privacy Policy consent
 
 ## Quick Start
 
@@ -80,6 +81,14 @@ npm run dev
 ```
 
 Frontend runs at `http://localhost:5173`, backend API at `http://localhost:8080`.
+
+### Upgrading an existing database
+
+Before deploying an upgrade, apply the relevant incremental scripts. The account upgrade requires:
+
+```bash
+psql -h 127.0.0.1 -U postgres -d stock_analysis -f backend/.doc/db/V1.6.3_user_privacy_agreement.sql
+```
 
 ### Docker Deployment
 
@@ -160,6 +169,14 @@ System configuration via environment variables (supports `.env` file):
 | `POSTGRES_USERNAME` | `postgres` | Database username |
 | `POSTGRES_PASSWORD` | `postgres` | Database password |
 
+### Authentication, CAPTCHA, and email
+
+See [`backend/.env.example`](./backend/.env.example) for the complete configuration. A user must agree to the Privacy Policy to register; Metrix records the consent and timestamp in `users.privacy_agreed` and `users.privacy_agreed_time`.
+
+- `AUTH_CAPTCHA_ENABLED=true`: CAPTCHA is required for administrator sign-in, user sign-in, and sending email verification codes. Set it to `false` only for local development; both the client and server skip the check.
+- `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, and `AUTH_MAIL_FROM`: SMTP delivery settings. Verification email delivery uses an isolated executor and the server limits each email address to one request per minute.
+- A regular user automatically receives non-administration permissions. Administration routes and `/api/admin/**` are restricted to administrators.
+
 ### AI Model Configuration
 
 Manage AI models through the frontend config page:
@@ -182,8 +199,13 @@ All APIs are prefixed with `/api`. Some endpoints require authentication (Sa-Tok
 
 | Endpoint | Description |
 |----------|-------------|
-| `POST /api/auth/login` | User login |
-| `POST /api/auth/login-by-code` | WeChat scan-code login |
+| `POST /api/auth/admin/login` | Administrator sign-in with account, password, and CAPTCHA |
+| `POST /api/auth/user/login` | User sign-in with email, password, and CAPTCHA |
+| `POST /api/auth/user/register` | User registration (email code and Privacy Policy consent required) |
+| `POST /api/auth/user/password/reset` | Reset a user password after email-code verification |
+| `POST /api/auth/email-code` | Send a registration or password-reset email code (CAPTCHA and rate limited) |
+| `GET /api/auth/captcha` | Get a CAPTCHA |
+| `GET /api/auth/verification-config` | Get CAPTCHA enablement status |
 | `GET  /api/auth/permissions` | Get current user permissions |
 | `POST /api/analysis` | Submit analysis task |
 | `GET  /api/analysis` | Analysis records list |

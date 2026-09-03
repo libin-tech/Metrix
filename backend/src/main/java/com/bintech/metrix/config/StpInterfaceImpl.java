@@ -2,6 +2,7 @@ package com.bintech.metrix.config;
 
 import cn.dev33.satoken.stp.StpInterface;
 import com.bintech.metrix.enums.CommonStatus;
+import com.bintech.metrix.enums.UserRole;
 import com.bintech.metrix.repository.dao.*;
 import com.bintech.metrix.repository.entity.*;
 import lombok.RequiredArgsConstructor;
@@ -54,10 +55,10 @@ public class StpInterfaceImpl implements StpInterface {
             if (user == null) {
                 return List.of();
             }
-            if ("ADMIN".equals(user.getRole().getCode())) {
+            if (user.getRole() == UserRole.ADMIN) {
                 return allPermissionCodes();
             }
-            return List.of();
+            return user.getRole() == UserRole.USER ? defaultUserPermissionCodes() : List.of();
         }
 
         roleIds = userRoles.stream().map(SystemUserRole::getRoleId).toList();
@@ -95,6 +96,42 @@ public class StpInterfaceImpl implements StpInterface {
         }
 
         return new ArrayList<>(permissions);
+    }
+
+    /**
+     * 为尚未配置自定义角色的普通用户授予非管理端的菜单与接口权限。
+     */
+    private List<String> defaultUserPermissionCodes() {
+        List<SystemMenu> menus = systemMenuDao.selectAll();
+        Set<Long> adminMenuIds = adminMenuIds(menus);
+        Set<String> permissions = new HashSet<>();
+        menus.stream()
+                .filter(menu -> !adminMenuIds.contains(menu.getId()))
+                .map(SystemMenu::getPermissionCode)
+                .filter(code -> code != null && !code.isEmpty())
+                .forEach(permissions::add);
+        systemApiDao.selectAll().stream()
+                .filter(api -> api.getApiPath() == null || !api.getApiPath().startsWith("/api/admin"))
+                .map(SystemApi::getPermissionCode)
+                .filter(code -> code != null && !code.isEmpty())
+                .forEach(permissions::add);
+        return new ArrayList<>(permissions);
+    }
+
+    private Set<Long> adminMenuIds(List<SystemMenu> menus) {
+        Set<Long> adminMenuIds = new HashSet<>();
+        menus.stream()
+                .filter(menu -> menu.getPath() != null && menu.getPath().startsWith("/admin"))
+                .map(SystemMenu::getId)
+                .forEach(adminMenuIds::add);
+        boolean hasNewAdminMenu;
+        do {
+            hasNewAdminMenu = menus.stream()
+                    .filter(menu -> menu.getParentId() != null && adminMenuIds.contains(menu.getParentId()))
+                    .map(SystemMenu::getId)
+                    .anyMatch(adminMenuIds::add);
+        } while (hasNewAdminMenu);
+        return adminMenuIds;
     }
 
     private List<String> allPermissionCodes() {

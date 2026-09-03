@@ -27,9 +27,11 @@ service.interceptors.response.use(
       if (body.code === 1001) {
         Modal.error({ title: i18n.global.t('common.accountFrozen'), content: body.message || i18n.global.t('common.accountFrozenDefault'), okText: i18n.global.t('common.ok') })
       } else {
-        message.error(body.message || '请求失败')
+        message.error(body.message || i18n.global.t('common.requestFailed'))
       }
-      return Promise.reject(new Error(body.message || '请求失败'))
+      const requestError = new Error(body.message || i18n.global.t('common.requestFailed'))
+      requestError.notified = true
+      return Promise.reject(requestError)
     }
     return body
   },
@@ -38,16 +40,21 @@ service.interceptors.response.use(
       localStorage.removeItem('token')
       window.location.href = '/login'
     }
-    if (error.response && error.response.status === 403) {
-      message.error(error.response.data?.message || '无权限访问')
+    if (!error.notified) {
+      message.error(error.response?.data?.message || error.message || i18n.global.t('common.requestFailed'))
+      error.notified = true
     }
     return Promise.reject(error)
   }
 )
 
-export const login = data => service.post('/auth/login', data)
-export const loginByCode = code => service.post('/auth/login-by-code', { code })
-export const verifyCode = code => service.get('/auth/verify-code', { params: { code } })
+export const loginAdmin = data => service.post('/auth/admin/login', data)
+export const loginUser = data => service.post('/auth/user/login', data)
+export const registerUser = data => service.post('/auth/user/register', data)
+export const resetUserPassword = data => service.post('/auth/user/password/reset', data)
+export const getCaptcha = () => service.get('/auth/captcha')
+export const sendEmailCode = data => service.post('/auth/email-code', data)
+export const getVerificationConfig = () => service.get('/auth/verification-config')
 
 export const getAnalysisById = id => service.get(`/analysis/${id}`)
 export const getAllAnalysis = () => service.get('/analysis')

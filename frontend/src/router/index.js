@@ -2,23 +2,28 @@ import {createRouter, createWebHistory} from 'vue-router'
 
 const routes = [
   {
+    path: '/',
+    name: 'Landing',
+    component: () => import('../views/Landing.vue')
+  },
+  {
     path: '/login',
     name: 'Login',
     component: () => import('../views/Login.vue')
   },
   {
-    path: '/',
+    path: '/workspace',
     name: 'Home',
     component: () => import('../views/Home.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/home',
-    redirect: '/'
+    redirect: '/workspace'
   },
   {
     path: '/dashboard',
-    redirect: '/'
+    redirect: '/workspace'
   },
   {
     path: '/analysis',
@@ -84,31 +89,31 @@ const routes = [
     path: '/admin/users',
     name: 'UserManagement',
     component: () => import('../views/admin/UserManagement.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, adminOnly: true }
   },
   {
     path: '/admin/roles',
     name: 'RoleManagement',
     component: () => import('../views/admin/RoleManagement.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, adminOnly: true }
   },
   {
     path: '/admin/menus',
     name: 'MenuManagement',
     component: () => import('../views/admin/MenuManagement.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, adminOnly: true }
   },
   {
     path: '/admin/apis',
     name: 'ApiManagement',
     component: () => import('../views/admin/ApiManagement.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, adminOnly: true }
   },
   {
     path: '/admin/audit-log',
     name: 'AuditLog',
     component: () => import('../views/admin/AuditLog.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, adminOnly: true }
   }
 ]
 
@@ -120,6 +125,8 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth && !localStorage.getItem('token')) {
     next('/login')
+  } else if (to.meta.adminOnly && localStorage.getItem('userRole') !== 'ADMIN') {
+    next('/workspace')
   } else {
     next()
   }

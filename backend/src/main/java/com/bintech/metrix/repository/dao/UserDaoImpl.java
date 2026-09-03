@@ -51,6 +51,15 @@ class UserDaoImpl implements UserDao {
     }
 
     @Override
+    public User selectByEmail(String email) {
+        if (StrUtil.isBlank(email)) {
+            log.warn("selectByEmail: email is blank");
+            return null;
+        }
+        return baseMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getEmail, email));
+    }
+
+    @Override
     public User selectByOpenid(String openid) {
         if (StrUtil.isBlank(openid)) {
             log.warn("selectByOpenid: openid is blank");
@@ -66,6 +75,15 @@ class UserDaoImpl implements UserDao {
             return 0;
         }
         return baseMapper.selectCount(new LambdaQueryWrapper<User>().eq(User::getUsername, username));
+    }
+
+    @Override
+    public long countByEmail(String email) {
+        if (StrUtil.isBlank(email)) {
+            log.warn("countByEmail: email is blank");
+            return 0;
+        }
+        return baseMapper.selectCount(new LambdaQueryWrapper<User>().eq(User::getEmail, email));
     }
 
     @Override

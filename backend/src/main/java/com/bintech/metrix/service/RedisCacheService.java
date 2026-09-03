@@ -10,9 +10,13 @@ public interface RedisCacheService {
 
     void set(String key, String value, Duration timeout);
 
+    boolean setIfAbsent(String key, String value, Duration timeout);
+
     String get(String key);
 
     String getAndDelete(String key);
+
+    void delete(String key);
 
     boolean hasKey(String key);
 

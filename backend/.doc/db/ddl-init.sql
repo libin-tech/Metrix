@@ -15,7 +15,7 @@ create table users
     nickname            varchar(100),
     avatar              varchar(500),
     openid              varchar(100),
-    privacy_agreed      boolean     default false,
+    privacy_agreed      boolean     default false                        not null,
     privacy_agreed_time timestamp,
     status              varchar(20) default 'NORMAL'::character varying not null,
     freeze_reason       varchar(500)

@@ -12,8 +12,10 @@ public interface UserDao {
     int deleteById(Long id);
     User selectById(Long id);
     User selectByUsername(String username);
+    User selectByEmail(String email);
     User selectByOpenid(String openid);
     long countByUsername(String username);
+    long countByEmail(String email);
     long countByUsernameAndNotId(String username, Long excludeId);
     IPage<User> selectUserPage(Page<User> page, String keyword, List<Long> excludeUserIds);
 }

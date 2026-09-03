@@ -89,7 +89,4 @@ public final class BusinessConstants {
     public static final String DEFAULT_ADMIN_PASSWORD = "admin123";
     public static final String DEFAULT_ADMIN_EMAIL = "admin@example.com";
 
-    /* ==================== SAAS ==================== */
-    public static final int LOGIN_CODE_LENGTH = 6;
-    public static final String WECHAT_LOGIN_TRIGGER_KEYWORD = "验证码";
 }

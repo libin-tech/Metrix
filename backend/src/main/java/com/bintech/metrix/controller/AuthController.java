@@ -2,18 +2,22 @@ package com.bintech.metrix.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.stp.StpUtil;
-import com.bintech.metrix.dto.request.UserLoginRequest;
+import com.bintech.metrix.dto.request.AdminLoginRequest;
+import com.bintech.metrix.dto.request.PasswordResetRequest;
+import com.bintech.metrix.dto.request.SendEmailCodeRequest;
+import com.bintech.metrix.dto.request.UserEmailLoginRequest;
+import com.bintech.metrix.dto.request.UserRegistrationRequest;
 import com.bintech.metrix.dto.response.ApiResponse;
+import com.bintech.metrix.dto.response.CaptchaResponse;
 import com.bintech.metrix.dto.response.UserLoginResponse;
-import com.bintech.metrix.exception.FrozenUserException;
+import com.bintech.metrix.enums.EmailVerificationPurpose;
 import com.bintech.metrix.repository.entity.User;
+import com.bintech.metrix.service.EmailVerificationService;
 import com.bintech.metrix.service.UserService;
-import com.bintech.metrix.service.WechatAuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -28,42 +32,53 @@ import java.util.Map;
 public class AuthController {
 
     private final UserService userService;
-    private final WechatAuthService wechatAuthService;
+    private final EmailVerificationService emailVerificationService;
 
-    @PostMapping("/login")
-    public ApiResponse<UserLoginResponse> login(@Valid @RequestBody UserLoginRequest request) {
-        UserLoginResponse response = userService.login(request);
+    @PostMapping("/admin/login")
+    public ApiResponse<UserLoginResponse> loginAdmin(@Valid @RequestBody AdminLoginRequest request) {
+        UserLoginResponse response = userService.loginAdmin(request);
         return ApiResponse.success("Login successful", response);
     }
 
-    @PostMapping("/login-by-code")
-    public ApiResponse<UserLoginResponse> loginByCode(@RequestBody Map<String, String> body) {
-        String code = body.get("code");
-        if (code == null || code.isEmpty()) {
-            return ApiResponse.error("验证码不能为空");
-        }
-        try {
-            UserLoginResponse response = wechatAuthService.loginByCode(code);
-            return ApiResponse.success("登录成功", response);
-        } catch (FrozenUserException e) {
-            return ApiResponse.error(1001, e.getMessage());
-        }
+    @PostMapping("/user/login")
+    public ApiResponse<UserLoginResponse> loginUser(@Valid @RequestBody UserEmailLoginRequest request) {
+        return ApiResponse.success("Login successful", userService.loginByEmail(request));
     }
 
-    @GetMapping("/verify-code")
-    public ApiResponse<Map<String, Object>> verifyCode(@RequestParam String code) {
-        if (code == null || code.isEmpty()) {
-            return ApiResponse.error("验证码不能为空");
+    @PostMapping("/user/register")
+    public ApiResponse<Void> register(@Valid @RequestBody UserRegistrationRequest request) {
+        userService.register(request);
+        return ApiResponse.success("注册成功，请登录", null);
+    }
+
+    @PostMapping("/user/password/reset")
+    public ApiResponse<Void> resetPassword(@Valid @RequestBody PasswordResetRequest request) {
+        userService.resetPassword(request);
+        return ApiResponse.success("密码重置成功，请登录", null);
+    }
+
+    @GetMapping("/captcha")
+    public ApiResponse<CaptchaResponse> captcha() {
+        return ApiResponse.success(emailVerificationService.createCaptcha());
+    }
+
+    @PostMapping("/email-code")
+    public ApiResponse<Void> sendEmailCode(@Valid @RequestBody SendEmailCodeRequest request) {
+        if (request.getPurpose() == EmailVerificationPurpose.REGISTER
+                && userService.isEmailRegistered(request.getEmail())) {
+            return ApiResponse.error("该邮箱已注册，请直接登录");
         }
-
-        if (!wechatAuthService.isLoginCodeValid(code)) {
-            return ApiResponse.error("验证码无效或已过期，请重新获取");
+        if (request.getPurpose() == EmailVerificationPurpose.RESET_PASSWORD
+                && !userService.isEmailRegistered(request.getEmail())) {
+            return ApiResponse.error("该邮箱尚未注册");
         }
+        emailVerificationService.sendEmailCode(request);
+        return ApiResponse.success("验证码已发送", null);
+    }
 
-        Map<String, Object> result = new HashMap<>();
-        result.put("valid", true);
-
-        return ApiResponse.success(result);
+    @GetMapping("/verification-config")
+    public ApiResponse<Map<String, Boolean>> verificationConfig() {
+        return ApiResponse.success(Map.of("captchaEnabled", emailVerificationService.isCaptchaEnabled()));
     }
 
     @PostMapping("/logout")
