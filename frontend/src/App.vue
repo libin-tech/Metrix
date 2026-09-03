@@ -211,17 +211,17 @@ body {
   font-size: 13px;
   font-weight: 700;
   line-height: 76px;
-  color: #fff;
+  color: #1d2b43;
 }
 
 .layout > .header {
   height: 76px !important;
   min-height: 76px;
   line-height: normal;
-  background: #111d31;
+  background: rgba(255, 255, 255, .92);
   padding: 0;
-  border-bottom: 1px solid #273651;
-  box-shadow: none;
+  border-bottom: 1px solid #dfe6ef;
+  box-shadow: 0 2px 14px rgba(34, 51, 79, .04);
   backdrop-filter: blur(12px);
 }
 
@@ -243,7 +243,7 @@ body {
   overflow-y: hidden;
   scrollbar-width: none;
   line-height: 76px;
-  color: #d8e2f4;
+  color: #526178;
   background: transparent;
   border-bottom: 0;
 }
@@ -254,13 +254,13 @@ body {
   margin-bottom: 0;
   line-height: 76px;
   padding-inline: 13px;
-  color: #b7c4da;
+  color: #66758b;
   font-size: 13px;
 }
 
 .main-menu .ant-menu-item:hover,
-.main-menu .ant-menu-item-selected { color: #fff !important; font-weight: 650; }
-.main-menu .ant-menu-item::after { border-bottom-color: #8ba9e6; border-bottom-width: 2px; }
+.main-menu .ant-menu-item-selected { color: #263d65 !important; font-weight: 650; }
+.main-menu .ant-menu-item::after { border-bottom-color: #5878c2; border-bottom-width: 2px; }
 .main-menu::-webkit-scrollbar { display: none; }
 
 .language-switch {
@@ -270,17 +270,17 @@ body {
   gap: 6px;
   height: 34px;
   padding: 0 10px;
-  color: #d8e2f4;
+  color: #526178;
   font: inherit;
   font-size: 13px;
-  background: transparent;
-  border: 1px solid rgba(181, 200, 230, .22);
+  background: #f8faff;
+  border: 1px solid #dce4ee;
   border-radius: 8px;
   cursor: pointer;
   transition: color .18s ease, background .18s ease, border-color .18s ease;
 }
 
-.language-switch:hover { color: #fff; background: rgba(143, 175, 231, .14); border-color: rgba(181, 200, 230, .44); }
+.language-switch:hover { color: #263d65; background: #edf3ff; border-color: #b9cbe7; }
 
 .personal-center {
   flex-shrink: 0;
@@ -295,19 +295,19 @@ body {
   min-width: 174px;
   gap: 10px;
   padding: 0 4px;
-  color: #eef4ff;
+  color: #263957;
   text-align: left;
   cursor: pointer;
   transition: color .18s ease;
 }
 
 .personal-trigger:hover .personal-avatar { box-shadow: 0 0 0 3px rgba(143, 175, 231, .22); transform: scale(1.04); }
-.personal-trigger:hover .personal-copy strong { color: #fff; }
+.personal-trigger:hover .personal-copy strong { color: #263d65; }
 
 .personal-avatar {
   flex-shrink: 0;
   color: #edf3ff;
-  background: linear-gradient(135deg, #5e7ec5, #8fa7d9);
+  background: linear-gradient(135deg, #5878c2, #87a1d8);
   transition: box-shadow .18s ease, transform .18s ease;
 }
 

@@ -662,5 +662,14 @@ onUnmounted(() => {
 
 /* 市场日评：左侧作为时间线导航，右侧专注阅读当天的研究结论。 */
 .market-review-page { padding: 24px 28px; background: radial-gradient(circle at 92% 0%, #edf3ff 0, transparent 31%), #f7f9fc; }.market-review-layout { grid-template-columns: 350px minmax(0, 1fr); gap: 24px; }.records-card { overflow: hidden; color: #dce7f8; background: radial-gradient(circle at 100% 0%, #38547f 0, transparent 35%), #18263d; border-color: #2d4261; border-radius: 16px; box-shadow: 0 16px 34px rgba(24, 38, 61, .16); }.records-card :deep(.ant-card-head) { border-bottom-color: rgba(194, 214, 242, .16); }.records-header { color: #f2f6fd; }.records-card .review-name { color: #f1f5fc; font-size: 14px; }.records-card .time-info, .records-card .end-hint, .records-card .empty-tip, .records-card .empty-hint { color: #a9bbd5; }.records-list :deep(.ant-list-item:hover) { background: rgba(255, 255, 255, .07); }.records-list .active { background: rgba(130, 167, 227, .24); box-shadow: inset 2px 0 #a9c7ff; }.records-list .active .review-name { color: #ffffff !important; }.records-list .active .time-info { color: #d7e6ff !important; }.records-list :deep(.ant-list-item) { margin: 3px 9px; }.detail-card { padding: 0 24px; background: rgba(255, 255, 255, .94); border: 1px solid #e1e8f1; border-radius: 16px; box-shadow: 0 12px 30px rgba(34, 51, 79, .06); }.detail-card :deep(.ant-card-head) { border-bottom-color: #d7e1ed; }.detail-card :deep(.ant-card-body) { padding-right: 4px; padding-left: 4px; }.review-detail { max-width: 980px; padding-right: 12px; padding-left: 12px; }.review-detail :deep(h1), .review-detail :deep(h2), .review-detail :deep(h3) { color: #203653; }.review-detail :deep(h2) { padding-top: 14px; border-top: 1px solid #e5ebf2; }
-.records-list :deep(.ant-list-item) { padding: 8px 7px; margin: 2px 6px; cursor: pointer; }.records-list .active .review-name, .records-list .active .time-info { color: #18263d !important; }
+.records-list :deep(.ant-list-item) { padding: 8px 7px; margin: 2px 6px; cursor: pointer; }.records-list .active .review-name { color: #ffffff !important; }.records-list .active .time-info { color: #d7e6ff !important; }
+
+/* 复盘页以日期导航为辅，正文保留舒展的阅读宽度。 */
+@media (min-width: 1200px) {
+  .market-review-layout { grid-template-columns: 320px minmax(0, 1fr); gap: 28px; }
+  .detail-card { max-width: 1180px; }
+}
+
+/* 默认浅色：复盘日期导航退到次级层，阅读内容保持主视觉。 */
+.records-card { color: #263957; background: #fff; border-color: #dfe7f0; box-shadow: 0 10px 26px rgba(34, 51, 79, .05); }.records-card :deep(.ant-card-head) { border-bottom-color: #e6ecf3; }.records-header, .records-card .review-name { color: #263957; }.records-card .time-info, .records-card .end-hint, .records-card .empty-tip, .records-card .empty-hint { color: #8190a4; }.records-list :deep(.ant-list-item:hover) { background: #f4f7fb; }.records-list .active { background: #edf3ff; box-shadow: inset 2px 0 #5878c2; }.records-list .active .review-name { color: #263957 !important; }.records-list .active .time-info { color: #5b7193 !important; }
 </style>

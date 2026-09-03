@@ -167,7 +167,7 @@ public class MarketReviewServiceImpl implements MarketReviewService {
             marketReviewDao.deleteById(existing.getId());
         }
 
-        String reviewName = reviewDate + " A股复盘报告";
+        String reviewName = reviewDate + " A股复盘";
         LocalDateTime now = LocalDateTime.now();
 
         MarketReview review = new MarketReview();
