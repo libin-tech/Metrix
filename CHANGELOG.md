@@ -17,6 +17,9 @@
 - 完善 `backend/.env.example`，补充 Redis、SMTP、验证码和市场数据脚本配置说明
 - 更新中英文 README 的认证接口、升级步骤与部署配置说明
 
+### 功能移除
+- 移除分析报告 PDF 导出入口、接口、服务实现、依赖与权限注册；新增 `V1.6.4_remove_pdf_export.sql` 清理已部署环境中的权限数据
+
 ## 1.6.1 (2026-06-17)
 ### 持久层重构
 - 新增 19 个 DAO 接口（拒绝 `LambdaQueryWrapper`/`LambdaUpdateWrapper` 参数，全部改为具体方法）和包级私有实现类

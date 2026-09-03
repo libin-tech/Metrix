@@ -29,7 +29,7 @@ Metrix = Metric（指标） + Matrix（矩阵）
 | 认证 | Sa-Token 1.45.0 (JWT, 注解鉴权)                  |
 | 前端 | Vue 3, Ant Design Vue, Vite                     |
 | 数据源 | TickFlow (行情), 博查 (新闻), AKshare (基础数据)          |
-| 工具 | Hutool 5.8.13, Flexmark, Lombok                 |
+| 工具 | Hutool 5.8.13, Lombok                           |
 
 ## 功能特性
 
@@ -39,7 +39,6 @@ Metrix = Metric（指标） + Matrix（矩阵）
 - **实时行情** — 通过 TickFlow 获取实时报价、深度数据、K 线数据
 - **新闻聚合** — 通过博查 API 获取相关股票新闻并自动摘要
 - **筹码分析** — Python 脚本计算筹码分布与成本集中度
-- **PDF 导出** — 将分析报告导出为 PDF 文件
 - **大盘复盘** — 对每日 A 股主要指数进行 AI 复盘分析，生成市场总结与趋势研判
 - **持仓管理** — 多账户持仓管理，支持批量录入、一键评估、实时盈亏监控
 - **飞书通知** — 分析完成后通过飞书 Webhook 推送结果
@@ -92,6 +91,7 @@ npm run dev
 
 ```bash
 psql -h 127.0.0.1 -U postgres -d stock_analysis -f backend/.doc/db/V1.6.3_user_privacy_agreement.sql
+psql -h 127.0.0.1 -U postgres -d stock_analysis -f backend/.doc/db/V1.6.4_remove_pdf_export.sql
 ```
 
 ### Docker 部署
@@ -214,7 +214,6 @@ Metrix/
 | `POST /api/analysis` | 提交分析任务 |
 | `GET  /api/analysis` | 分析记录列表 |
 | `GET  /api/analysis/{id}/detail` | 分析报告详情 |
-| `GET  /api/analysis/{id}/pdf` | 导出 PDF |
 | `POST /api/market-review/trigger` | 发起大盘复盘 |
 | `GET  /api/market-review` | 复盘记录列表 |
 | `POST /api/chat/session` | 创建对话会话 |

@@ -62,7 +62,6 @@ export const getAnalysisCursor = (cursor, limit = 10) => service.get('/analysis/
 export const createAnalysis = data => service.post('/analysis', data)
 export const deleteAnalysis = id => service.delete(`/analysis/${id}`)
 export const pushToFeishu = id => service.post(`/analysis/${id}/push-feishu`)
-export const exportPdf = id => service.get(`/analysis/${id}/pdf`, { responseType: 'blob' })
 export const getAnalysisDetail = id => service.get(`/analysis/${id}/detail`)
 export const getQueueStatus = () => service.get('/analysis/queue/status')
 

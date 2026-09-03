@@ -15,24 +15,15 @@ import com.bintech.metrix.enums.StockAnalysisStatus;
 import com.bintech.metrix.repository.dao.StockAnalysisRecordDao;
 import com.bintech.metrix.repository.entity.StockAnalysisRecord;
 import com.bintech.metrix.repository.entity.StockBasic;
-import com.bintech.metrix.service.PdfExportService;
 import com.bintech.metrix.service.PortfolioHoldingService;
 import com.bintech.metrix.service.StockAnalysisService;
 import com.bintech.metrix.service.StockBasicService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.core.io.Resource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,7 +53,6 @@ public class StockAnalysisController {
     private final StockAnalysisRecordDao recordDao;
     private final StockBasicService stockBasicService;
     private final AnalysisTaskQueue analysisTaskQueue;
-    private final PdfExportService pdfExportService;
     private final PortfolioHoldingService portfolioHoldingService;
 
     /**
@@ -241,33 +231,4 @@ public class StockAnalysisController {
         }
     }
 
-    /**
-     * 导出分析报告为PDF
-     *
-     * @param id 分析记录ID
-     * @return PDF文件流
-     */
-    @GetMapping("/{id}/pdf")
-    @SaCheckPermission("analysis:record:pdf")
-    public ResponseEntity<Resource> exportPdf(@PathVariable Long id) {
-        StockAnalysisRecord record = stockAnalysisService.getAnalysisById(id);
-        StockBasic stockBasic = stockBasicService.getByTsCode(record.getStockCode());
-        if (stockBasic == null) {
-            throw new RuntimeException("股票代码 " + record.getStockCode() + " 不存在");
-        }
-
-        byte[] pdfBytes = pdfExportService.generatePdf(record, stockBasic);
-
-        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHH"));
-        String filename = stockBasic.getName() + "（" + stockBasic.getTsCode() + "）深度综合分析报告-" + timestamp + ".pdf";
-
-        ByteArrayResource resource = new ByteArrayResource(pdfBytes);
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + URLEncoder.encode(filename, StandardCharsets.UTF_8))
-                .contentType(MediaType.APPLICATION_PDF)
-                .contentLength(pdfBytes.length)
-                .body(resource);
-
-    }
 }

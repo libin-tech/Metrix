@@ -130,14 +130,6 @@
                 >
                   <SendOutlined /> {{ $t('analysis.pushToFeishu') }}
                 </a-button>
-                <a-button
-                  v-if="selectedRecord?.status === 'COMPLETED'"
-                  size="small"
-                  @click="handleExportPdf"
-                  :loading="exportingPdf"
-                >
-                  <FilePdfOutlined /> {{ $t('analysis.exportPdf') }}
-                </a-button>
                 <a-button type="primary" size="small" @click="viewDetail">
                   <FileTextOutlined /> {{ $t('analysis.fullReport') }}
                 </a-button>
@@ -512,7 +504,6 @@ import {useI18n} from 'vue-i18n';
 import {
   createAnalysis,
   deleteAnalysis,
-  exportPdf as exportPdfApi,
   getAnalysisById,
   getAnalysisCursor,
   getAnalysisDetail,
@@ -529,7 +520,6 @@ import {
   ClockCircleOutlined,
   DeleteOutlined,
   FieldTimeOutlined,
-  FilePdfOutlined,
   FileTextOutlined,
   InboxOutlined,
   LinkOutlined,
@@ -589,7 +579,6 @@ const analysisDetail = ref(null);
 const showDetail = ref(false);
 const submitting = ref(false);
 const pushingFeishu = ref(false);
-const exportingPdf = ref(false);
 const stockOptions = ref([]);
 const queueStatus = ref(null);
 const cursor = ref(null);
@@ -681,30 +670,6 @@ const handlePushToFeishu = async () => {
     message.error(error.response?.data?.message || t('analysis.feishuPushFailed'));
   } finally {
     pushingFeishu.value = false;
-  }
-};
-
-const handleExportPdf = async () => {
-  if (!selectedRecord.value?.id) return;
-  exportingPdf.value = true;
-  try {
-    const response = await exportPdfApi(selectedRecord.value.id);
-    const blob = new Blob([response], { type: 'application/pdf' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    const now = new Date();
-    const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}`;
-    link.download = `${selectedRecord.value.stockName}（${selectedRecord.value.stockCode}）综合评估报告-${dateStr}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-    message.success(t('analysis.pdfExportSuccess'));
-  } catch (error) {
-    message.error(t('analysis.pdfExportFailed'));
-  } finally {
-    exportingPdf.value = false;
   }
 };
 

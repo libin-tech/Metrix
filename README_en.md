@@ -26,7 +26,7 @@ Metrix = Metric + Matrix — an asset evaluation tool from the perspective of qu
 | Auth | Sa-Token 1.45.0 (JWT, Annotation-based Auth)                 |
 | Frontend | Vue 3, Ant Design Vue, Vite                                  |
 | Data Sources | TickFlow (market data), Bocha (news), AKshare (fundamentals) |
-| Utilities | Hutool 5.8.13, Flexmark, Lombok                              |
+| Utilities | Hutool 5.8.13, Lombok                                        |
 
 ## Features
 
@@ -36,7 +36,6 @@ Metrix = Metric + Matrix — an asset evaluation tool from the perspective of qu
 - **Real-time Market Data** — Real-time quotes, depth data, and K-line data via TickFlow
 - **News Aggregation** — Stock-related news via Bocha API with auto-summarization
 - **Chip Distribution** — Python-based shareholding cost distribution analysis
-- **PDF Export** — Export analysis reports as PDF
 - **Market Review** — AI-powered daily review of major A-share indices with market summary and trend analysis
 - **Portfolio Management** — Multi-account holding management with batch entry, one-click evaluation, and real-time P&L monitoring
 - **Feishu Notifications** — Push analysis results via Feishu Webhook
@@ -88,6 +87,7 @@ Before deploying an upgrade, apply the relevant incremental scripts. The account
 
 ```bash
 psql -h 127.0.0.1 -U postgres -d stock_analysis -f backend/.doc/db/V1.6.3_user_privacy_agreement.sql
+psql -h 127.0.0.1 -U postgres -d stock_analysis -f backend/.doc/db/V1.6.4_remove_pdf_export.sql
 ```
 
 ### Docker Deployment
@@ -210,7 +210,6 @@ All APIs are prefixed with `/api`. Some endpoints require authentication (Sa-Tok
 | `POST /api/analysis` | Submit analysis task |
 | `GET  /api/analysis` | Analysis records list |
 | `GET  /api/analysis/{id}/detail` | Analysis report detail |
-| `GET  /api/analysis/{id}/pdf` | Export PDF |
 | `POST /api/market-review/trigger` | Trigger market review |
 | `GET  /api/market-review` | Market review list |
 | `POST /api/chat/session` | Create chat session |
