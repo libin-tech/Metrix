@@ -8,6 +8,8 @@ import java.util.List;
 
 public interface StockBasicDao {
     int insert(StockBasic entity);
+    void insertBatch(List<StockBasic> entities);
+    void updateBatch(List<StockBasic> entities);
     int updateById(StockBasic entity);
     int deleteById(Long id);
     StockBasic selectById(Long id);

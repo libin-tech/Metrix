@@ -28,7 +28,11 @@ public interface MarketDataService {
 
     boolean hasActiveConfig(Long userId);
 
-    MarketDataConfig getActiveTickFlowConfig(Long userId);
+    Map<String, Object> fetchMarketTurnoverData(Long userId);
+
+    Map<String, Object> fetchTickerData(Long userId);
+
+    Map<String, Object> fetchAnomalyAnalysisData(Long userId);
 
     Map<String, Object> fetchRealTimeData(StockBasic stockBasic);
 

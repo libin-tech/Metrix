@@ -14,11 +14,7 @@ import requests
 _script_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path = [path for path in sys.path if path != _script_dir]
 
-DRAGON_TIGER_LIMIT = 20
-FUND_FLOW_LIMIT = 20
-POPULARITY_RANK_LIMIT = 20
-INDUSTRY_LIMIT = 20
-LIMIT_POOL_LIMIT = 20
+FUND_FLOW_PAGE_SIZE = 100
 DRAGON_TIGER_LOOKBACK_DAYS = 30
 EASTMONEY_FUND_FLOW_URL = "https://push2.eastmoney.com/api/qt/clist/get"
 EASTMONEY_FUND_FLOW_FIELDS = "f2,f3,f12,f14,f62,f184,f100"
@@ -75,7 +71,7 @@ def get_dragon_tiger(ak):
     if frame is None or frame.empty:
         return []
 
-    frame = frame.sort_values(["上榜日", "龙虎榜净买额"], ascending=[False, False]).head(DRAGON_TIGER_LIMIT)
+    frame = frame.sort_values(["上榜日", "龙虎榜净买额"], ascending=[False, False])
     return [
         {
             "code": as_text(row.get("代码")),
@@ -90,25 +86,25 @@ def get_dragon_tiger(ak):
 
 
 def get_fund_flow():
-    """获取主力净流入前列，避免 AKShare 全量分页导致首页请求超时。"""
-    response = requests.get(
-        EASTMONEY_FUND_FLOW_URL,
-        params={
-            "fid": "f62",
-            "po": "1",
-            "pz": FUND_FLOW_LIMIT,
-            "pn": "1",
-            "np": "1",
-            "fltt": "2",
-            "invt": "2",
-            "ut": "b2884a393a59ad64002292a3e90d46a5",
-            "fs": EASTMONEY_FUND_FLOW_FILTER,
-            "fields": EASTMONEY_FUND_FLOW_FIELDS,
-        },
-        timeout=REQUEST_TIMEOUT_SECONDS,
-    )
-    response.raise_for_status()
-    records = response.json().get("data", {}).get("diff", [])
+    """按主力净流入排序获取全部分页，使用实际页容量兼容上游限量。"""
+    with requests.Session() as session:
+        firstPage = fetchFundFlowPage(session, 1)
+        records = firstPage["diff"]
+        if not records:
+            return []
+        pageCount = math.ceil(firstPage["total"] / len(records))
+        previousCodes = tuple(row["f12"] for row in records)
+        for pageNumber in range(2, pageCount + 1):
+            pageRecords = fetchFundFlowPage(session, pageNumber)["diff"]
+            currentCodes = tuple(row["f12"] for row in pageRecords)
+            if not pageRecords or currentCodes == previousCodes:
+                raise ValueError("资金流向分页不完整或重复，无法获取完整榜单")
+            records.extend(pageRecords)
+            previousCodes = currentCodes
+    if len(records) < firstPage["total"]:
+        raise ValueError("资金流向返回数量少于接口总数，榜单不完整")
+    records = {row["f12"]: row for row in records}.values()
+    records = sorted(records, key=lambda row: as_number(row.get("f62")), reverse=True)
     return [
         {
             "code": as_text(row.get("f12")),
@@ -123,13 +119,35 @@ def get_fund_flow():
     ]
 
 
+def fetchFundFlowPage(session, pageNumber):
+    response = session.get(
+        EASTMONEY_FUND_FLOW_URL,
+        params={
+            "fid": "f62", "po": "1", "pz": FUND_FLOW_PAGE_SIZE,
+            "pn": pageNumber, "np": "1", "fltt": "2", "invt": "2",
+            "ut": "b2884a393a59ad64002292a3e90d46a5",
+            "fs": EASTMONEY_FUND_FLOW_FILTER,
+            "fields": EASTMONEY_FUND_FLOW_FIELDS,
+        },
+        timeout=REQUEST_TIMEOUT_SECONDS,
+    )
+    response.raise_for_status()
+    data = response.json().get("data")
+    if not isinstance(data, dict) or not isinstance(data.get("total"), int):
+        raise ValueError("资金流向接口未返回有效分页数据")
+    records = data.get("diff") or []
+    if not isinstance(records, list) or (data["total"] > 0 and not records):
+        raise ValueError("资金流向接口返回的记录不完整")
+    return {"total": data["total"], "diff": records}
+
+
 def get_popularity_rank(ak):
     with redirect_stdout(io.StringIO()):
         frame = ak.stock_hot_rank_em()
     if frame is None or frame.empty:
         return []
 
-    frame = frame.sort_values("当前排名").head(POPULARITY_RANK_LIMIT)
+    frame = frame.sort_values("当前排名")
     return [
         {
             "rank": as_number(row.get("当前排名")),
@@ -148,7 +166,7 @@ def get_industry_sectors(ak):
     if frame is None or frame.empty:
         return []
 
-    frame = frame.sort_values("净额", ascending=False).head(INDUSTRY_LIMIT)
+    frame = frame.sort_values("净额", ascending=False)
     return [
         {
             "name": as_text(row.get("行业")),
@@ -202,7 +220,7 @@ def normalize_limit_pool(frame, detail_column):
             "changePct": as_number(row.get("涨跌幅")),
             "detail": as_text(row.get(detail_column)),
         }
-        for _, row in frame.head(LIMIT_POOL_LIMIT).iterrows()
+        for _, row in frame.iterrows()
     ]
 
 

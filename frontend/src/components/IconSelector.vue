@@ -38,9 +38,9 @@ const iconNames = Object.keys(iconMap).sort()
 <style scoped>
 .icon-item {
   display: flex; align-items: center; justify-content: center;
-  height: 48px; border: 1px solid #e8e8e8; border-radius: 6px;
+  height: 48px; border: 1px solid var(--theme-line, #e8e8e8); border-radius: 6px;
   cursor: pointer; transition: all 0.2s;
 }
-.icon-item:hover { border-color: #1890ff; color: #1890ff; background: #e6f7ff; }
-.icon-item.selected { border-color: #1890ff; color: #1890ff; background: #bae7ff; }
+.icon-item:hover { border-color: var(--theme-line, #1890ff); color: var(--theme-blue, #1890ff); background: var(--theme-raised, #e6f7ff); }
+.icon-item.selected { border-color: var(--theme-line, #1890ff); color: var(--theme-blue, #1890ff); background: var(--theme-blue-surface, #bae7ff); }
 </style>

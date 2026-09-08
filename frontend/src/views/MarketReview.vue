@@ -24,7 +24,7 @@
                     <template #title>
                       <div class="title-row">
                         <span class="status-dot" :style="{ backgroundColor: statusDotColor(item.status) }"></span>
-                        <span class="review-name">{{ item.reviewName }}</span>
+                        <span class="review-name" :title="item.reviewName">{{ item.reviewName }}</span>
                         <span class="summary-tag" v-if="item.summary">
                           <a-tag :color="summaryColor(item.summary)" size="small">{{ item.summary }}</a-tag>
                         </span>
@@ -354,10 +354,11 @@ onUnmounted(() => {
 
 <style scoped>
 .market-review-page {
+  --workspace-content-width: 1500px;
   padding: 20px 24px;
   height: calc(100vh - 84px);
   overflow: hidden;
-  background: #f7f9fc;
+  background: var(--theme-raised, #f7f9fc);
 }
 
 .market-review-layout {
@@ -377,12 +378,12 @@ onUnmounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  border: 1px solid #e1e7ef;
+  border: 1px solid var(--theme-line, #e1e7ef);
   border-radius: 14px;
   box-shadow: none;
 }
 
-.records-card :deep(.ant-card-head) { min-height: 62px; padding: 0 18px; border-bottom: 1px solid #e1e7ef; }
+.records-card :deep(.ant-card-head) { min-height: 62px; padding: 0 18px; border-bottom: 1px solid var(--theme-line, #e1e7ef); }
 .records-card :deep(.ant-card-head-title) { padding: 0; }
 
 .records-card :deep(.ant-card-body) {
@@ -398,7 +399,7 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  color: #1b2a42;
+  color: var(--theme-text, #1b2a42);
   font-size: 15px;
 }
 
@@ -409,13 +410,14 @@ onUnmounted(() => {
 }
 
 .records-list :deep(.ant-list-item) { padding: 14px 16px; margin: 2px 8px; border-radius: 10px; border-bottom: 0; transition: background .16s ease; }
-.records-list :deep(.ant-list-item:hover) { background: #f2f6fb; }
-.records-list .active { background: #eaf1fb; }
+.records-list :deep(.ant-list-item:hover) { background: var(--theme-raised, #f2f6fb); }
+.records-list .active { background: var(--theme-raised, #eaf1fb); }
 
 .title-row {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
 }
 
 .summary-tag {
@@ -425,6 +427,7 @@ onUnmounted(() => {
 
 .status-dot {
   display: inline-block;
+  flex-shrink: 0;
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -433,13 +436,17 @@ onUnmounted(() => {
 }
 
 .review-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 13px;
   vertical-align: middle;
 }
 
 .time-info {
   font-size: 12px;
-  color: #999;
+  color: var(--theme-muted, #999);
 }
 
 .summary-tag {
@@ -447,6 +454,7 @@ onUnmounted(() => {
 }
 
 .delete-btn {
+  flex-shrink: 0;
   opacity: 0;
   transition: opacity 0.2s;
 }
@@ -458,7 +466,7 @@ onUnmounted(() => {
 .empty-tip {
   text-align: center;
   padding: 60px 0;
-  color: #bbb;
+  color: var(--theme-muted, #bbb);
 }
 
 .empty-tip p {
@@ -468,13 +476,13 @@ onUnmounted(() => {
 
 .empty-hint {
   font-size: 12px;
-  color: #d9d9d9;
+  color: var(--theme-text, #d9d9d9);
 }
 
 .end-hint {
   text-align: center;
   padding: 16px;
-  color: #bbb;
+  color: var(--theme-muted, #bbb);
   font-size: 13px;
 }
 
@@ -484,7 +492,7 @@ onUnmounted(() => {
 }
 
 .end-more:hover {
-  color: #1890ff;
+  color: var(--theme-blue, #1890ff);
 }
 
 .right-panel {
@@ -500,7 +508,7 @@ onUnmounted(() => {
   box-shadow: none;
 }
 
-.detail-card :deep(.ant-card-head) { min-height: 84px; padding: 0 16px 0 2px; border-bottom: 1px solid #dfe6ef; }
+.detail-card :deep(.ant-card-head) { min-height: 84px; padding: 0 16px 0 2px; border-bottom: 1px solid var(--theme-line, #dfe6ef); }
 .detail-card :deep(.ant-card-head-title) { padding: 18px 0; overflow: visible; white-space: normal; }
 .detail-card :deep(.ant-card-extra) { display: flex; align-items: center; padding: 0 0 0 20px; }
 
@@ -511,10 +519,10 @@ onUnmounted(() => {
 }
 
 .review-brief-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
-.review-kicker { margin: 0 0 5px; color: #72809a; font-size: 10px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
-.review-brief-heading h1 { margin: 0; color: #1a2a43; font-size: 23px; line-height: 1.3; letter-spacing: -.03em; }
-.review-brief-heading time { color: #8491a5; font-size: 12px; white-space: nowrap; }
-.review-refresh-button { color: #5a7198; }
+.review-kicker { margin: 0 0 5px; color: var(--theme-muted, #72809a); font-size: 10px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+.review-brief-heading h1 { margin: 0; color: var(--theme-text, #1a2a43); font-size: 23px; line-height: 1.3; letter-spacing: -.03em; }
+.review-brief-heading time { color: var(--theme-muted, #8491a5); font-size: 12px; white-space: nowrap; }
+.review-refresh-button { color: var(--theme-muted, #5a7198); }
 
 .review-meta {
   display: flex;
@@ -525,22 +533,22 @@ onUnmounted(() => {
   font-size: 12px;
 }
 
-.review-meta-item { display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px; color: #60718a; background: #eef3f9; border-radius: 999px; }
+.review-meta-item { display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px; color: var(--theme-muted, #60718a); background: var(--theme-raised, #eef3f9); border-radius: 999px; }
 .review-meta-item .status-dot { margin-right: 7px; }
 .review-meta-item :deep(.ant-tag) { margin: 0; border: 0; border-radius: 999px; }
 
 .core-summary {
   margin: 0 0 28px;
   padding: 24px 26px;
-  color: #e8effa;
-  background: radial-gradient(circle at 88% 0%, #3c5787 0, transparent 34%), #1b2b45;
+  color: var(--theme-text, #e8effa);
+  background: radial-gradient(circle at 88% 0%, #3c5787 0, transparent 34%), var(--theme-raised, #1b2b45);
   border: 0;
   border-radius: 16px;
 }
 
 .core-summary-title {
   margin-bottom: 10px;
-  color: #9eb7e3;
+  color: var(--theme-blue, #9eb7e3);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: .12em;
@@ -550,41 +558,41 @@ onUnmounted(() => {
 .core-summary-content {
   font-size: 14px;
   line-height: 1.85;
-  color: #edf3fc;
+  color: var(--theme-text, #edf3fc);
   white-space: pre-wrap;
 }
 
-.core-summary :deep(.core-summary-content.markdown-content) { padding: 0; color: #edf3fc; background: transparent; border-radius: 0; }
-.core-summary :deep(.core-summary-content.markdown-content p) { margin: 0 0 10px; color: #edf3fc; }
+.core-summary :deep(.core-summary-content.markdown-content) { padding: 0; color: var(--theme-text, #edf3fc); background: transparent; border-radius: 0; }
+.core-summary :deep(.core-summary-content.markdown-content p) { margin: 0 0 10px; color: var(--theme-text, #edf3fc); }
 .core-summary :deep(.core-summary-content.markdown-content p:last-child) { margin-bottom: 0; }
 .core-summary :deep(.core-summary-content.markdown-content h1),
 .core-summary :deep(.core-summary-content.markdown-content h2),
 .core-summary :deep(.core-summary-content.markdown-content h3),
 .core-summary :deep(.core-summary-content.markdown-content h4),
-.core-summary :deep(.core-summary-content.markdown-content strong) { color: #ffffff; }
+.core-summary :deep(.core-summary-content.markdown-content strong) { color: var(--theme-text, #ffffff); }
 .core-summary :deep(.core-summary-content.markdown-content li),
-.core-summary :deep(.core-summary-content.markdown-content em) { color: #d9e5f7; }
+.core-summary :deep(.core-summary-content.markdown-content em) { color: var(--theme-text, #d9e5f7); }
 
 .review-error {
   padding: 12px;
-  background: #fff2f0;
-  border: 1px solid #ffccc7;
+  background: var(--theme-raised, #fff2f0);
+  border: 1px solid var(--theme-line, #ffccc7);
   border-radius: 4px;
-  color: #cf1322;
+  color: var(--theme-red, #cf1322);
   margin-bottom: 16px;
 }
 
 .review-loading {
   text-align: center;
   padding: 60px 0;
-  color: #999;
+  color: var(--theme-muted, #999);
   font-size: 14px;
 }
 
 .empty-detail {
   text-align: center;
   padding: 120px 0;
-  color: #bbb;
+  color: var(--theme-muted, #bbb);
 }
 
 .empty-detail p {
@@ -596,7 +604,7 @@ onUnmounted(() => {
   padding: 6px 4px 32px;
   line-height: 1.9;
   font-size: 14px;
-  color: #38475e;
+  color: var(--theme-text, #38475e);
 }
 
 .review-detail :deep(h1),
@@ -604,7 +612,7 @@ onUnmounted(() => {
 .review-detail :deep(h3) {
   margin-top: 28px;
   margin-bottom: 12px;
-  color: #243652;
+  color: var(--theme-text, #243652);
 }
 
 .review-detail :deep(h1:first-child), .review-detail :deep(h2:first-child), .review-detail :deep(h3:first-child) { margin-top: 0; }
@@ -621,25 +629,25 @@ onUnmounted(() => {
 
 .review-detail :deep(th),
 .review-detail :deep(td) {
-  border: 1px solid #e8e8e8;
+  border: 1px solid var(--theme-line, #e8e8e8);
   padding: 6px 12px;
   text-align: left;
 }
 
 .review-detail :deep(th) {
-  background: #eef3f9;
+  background: var(--theme-raised, #eef3f9);
   font-weight: bold;
 }
 
 .review-detail :deep(code) {
-  background: #f5f5f5;
+  background: var(--theme-raised, #f5f5f5);
   padding: 2px 6px;
   border-radius: 3px;
   font-size: 13px;
 }
 
 .review-detail :deep(pre) {
-  background: #f5f5f5;
+  background: var(--theme-raised, #f5f5f5);
   padding: 12px;
   border-radius: 4px;
   overflow-x: auto;
@@ -661,15 +669,15 @@ onUnmounted(() => {
 }
 
 /* 市场日评：左侧作为时间线导航，右侧专注阅读当天的研究结论。 */
-.market-review-page { padding: 24px 28px; background: radial-gradient(circle at 92% 0%, #edf3ff 0, transparent 31%), #f7f9fc; }.market-review-layout { grid-template-columns: 350px minmax(0, 1fr); gap: 24px; }.records-card { overflow: hidden; color: #dce7f8; background: radial-gradient(circle at 100% 0%, #38547f 0, transparent 35%), #18263d; border-color: #2d4261; border-radius: 16px; box-shadow: 0 16px 34px rgba(24, 38, 61, .16); }.records-card :deep(.ant-card-head) { border-bottom-color: rgba(194, 214, 242, .16); }.records-header { color: #f2f6fd; }.records-card .review-name { color: #f1f5fc; font-size: 14px; }.records-card .time-info, .records-card .end-hint, .records-card .empty-tip, .records-card .empty-hint { color: #a9bbd5; }.records-list :deep(.ant-list-item:hover) { background: rgba(255, 255, 255, .07); }.records-list .active { background: rgba(130, 167, 227, .24); box-shadow: inset 2px 0 #a9c7ff; }.records-list .active .review-name { color: #ffffff !important; }.records-list .active .time-info { color: #d7e6ff !important; }.records-list :deep(.ant-list-item) { margin: 3px 9px; }.detail-card { padding: 0 24px; background: rgba(255, 255, 255, .94); border: 1px solid #e1e8f1; border-radius: 16px; box-shadow: 0 12px 30px rgba(34, 51, 79, .06); }.detail-card :deep(.ant-card-head) { border-bottom-color: #d7e1ed; }.detail-card :deep(.ant-card-body) { padding-right: 4px; padding-left: 4px; }.review-detail { max-width: 980px; padding-right: 12px; padding-left: 12px; }.review-detail :deep(h1), .review-detail :deep(h2), .review-detail :deep(h3) { color: #203653; }.review-detail :deep(h2) { padding-top: 14px; border-top: 1px solid #e5ebf2; }
-.records-list :deep(.ant-list-item) { padding: 8px 7px; margin: 2px 6px; cursor: pointer; }.records-list .active .review-name { color: #ffffff !important; }.records-list .active .time-info { color: #d7e6ff !important; }
+.market-review-page { padding: 24px 28px; background: radial-gradient(circle at 92% 0%, var(--theme-raised, #edf3ff) 0, transparent 31%), var(--theme-raised, #f7f9fc); }.market-review-layout { grid-template-columns: 350px minmax(0, 1fr); gap: 24px; }.records-card { overflow: hidden; color: var(--theme-text, #dce7f8); background: radial-gradient(circle at 100% 0%, #38547f 0, transparent 35%), var(--theme-raised, #18263d); border-color: var(--theme-line, #2d4261); border-radius: 16px; box-shadow: 0 16px 34px rgba(24, 38, 61, .16); }.records-card :deep(.ant-card-head) { border-bottom-color: rgba(194, 214, 242, .16); }.records-header { color: var(--theme-text, #f2f6fd); }.records-card .review-name { color: var(--theme-text, #f1f5fc); font-size: 14px; }.records-card .time-info, .records-card .end-hint, .records-card .empty-tip, .records-card .empty-hint { color: var(--theme-muted, #a9bbd5); }.records-list :deep(.ant-list-item:hover) { background: rgba(255, 255, 255, .07); }.records-list .active { background: rgba(130, 167, 227, .24); box-shadow: inset 2px 0 #a9c7ff; }.records-list .active .review-name { color: var(--theme-text, #ffffff) !important; }.records-list .active .time-info { color: var(--theme-text, #d7e6ff) !important; }.records-list :deep(.ant-list-item) { margin: 3px 9px; }.detail-card { padding: 0 24px; background: var(--theme-surface, rgba(255, 255, 255, .94)); border: 1px solid var(--theme-line, #e1e8f1); border-radius: 16px; box-shadow: 0 12px 30px rgba(34, 51, 79, .06); }.detail-card :deep(.ant-card-head) { border-bottom-color: var(--theme-line, #d7e1ed); }.detail-card :deep(.ant-card-body) { padding-right: 4px; padding-left: 4px; }.review-detail { max-width: 980px; padding-right: 12px; padding-left: 12px; }.review-detail :deep(h1), .review-detail :deep(h2), .review-detail :deep(h3) { color: var(--theme-text, #203653); }.review-detail :deep(h2) { padding-top: 14px; border-top: 1px solid var(--theme-line, #e5ebf2); }
+.records-list :deep(.ant-list-item) { padding: 8px 7px; margin: 2px 6px; cursor: pointer; }.records-list .active .review-name { color: var(--theme-text, #ffffff) !important; }.records-list .active .time-info { color: var(--theme-text, #d7e6ff) !important; }
 
 /* 复盘页以日期导航为辅，正文保留舒展的阅读宽度。 */
 @media (min-width: 1200px) {
-  .market-review-layout { grid-template-columns: 320px minmax(0, 1fr); gap: 28px; }
+  .market-review-layout { grid-template-columns: 350px minmax(0, 1fr); gap: 28px; }
   .detail-card { max-width: 1180px; }
 }
 
 /* 默认浅色：复盘日期导航退到次级层，阅读内容保持主视觉。 */
-.records-card { color: #263957; background: #fff; border-color: #dfe7f0; box-shadow: 0 10px 26px rgba(34, 51, 79, .05); }.records-card :deep(.ant-card-head) { border-bottom-color: #e6ecf3; }.records-header, .records-card .review-name { color: #263957; }.records-card .time-info, .records-card .end-hint, .records-card .empty-tip, .records-card .empty-hint { color: #8190a4; }.records-list :deep(.ant-list-item:hover) { background: #f4f7fb; }.records-list .active { background: #edf3ff; box-shadow: inset 2px 0 #5878c2; }.records-list .active .review-name { color: #263957 !important; }.records-list .active .time-info { color: #5b7193 !important; }
+.records-card { color: var(--theme-text, #263957); background: var(--theme-surface, #fff); border-color: var(--theme-line, #dfe7f0); box-shadow: 0 10px 26px rgba(34, 51, 79, .05); }.records-card :deep(.ant-card-head) { border-bottom-color: var(--theme-line, #e6ecf3); }.records-header, .records-card .review-name { color: var(--theme-text, #263957); }.records-card .time-info, .records-card .end-hint, .records-card .empty-tip, .records-card .empty-hint { color: var(--theme-muted, #8190a4); }.records-list :deep(.ant-list-item:hover) { background: var(--theme-raised, #f4f7fb); }.records-list .active { background: var(--theme-raised, #edf3ff); box-shadow: inset 2px 0 #5878c2; }.records-list .active .review-name { color: var(--theme-text, #263957) !important; }.records-list .active .time-info { color: var(--theme-muted, #5b7193) !important; }
 </style>

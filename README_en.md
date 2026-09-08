@@ -25,7 +25,7 @@ Metrix = Metric + Matrix — an asset evaluation tool from the perspective of qu
 | AI | LangChain4j 0.36.2 (OpenAI / Ollama)                         |
 | Auth | Sa-Token 1.45.0 (JWT, Annotation-based Auth)                 |
 | Frontend | Vue 3, Ant Design Vue, Vite                                  |
-| Data Sources | TickFlow (market data), Bocha (news), AKshare (fundamentals) |
+| Data Sources | THS Financial Data API (market data), Bocha (news), AKshare (fundamentals) |
 | Utilities | Hutool 5.8.13, Lombok                                        |
 
 ## Features
@@ -33,9 +33,9 @@ Metrix = Metric + Matrix — an asset evaluation tool from the perspective of qu
 - **AI Analysis** — Multi-dimensional stock analysis powered by LLMs (technical analysis, capital flow, news sentiment)
 - **AI Chat** — Multi-turn conversational analysis with real-time tracking of 8-step processing (timing & status), Markdown streaming rendering
 - **Theme Switching** — 5 built-in color themes (Sky Blue / Emerald Green / Twilight Purple / Sunset Orange / Aurora Cyan), globally applied via Ant Design Vue Design Tokens
-- **Real-time Market Data** — Real-time quotes, depth data, and K-line data via TickFlow
+- **Real-time Market Data** — Basic quotes and forward-adjusted daily bars via the THS Financial Data API; MACD is calculated locally
 - **News Aggregation** — Stock-related news via Bocha API with auto-summarization
-- **Chip Distribution** — Python-based shareholding cost distribution analysis
+- **Chip Distribution** — Latest trading-day chip metrics via AKShare (forward-adjusted), including profit ratio, cost ranges, and concentration; no market-data API key required
 - **Market Review** — AI-powered daily review of major A-share indices with market summary and trend analysis
 - **Portfolio Management** — Multi-account holding management with batch entry, one-click evaluation, and real-time P&L monitoring
 - **Feishu Notifications** — Push analysis results via Feishu Webhook
@@ -57,9 +57,8 @@ Metrix = Metric + Matrix — an asset evaluation tool from the perspective of qu
 ### Local Development
 
 ```bash
-# 0. Install AKShare, Tickflow, and Baostock
+# 0. Install AKShare and Baostock
 pip install akshare --upgrade
-pip install "tickflow[all]" --upgrade
 pip install baostock --upgrade
 # 1. Configure database
 cp .env.example .env
@@ -185,9 +184,9 @@ Manage AI models through the frontend config page:
 
 ### Data Source Configuration
 
-- **TickFlow**: Real-time market data, requires API Key
+- **THS Financial Data API (FUYAO)**: Basic quotes, forward-adjusted daily bars, and current index turnover. Configure `https://fuyao.aicubes.cn` and a new API key in Market Data settings; old provider keys cannot be reused. Turnover rate and volume ratio are unavailable. Historical market turnover still uses Baostock. Docs: https://fuyao.aicubes.cn/docs/
 - **Bocha**: News data, requires API Key
-- **Tushare**: Stock fundamentals, import via CSV
+- **Instruments**: Configure and enable the THS Financial Data API, then click Sync on the instruments page. A-share names and codes are inserted or updated by full ticker code; unchanged records and existing supplemental fields are preserved. Missing configuration opens a link to settings.
 
 > **Note**: When using AKShare on Windows, if you encounter network proxy errors, the system will automatically clear proxy environment variables (`HTTP_PROXY`/`HTTPS_PROXY`) before launching the Python subprocess to ensure direct internet access.
 
@@ -218,6 +217,7 @@ All APIs are prefixed with `/api`. Some endpoints require authentication (Sa-Tok
 | `GET  /api/portfolio/holdings` | Holdings list |
 | `POST /api/portfolio/holdings/batch` | Batch add holdings |
 | `GET  /api/stock-basic/page` | Stock data (paginated) |
+| `POST /api/stock-basic/sync` | Incrementally sync A-share instruments using the configured financial data API |
 | `GET  /api/stocks/search` | Stock search |
 
 ### Admin APIs
@@ -244,3 +244,5 @@ All APIs are prefixed with `/api`. Some endpoints require authentication (Sa-Tok
 ## License
 
 MIT License | Copyright © 2026 bin.li
+
+Permission metadata migration: `backend/.doc/db/V20260907_01__stock_basic_sync.sql`. Existing API IDs and role assignments are retained. The sync endpoint accepts the former instrument-import permission during migration; CSV import has been removed.

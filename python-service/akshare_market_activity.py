@@ -1,116 +1,85 @@
 #!/usr/bin/env python3
-"""获取AKShare赚钱效应分析数据，输出JSON到stdout。
-
-由Spring Boot通过子进程调用。
-
-Usage:
-    python akshare_market_activity.py
-"""
+"""新浪沪深 A 股涨跌统计 + 东方财富完整涨跌停池，超时由后端管理。"""
+import io
 import json
-import os
-import sys
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
-from functools import wraps
+from contextlib import redirect_stdout, redirect_stderr
+from datetime import datetime, time
+from zoneinfo import ZoneInfo
 
-_script_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path = [p for p in sys.path if p != _script_dir]
+import pandas as pd
 
-TIMEOUT_SECONDS = 60
-
-
-class ScriptTimeoutError(Exception):
-    pass
+MARKET_ZONE = ZoneInfo("Asia/Shanghai")
+STOCK_CODE_PATTERN = r"(?:0|3|6)\d{5}"
 
 
-def timeout_handler(signum, frame):
-    raise ScriptTimeoutError(f"请求超时（{TIMEOUT_SECONDS}秒）")
+def normalizeCodes(series):
+    """统一新浪带交易所前缀和东财纯数字股票代码。"""
+    return series.astype(str).str.lower().str.replace(r"^(sh|sz|bj)", "", regex=True)
 
 
-def with_timeout(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        if sys.platform == "win32":
-            executor = ThreadPoolExecutor(max_workers=1)
-            future = executor.submit(func, *args, **kwargs)
-            try:
-                return future.result(timeout=TIMEOUT_SECONDS)
-            except FuturesTimeoutError:
-                raise ScriptTimeoutError(f"请求超时（{TIMEOUT_SECONDS}秒）")
-            finally:
-                executor.shutdown(wait=False)
-        else:
-            import signal
-            signal.signal(signal.SIGALRM, timeout_handler)
-            signal.alarm(TIMEOUT_SECONDS)
-            try:
-                return func(*args, **kwargs)
-            finally:
-                signal.alarm(0)
-
-    return wrapper
+def countBreadth(frame):
+    """统计有有效成交报价的沪深 A 股，零成交记录不作为平盘。"""
+    if frame is None or frame.empty:
+        raise ValueError("新浪全市场行情为空")
+    quotes = frame.copy()
+    quotes["代码"] = normalizeCodes(quotes["代码"])
+    quotes = quotes[quotes["代码"].str.fullmatch(STOCK_CODE_PATTERN)].drop_duplicates("代码")
+    numeric = quotes[["最新价", "昨收", "成交量", "涨跌额"]].apply(pd.to_numeric, errors="coerce")
+    valid = numeric.notna().all(axis=1) & ~numeric.isin([float("inf"), float("-inf")]).any(axis=1)
+    trading = numeric[valid & (numeric["最新价"] > 0) & (numeric["昨收"] > 0) & (numeric["成交量"] > 0)]
+    if trading.empty:
+        raise ValueError("新浪未返回有效交易报价")
+    up = int((trading["涨跌额"] > 0).sum())
+    down = int((trading["涨跌额"] < 0).sum())
+    flat = int((trading["涨跌额"] == 0).sum())
+    total = len(trading)
+    return {"up": up, "down": down, "flat": flat, "sampleCount": total,
+            "excludedCount": len(quotes) - total,
+            "upRatio": round(up / total * 100, 2),
+            "downRatio": round(down / total * 100, 2)}
 
 
-@with_timeout
+def countPool(frame):
+    """对完整股池计数，不使用首页截取的前 20 条列表。"""
+    if frame is None:
+        raise ValueError("东方财富股池响应缺失")
+    if frame.empty:
+        return 0
+    codes = normalizeCodes(frame["代码"])
+    return int(codes[codes.str.fullmatch(STOCK_CODE_PATTERN)].nunique())
+
+
+def latestTradeDate(calendar, now):
+    """非交易日和开盘前取上一已开始的交易日。"""
+    dates = pd.to_datetime(calendar["trade_date"], errors="raise").dt.date
+    eligible = dates[(dates < now.date()) | ((dates == now.date()) & (now.time() >= time(9, 30)))]
+    if eligible.empty:
+        raise ValueError("交易日历无有效日期")
+    return max(eligible).strftime("%Y%m%d")
+
+
+def fetchActivity(ak, now):
+    """三路数据全部成功才返回快照，失败交由后端保留上次成功结果。"""
+    tradeDate = latestTradeDate(ak.tool_trade_date_hist_sina(), now)
+    result = countBreadth(ak.stock_zh_a_spot())
+    result.update({"limitUp": countPool(ak.stock_zt_pool_em(date=tradeDate)),
+                   "limitDown": countPool(ak.stock_zt_pool_dtgc_em(date=tradeDate)),
+                   "statDate": tradeDate, "fetchedAt": now.isoformat(), "stale": False,
+                   "source": "sina+eastmoney", "scope": "SH_SZ_A"})
+    return result
+
+
 def main():
-    os.environ["TQDM_DISABLE"] = "1"
     try:
-        import akshare as ak
-    except ImportError:
-        print(json.dumps({"status": "error", "message": "AKShare 未安装"}, ensure_ascii=False), flush=True)
-        return
-
-    try:
-        df = ak.stock_market_activity_legu()
-        if df.empty:
-            print(json.dumps({"status": "error", "message": "未获取到数据"}, ensure_ascii=False), flush=True)
-            return
-
-        data = {}
-        for _, row in df.iterrows():
-            item = row["item"]
-            value = row["value"]
-            if item == "活跃度":
-                data["activity"] = str(value)
-            elif item == "统计日期":
-                data["statDate"] = str(value)
-            elif item == "真实涨停":
-                data["realLimitUp"] = int(value)
-            elif item == "真实跌停":
-                data["realLimitDown"] = int(value)
-            elif item == "st st*涨停":
-                data["stLimitUp"] = int(value)
-            elif item == "st st*跌停":
-                data["stLimitDown"] = int(value)
-            elif item == "上涨":
-                data["up"] = int(value)
-            elif item == "下跌":
-                data["down"] = int(value)
-            elif item == "涨停":
-                data["limitUp"] = int(value)
-            elif item == "跌停":
-                data["limitDown"] = int(value)
-            elif item == "平盘":
-                data["flat"] = int(value)
-            elif item == "停牌":
-                data["suspended"] = int(value)
-
-        total = data.get("up", 0) + data.get("down", 0) + data.get("flat", 0)
-        upRatio = round(data.get("up", 0) / total * 100, 2) if total > 0 else 0
-        data["upRatio"] = upRatio
-        data["downRatio"] = round(100 - upRatio, 2)
-
-        print(json.dumps({"status": "success", "data": data}, ensure_ascii=False), flush=True)
-
-    except Exception as e:
-        print(json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False), flush=True)
+        # 库的进度输出不能污染 stdout JSON；后端会合并进程输出流。
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            import akshare as ak
+            data = fetchActivity(ak, datetime.now(MARKET_ZONE))
+        result = {"status": "success", "data": data}
+    except Exception as error:
+        result = {"status": "error", "message": f"市场涨跌统计获取失败: {error}"}
+    print(json.dumps(result, ensure_ascii=False, allow_nan=False), flush=True)
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except ScriptTimeoutError as e:
-        print(json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False), flush=True)
-        os._exit(1)
-    except Exception as e:
-        print(json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False), flush=True)
-        os._exit(1)
+    main()

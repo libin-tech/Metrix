@@ -32,3 +32,4 @@ backend/target/*
 .idea
 *.iml
 __pycache__/
+.DS_Store

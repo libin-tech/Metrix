@@ -7,7 +7,6 @@ import com.bintech.metrix.constants.ApiConstants;
 import com.bintech.metrix.constants.CacheConstants;
 import com.bintech.metrix.constants.SystemConstants;
 import com.bintech.metrix.config.MarketTurnoverProperties;
-import com.bintech.metrix.repository.entity.MarketDataConfig;
 import com.bintech.metrix.service.MarketIndexService;
 import com.bintech.metrix.service.MarketDataService;
 import com.bintech.metrix.service.RedisCacheService;
@@ -74,7 +73,7 @@ public class MarketIndexServiceImpl implements MarketIndexService {
         try {
             Map<String, Object> latestTurnover = fetchCurrentMarketTurnover(userId);
             if (!hasValidLatestTurnover(latestTurnover)) {
-                throw new RuntimeException("TickFlow市场成交额上游返回数据无效");
+                throw new RuntimeException("同花顺金融数据 API市场成交额上游返回数据无效");
             }
 
             Map<String, Object> turnover = cachedTurnover == null
@@ -106,36 +105,13 @@ public class MarketIndexServiceImpl implements MarketIndexService {
     }
 
     /**
-     * 通过 TickFlow 获取当前交易日的盘中成交额。
+     * 通过 同花顺金融数据 API 获取当前交易日的盘中成交额。
      *
      * @param userId 当前登录用户 ID
      * @return 当前交易日成交额
      */
     private Map<String, Object> fetchCurrentMarketTurnover(Long userId) {
-        MarketDataConfig config = marketDataService.getActiveTickFlowConfig(userId);
-        String apiKey = config.getApiKey();
-        if (apiKey == null || apiKey.isBlank()) {
-            throw new RuntimeException("TickFlow市场成交额 API Key 未配置");
-        }
-        List<String> command = new ArrayList<>();
-        command.add(pythonExecutable);
-        command.add(marketTurnoverProperties.getTickflowKlinesScriptPath());
-        command.add("--api-key");
-        command.add(apiKey);
-        command.add("--symbols");
-        command.add(SystemConstants.MARKET_TURNOVER_SHANGHAI_SYMBOL + ","
-                + SystemConstants.MARKET_TURNOVER_SHENZHEN_SYMBOL);
-        command.add("--period");
-        command.add(SystemConstants.KLINE_PERIOD_DAY);
-        command.add("--count");
-        command.add(String.valueOf(SystemConstants.MARKET_TURNOVER_LATEST_COUNT));
-        command.add("--market-turnover");
-
-        log.info("执行TickFlow市场成交额脚本");
-        int timeoutSeconds = config.getTimeout() == null
-                ? marketTurnoverProperties.getTimeoutSeconds()
-                : config.getTimeout();
-        return runScript(command, "TickFlowMarketTurnover", timeoutSeconds);
+        return marketDataService.fetchMarketTurnoverData(userId);
     }
 
     /**

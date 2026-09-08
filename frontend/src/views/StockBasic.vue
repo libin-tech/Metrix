@@ -9,7 +9,7 @@
           style="width: 360px"
           @search="handleSearch"
         />
-        <a-button type="primary" @click="showImport = true">{{ $t('stockBasic.importCsv') }}</a-button>
+        <a-button type="primary" :loading="syncing" @click="syncStocks"><SyncOutlined />{{ $t('stockBasic.sync') }}</a-button>
       </div>
     </div>
 
@@ -36,30 +36,19 @@
       </template>
     </a-table>
 
-    <a-modal :title="$t('stockBasic.importCsv')" v-model:visible="showImport" @ok="importCsv" @cancel="showImport = false" :confirmLoading="importing">
-      <a-upload-dragger
-        :beforeUpload="file => { importFile = file; return false }"
-        accept=".csv"
-        :maxCount="1"
-      >
-        <p class="ant-upload-drag-icon">
-          <InboxOutlined />
-        </p>
-        <p class="ant-upload-text">{{ $t('stockBasic.uploadHint') }}</p>
-        <p class="ant-upload-hint">{{ $t('stockBasic.uploadDesc') }}</p>
-      </a-upload-dragger>
-    </a-modal>
   </div>
 </template>
 
 <script setup>
 import {computed, onMounted, ref} from 'vue'
 import {useI18n} from 'vue-i18n'
-import {InboxOutlined} from '@ant-design/icons-vue'
-import {message} from 'ant-design-vue'
-import axios from 'axios'
+import {SyncOutlined} from '@ant-design/icons-vue'
+import {message, Modal} from 'ant-design-vue'
+import {useRouter} from 'vue-router'
+import {getStockBasicPage, syncStockBasic} from '../api'
 
 const {t} = useI18n()
+const router = useRouter()
 
 const records = ref([])
 const total = ref(0)
@@ -67,9 +56,7 @@ const page = ref(1)
 const size = ref(20)
 const keyword = ref('')
 const loading = ref(false)
-const showImport = ref(false)
-const importFile = ref(null)
-const importing = ref(false)
+const syncing = ref(false)
 
 const columns = computed(() => [
   { title: t('stockBasic.id'), dataIndex: 'id', key: 'id', width: 70 },
@@ -88,16 +75,11 @@ const columns = computed(() => [
 const loadData = async () => {
   loading.value = true
   try {
-    const token = localStorage.getItem('token')
-    const res = await axios.get('/api/stock-basic/page', {
-      params: { keyword: keyword.value, page: page.value, size: size.value },
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    const body = res.data
+    const body = await getStockBasicPage(keyword.value, page.value, size.value)
     records.value = body.data.records
     total.value = body.data.total
   } catch (e) {
-    message.error(t('stockBasic.loadFailed'))
+    if (!e.notified) message.error(t('stockBasic.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -108,30 +90,27 @@ const handleSearch = () => {
   loadData()
 }
 
-const importCsv = async () => {
-  if (!importFile.value) {
-    message.warning(t('stockBasic.selectFile'))
-    return
-  }
-  importing.value = true
+const syncStocks = async () => {
+  if (syncing.value) return
+  syncing.value = true
   try {
-    const token = localStorage.getItem('token')
-    const formData = new FormData()
-    formData.append('file', importFile.value)
-    const res = await axios.post('/api/stock-basic/import', formData, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'multipart/form-data'
-      }
-    })
-    message.success(res.data.data)
-    showImport.value = false
-    importFile.value = null
-    loadData()
-  } catch (e) {
-    message.error(e.response?.data?.message || t('stockBasic.importFailed'))
+    const response = await syncStockBasic()
+    if (response.data.configurationRequired) {
+      Modal.confirm({
+        title: t('stockBasic.configRequired'),
+        content: t('stockBasic.configRequiredHint'),
+        okText: t('stockBasic.goConfigure'),
+        cancelText: t('common.cancel'),
+        onOk: () => router.push('/settings/market-data')
+      })
+      return
+    }
+    message.success(t('stockBasic.syncSuccess', response.data))
+    await loadData()
+  } catch (error) {
+    if (!error.notified) message.error(error.message || t('stockBasic.syncFailed'))
   } finally {
-    importing.value = false
+    syncing.value = false
   }
 }
 
@@ -154,7 +133,7 @@ onMounted(() => {
 
 .stock-basic-header h3 {
   margin: 0;
-  color: #333;
+  color: var(--theme-text, #333);
 }
 
 .stock-basic-header .header-actions {

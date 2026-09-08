@@ -3,8 +3,10 @@ package com.bintech.metrix.service.impl;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.bintech.metrix.constants.ApiConstants;
+import com.bintech.metrix.constants.CacheConstants;
 import com.bintech.metrix.constants.SystemConstants;
 import com.bintech.metrix.service.MarketActivityService;
+import com.bintech.metrix.service.RedisCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,6 +18,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -24,6 +27,10 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class MarketActivityServiceImpl implements MarketActivityService {
 
+    private final RedisCacheService redisCacheService;
+    private long lastAttemptNanos;
+    private boolean lastRefreshFailed;
+
     @Value("${python.executable:python}")
     private String pythonExecutable;
 
@@ -31,7 +38,45 @@ public class MarketActivityServiceImpl implements MarketActivityService {
     private String akshareScriptPath;
 
     @Override
-    public Map<String, Object> getMarketActivity() {
+    public synchronized Map<String, Object> getMarketActivity() {
+        Map<String, Object> cached = readCachedActivity();
+        long now = System.nanoTime();
+        if (lastAttemptNanos != 0 && now - lastAttemptNanos < TimeUnit.SECONDS.toNanos(
+                CacheConstants.MARKET_ACTIVITY_REFRESH_SECONDS)) {
+            return cachedResponse(cached);
+        }
+        lastAttemptNanos = now;
+        try {
+            Map<String, Object> response = fetchMarketActivity();
+            JSONObject data = JSONUtil.parseObj(response).getJSONObject(ApiConstants.KEY_DATA);
+            redisCacheService.setJson(CacheConstants.MARKET_DASHBOARD_ACTIVITY_LAST_SUCCESS_KEY, data);
+            lastRefreshFailed = false;
+            return response;
+        } catch (RuntimeException error) {
+            lastRefreshFailed = true;
+            log.warn("刷新市场涨跌统计失败，保留最近成功快照: {}", error.getMessage());
+            return cachedResponse(cached);
+        }
+    }
+
+    /** 缓存保存原始采集时间，失败不能写入零值或更新成功时间。 */
+    private Map<String, Object> readCachedActivity() {
+        String value = redisCacheService.get(CacheConstants.MARKET_DASHBOARD_ACTIVITY_LAST_SUCCESS_KEY);
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return new HashMap<>(JSONUtil.parseObj(value));
+    }
+
+    private Map<String, Object> cachedResponse(Map<String, Object> cached) {
+        if (cached == null) {
+            throw new RuntimeException("市场涨跌统计暂不可用，等待下一次刷新");
+        }
+        cached.put("stale", lastRefreshFailed);
+        return Map.of(ApiConstants.KEY_STATUS, ApiConstants.STATUS_SUCCESS, ApiConstants.KEY_DATA, cached);
+    }
+
+    private Map<String, Object> fetchMarketActivity() {
         String scriptPath = akshareScriptPath.replace("akshare.py", "akshare_market_activity.py");
 
         List<String> command = new ArrayList<>();

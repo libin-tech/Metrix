@@ -15,7 +15,10 @@ public final class CacheConstants {
     public static final String AUTH_EMAIL_CODE_KEY_PREFIX = "metrix:auth:email-code:";
     public static final String AUTH_EMAIL_SEND_COOLDOWN_KEY_PREFIX = "metrix:auth:email-cooldown:";
 
+    public static final String CHIP_LAST_SUCCESS_KEY_PREFIX = "metrix:chip:akshare:qfq:last-success:";
+
     public static final long PORTFOLIO_PRICE_REFRESH_TTL_SECONDS = 300L;
+    public static final long MARKET_ACTIVITY_REFRESH_SECONDS = 120L;
     public static final long AUTH_CAPTCHA_TTL_SECONDS = 300L;
     public static final long AUTH_EMAIL_CODE_TTL_SECONDS = 300L;
     public static final long AUTH_EMAIL_SEND_COOLDOWN_SECONDS = 60L;

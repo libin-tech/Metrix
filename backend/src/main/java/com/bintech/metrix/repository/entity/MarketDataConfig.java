@@ -18,7 +18,7 @@ import lombok.NoArgsConstructor;
 public class MarketDataConfig extends BaseEntity {
 
     /**
-     * 源名称（TICKFLOW）
+     * 源名称（FUYAO）
      */
     @TableField(value = "source_name")
     private String sourceName;

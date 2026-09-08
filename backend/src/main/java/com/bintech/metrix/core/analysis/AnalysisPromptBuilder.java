@@ -135,11 +135,18 @@ public class AnalysisPromptBuilder {
         if (chipData == null) return;
         try {
             JSONObject cd = new JSONObject(chipData);
-            if (!ApiConstants.STATUS_SUCCESS.equals(cd.get(ApiConstants.KEY_STATUS))) return;
+            if (!ApiConstants.STATUS_SUCCESS.equals(cd.get(ApiConstants.KEY_STATUS))) {
+                prompt.append("【筹码分布】上游不可用，本次缺失，禁止推测筹码指标。\n");
+                return;
+            }
             JSONObject data = cd.getJSONObject("data");
             if (data == null) return;
 
             prompt.append("【筹码分布】\n");
+            prompt.append("数据日期: ").append(data.getStr("date")).append("\n");
+            if (data.getBool("stale", false)) {
+                prompt.append("上游不可用，以下为历史缓存，不代表当前筹码。\n");
+            }
             prompt.append("获利比例: ").append(data.getBigDecimal("profit_ratio")).append("%\n");
             prompt.append("套牢比例: ").append(data.getBigDecimal("loss_ratio")).append("%\n");
             prompt.append("平均成本: ").append(data.getBigDecimal("avg_cost")).append("\n");

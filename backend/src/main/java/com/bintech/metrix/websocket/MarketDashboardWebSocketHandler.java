@@ -36,6 +36,8 @@ public class MarketDashboardWebSocketHandler extends TextWebSocketHandler {
     private final MarketInsightService marketInsightService;
     private final RedisCacheService redisCacheService;
     private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
+    private long lastOverviewAttemptMillis;
+    private long lastInsightsAttemptMillis;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
@@ -64,6 +66,7 @@ public class MarketDashboardWebSocketHandler extends TextWebSocketHandler {
         if (sessions.isEmpty()) {
             return;
         }
+        lastOverviewAttemptMillis = System.currentTimeMillis();
         Map<String, Object> overviewCommonData = fetchOverviewCommonData();
         sessions.values().forEach(session -> sendOverview(session, getUserId(session), overviewCommonData));
     }
@@ -75,6 +78,7 @@ public class MarketDashboardWebSocketHandler extends TextWebSocketHandler {
         if (sessions.isEmpty()) {
             return;
         }
+        lastInsightsAttemptMillis = System.currentTimeMillis();
         try {
             Map<String, Object> insights = extractData(marketInsightService.getMarketInsights());
             cacheData(CacheConstants.MARKET_DASHBOARD_INSIGHTS_LAST_SUCCESS_KEY, insights);
@@ -88,10 +92,17 @@ public class MarketDashboardWebSocketHandler extends TextWebSocketHandler {
     private void pushInitialSnapshot(WebSocketSession session, Long userId) {
         sendCachedOverview(session, userId);
         sendCachedInsights(session);
-        if (requiresOverviewInitialization(userId)) {
+        refreshInitialSnapshot(userId);
+    }
+
+    /** 缓存先展示；进程首次连接或超过刷新间隔时更新，避免旧缓存一直等到定时任务。 */
+    private synchronized void refreshInitialSnapshot(Long userId) {
+        long now = System.currentTimeMillis();
+        if (now - lastOverviewAttemptMillis >= SystemConstants.MARKET_TURNOVER_REFRESH_INTERVAL_MILLIS
+                || requiresOverviewInitialization(userId)) {
             refreshOverviewAndBroadcast();
         }
-        if (getCachedData(CacheConstants.MARKET_DASHBOARD_INSIGHTS_LAST_SUCCESS_KEY) == null) {
+        if (now - lastInsightsAttemptMillis >= SystemConstants.MARKET_INSIGHTS_REFRESH_INTERVAL_MILLIS) {
             refreshInsightsAndBroadcast();
         }
     }

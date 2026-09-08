@@ -216,7 +216,7 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #fff;
+  background: var(--theme-surface, #fff);
   border-radius: 12px;
   padding: 20px 24px;
   margin-bottom: 16px;
@@ -232,12 +232,12 @@ onMounted(() => {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: #1a1a2e;
+  color: var(--theme-text, #1a1a2e);
 }
 
 .page-title .anticon {
   margin-right: 8px;
-  color: #1890ff;
+  color: var(--theme-blue, #1890ff);
 }
 
 .header-actions {
@@ -253,7 +253,7 @@ onMounted(() => {
 }
 
 .table-container {
-  background: #fff;
+  background: var(--theme-surface, #fff);
   border-radius: 12px;
   padding: 16px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);

@@ -237,13 +237,13 @@ onMounted(() => {
 
 .config-header h3 {
   margin: 0;
-  color: #333;
+  color: var(--theme-text, #333);
 }
 
 .help-text {
   display: block;
   font-size: 12px;
-  color: #999;
+  color: var(--theme-muted, #999);
   margin-top: 4px;
   line-height: 1.4;
 }

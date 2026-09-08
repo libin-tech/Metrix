@@ -92,17 +92,9 @@ public class AnalysisOverviewBuilder {
             BigDecimal prevClose = quote.getBigDecimal("prev_close", BigDecimal.ZERO);
             JSONObject ext = quote.getJSONObject("ext");
 
-            BigDecimal changePercent = ext.getBigDecimal("change_pct", BigDecimal.ZERO);
-            if (changePercent.compareTo(BusinessConstants.CHANGE_PCT_THRESHOLD) < 0) {
-                changePercent = changePercent.multiply(BusinessConstants.PCT_MULTIPLIER);
-            }
-
-            BigDecimal changeAmount = ext.getBigDecimal("change_amount", BigDecimal.ZERO);
-
-            BigDecimal turnoverRate = ext.getBigDecimal("turnover_rate", BigDecimal.ZERO);
-            if (turnoverRate.compareTo(BusinessConstants.TURNOVER_RATE_THRESHOLD) < 0) {
-                turnoverRate = turnoverRate.multiply(BusinessConstants.PCT_MULTIPLIER);
-            }
+            BigDecimal changePercent = ext.getBigDecimal("change_pct");
+            BigDecimal changeAmount = ext.getBigDecimal("change_amount");
+            BigDecimal turnoverRate = ext.getBigDecimal("turnover_rate");
 
             return RealTimeMarket.builder()
                     .changePercent(changePercent)
@@ -115,8 +107,8 @@ public class AnalysisOverviewBuilder {
                     .volume(quote.getLong("volume", 0L))
                     .turnover(quote.getBigDecimal("amount", BigDecimal.ZERO))
                     .turnoverRate(turnoverRate)
-                    .amplitude(ext.getBigDecimal("amplitude", BigDecimal.ZERO))
-                    .updateTime(String.valueOf(quote.getLong("timestamp", 0L)))
+                    .amplitude(ext.getBigDecimal("amplitude"))
+                    .updateTime(quote.getStr("timestamp"))
                     .build();
         } catch (Exception e) {
             log.error("构建实时行情数据失败: {}", e.getMessage());
@@ -205,10 +197,11 @@ public class AnalysisOverviewBuilder {
             JSONObject cd = new JSONObject(chipData);
             if (!ApiConstants.STATUS_SUCCESS.equals(cd.get(ApiConstants.KEY_STATUS))) {
                 log.warn("筹码分布数据状态异常: {}", cd.get("message"));
-                builder.chipConcentration(BigDecimal.valueOf(0))
+                builder.chipConcentration(null)
                         .chipDistribution("筹码数据获取失败")
-                        .profitRatio(BigDecimal.valueOf(0))
-                        .lossRatio(BigDecimal.valueOf(0));
+                        .chipSummary(cd.getStr(ApiConstants.KEY_MESSAGE, "筹码上游不可用"))
+                        .profitRatio(null)
+                        .lossRatio(null);
                 return;
             }
             JSONObject data = cd.getJSONObject(ApiConstants.KEY_DATA);
@@ -240,6 +233,9 @@ public class AnalysisOverviewBuilder {
             String chipSummary = buildChipSummary(avgCost, cost90Low, cost90High, concentration90,
                     cost70Low, cost70High, concentration70, profitRatio, lossRatio);
 
+            if (data.getBool("stale", false)) {
+                chipSummary = "上游不可用，使用缓存（数据日期：" + data.getStr("date") + "）。" + chipSummary;
+            }
             builder.chipConcentration(concentration)
                     .chipDistribution(distributionDesc)
                     .profitRatio(profitRatio)

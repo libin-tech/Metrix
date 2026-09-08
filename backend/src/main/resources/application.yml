@@ -50,13 +50,14 @@ auth:
 
 python:
   executable: python
-  tickflow-script-path: python-service/tickflow.py
   akshare-script-path: python-service/akshare.py
 
+financial-data:
+  script-path: ${FUYAO_SCRIPT_PATH:python-service/fuyao.py}
+
 market-turnover:
-  tickflow-klines-script-path: ${TICKFLOW_KLINES_SCRIPT_PATH:python-service/tickflow_klines.py}
   baostock-market-turnover-script-path: ${BAOSTOCK_MARKET_TURNOVER_SCRIPT_PATH:python-service/baostock_market_turnover.py}
-  timeout-seconds: ${TICKFLOW_TIMEOUT_SECONDS:60}
+  timeout-seconds: ${MARKET_TURNOVER_TIMEOUT_SECONDS:60}
 
 logging:
   level:

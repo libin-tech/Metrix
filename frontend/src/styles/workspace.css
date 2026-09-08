@@ -23,7 +23,7 @@ html, body, #app { min-width: 320px; background: var(--workspace-canvas); }
 .content .app-footer { width: 100%; max-width: var(--workspace-content-width); margin-right: auto; margin-left: auto; }
 
 .sider .ant-menu-dark,
-.sider .ant-menu-dark .ant-menu-sub { background: #111d31 !important; }
+.sider .ant-menu-dark .ant-menu-sub { background: var(--theme-raised, #111d31) !important; }
 
 .sider .ant-menu-inline .ant-menu-item,
 .sider .ant-menu-inline .ant-menu-submenu-title {
@@ -42,7 +42,7 @@ html, body, #app { min-width: 320px; background: var(--workspace-canvas); }
 .sider .ant-menu-dark .ant-menu-item-selected::after { display: none; }
 .sider .ant-menu-dark .ant-menu-item:hover,
 .sider .ant-menu-dark .ant-menu-submenu-title:hover { background: rgba(255, 255, 255, .06) !important; }
-.sider .ant-menu-dark .ant-menu-item-selected { color: #dce8ff !important; }
+.sider .ant-menu-dark .ant-menu-item-selected { color: var(--theme-text, #dce8ff) !important; }
 
 .content .ant-btn-primary {
   background: var(--workspace-accent);
@@ -51,7 +51,7 @@ html, body, #app { min-width: 320px; background: var(--workspace-canvas); }
 }
 
 .content .ant-btn-primary:hover,
-.content .ant-btn-primary:focus { background: #4869b2; border-color: #4869b2; }
+.content .ant-btn-primary:focus { background: #4869b2; border-color: var(--theme-line, #4869b2); }
 
 .content .ant-btn,
 .content .ant-input,
@@ -63,14 +63,14 @@ html, body, #app { min-width: 320px; background: var(--workspace-canvas); }
 .content .ant-input-affix-wrapper,
 .content .ant-select-selector,
 .content .ant-picker {
-  border-color: #dce4ee !important;
+  border-color: var(--theme-line, #dce4ee) !important;
   box-shadow: none !important;
 }
 
 .content .ant-input:hover,
 .content .ant-input-affix-wrapper:hover,
 .content .ant-select:hover .ant-select-selector,
-.content .ant-picker:hover { border-color: #9dafce !important; }
+.content .ant-picker:hover { border-color: var(--theme-line, #9dafce) !important; }
 
 .content .ant-card {
   overflow: hidden;
@@ -84,14 +84,14 @@ html, body, #app { min-width: 320px; background: var(--workspace-canvas); }
   min-height: 58px;
   padding: 0 22px;
   color: var(--workspace-ink);
-  border-bottom-color: #edf0f5;
+  border-bottom-color: var(--theme-line, #edf0f5);
 }
 
 .content .ant-card-head-title { font-size: 15px; font-weight: 650; }
 .content .ant-card-body { padding: 22px; }
 
 .content .ant-table-wrapper .ant-table {
-  color: #354258;
+  color: var(--theme-text, #354258);
   background: transparent;
   border: 0 !important;
 }
@@ -106,17 +106,17 @@ html, body, #app { min-width: 320px; background: var(--workspace-canvas); }
   font-weight: 750;
   letter-spacing: .055em;
   text-transform: uppercase;
-  background: #f7f9fc !important;
+  background: var(--theme-raised, #f7f9fc) !important;
   border-bottom: 1px solid var(--workspace-line) !important;
 }
 
 .content .ant-table-wrapper .ant-table-tbody > tr > td {
   padding: 14px;
   background: transparent !important;
-  border-bottom-color: #edf0f5 !important;
+  border-bottom-color: var(--theme-line, #edf0f5) !important;
 }
 
-.content .ant-table-wrapper .ant-table-tbody > tr:hover > td { background: #f4f7fc !important; }
+.content .ant-table-wrapper .ant-table-tbody > tr:hover > td { background: var(--theme-raised, #f4f7fc) !important; }
 .content .ant-table-wrapper .ant-pagination { margin: 20px 0 2px; }
 .content .ant-tag { border-radius: 99px; font-size: 11px; }
 
@@ -165,7 +165,7 @@ html, body, #app { min-width: 320px; background: var(--workspace-canvas); }
 .content .account-management-page .page-title::before {
   display: block;
   margin-bottom: 7px;
-  color: #7888a1;
+  color: var(--theme-muted, #7888a1);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: .12em;
@@ -231,38 +231,38 @@ html, body, #app { min-width: 320px; background: var(--workspace-canvas); }
   box-shadow: 0 1px 2px rgba(23, 37, 61, .02);
 }
 
-.content .chat-container .session-toolbar { background: #f3f6fb; border-radius: 9px; }
+.content .chat-container .session-toolbar { background: var(--theme-raised, #f3f6fb); border-radius: 9px; }
 .content .chat-container .session-item { border-radius: 9px; }
 .content .chat-container .session-item.active { background: var(--workspace-soft-accent); border-left-color: var(--workspace-accent); }
 .content .chat-container .assistant-msg .msg-content,
 .content .chat-container .report-content,
-.content .chat-container .streaming-container { background: #f3f6fb; }
-.content .chat-container .user-msg .msg-content { background: #e8effd; }
+.content .chat-container .streaming-container { background: var(--theme-raised, #f3f6fb); }
+.content .chat-container .user-msg .msg-content { background: var(--theme-raised, #e8effd); }
 .content .chat-container .input-area { border-top-color: var(--workspace-line); border-radius: 0 0 var(--workspace-radius) var(--workspace-radius); }
 
 .content .ant-modal-content { border-radius: 16px; box-shadow: 0 20px 60px rgba(20, 35, 60, .18); }
-.content .ant-drawer-content { background: #fafbfd; }
+.content .ant-drawer-content { background: var(--theme-surface, #fafbfd); }
 
 /* Settings pages are rendered in a teleported right-side drawer, outside .content. */
-.settings-drawer .ant-drawer-content { background: #f7f9fc; }
-.settings-drawer .ant-drawer-header { background: #fff; border-bottom-color: var(--workspace-line); }
+.settings-drawer .ant-drawer-content { background: var(--theme-raised, #f7f9fc); }
+.settings-drawer .ant-drawer-header { background: var(--theme-surface, #fff); border-bottom-color: var(--workspace-line); }
 .settings-drawer .ant-drawer-body { padding: 24px; }
 .settings-drawer .ant-btn-primary { background: var(--workspace-accent); border-color: var(--workspace-accent); box-shadow: none; }
 .settings-drawer .ant-input,
 .settings-drawer .ant-input-affix-wrapper,
 .settings-drawer .ant-select-selector,
-.settings-drawer .ant-picker { border-color: #dce4ee !important; border-radius: 9px; box-shadow: none !important; }
+.settings-drawer .ant-picker { border-color: var(--theme-line, #dce4ee) !important; border-radius: 9px; box-shadow: none !important; }
 .settings-drawer .ant-table-container,
 .settings-drawer .ant-table-bordered > .ant-table-container { border: 0 !important; }
-.settings-drawer .ant-table-thead > tr > th { color: var(--workspace-muted); font-size: 11px; font-weight: 750; letter-spacing: .055em; text-transform: uppercase; background: #f7f9fc !important; border-bottom-color: var(--workspace-line) !important; }
-.settings-drawer .ant-table-tbody > tr > td { border-bottom-color: #edf0f5 !important; }
+.settings-drawer .ant-table-thead > tr > th { color: var(--workspace-muted); font-size: 11px; font-weight: 750; letter-spacing: .055em; text-transform: uppercase; background: var(--theme-raised, #f7f9fc) !important; border-bottom-color: var(--workspace-line) !important; }
+.settings-drawer .ant-table-tbody > tr > td { border-bottom-color: var(--theme-line, #edf0f5) !important; }
 .settings-drawer .config-container,
 .settings-drawer .page-container,
 .settings-drawer .stock-basic-container,
 .settings-drawer .account-management-page { max-width: none !important; padding: 0 !important; margin: 0 !important; }
 .settings-drawer .table-container,
 .settings-drawer .config-container > .ant-table-wrapper,
-.settings-drawer .stock-basic-container > .ant-table-wrapper { padding: 8px; overflow: auto; background: #fff; border: 1px solid var(--workspace-line); border-radius: var(--workspace-radius); }
+.settings-drawer .stock-basic-container > .ant-table-wrapper { padding: 8px; overflow: auto; background: var(--theme-surface, #fff); border: 1px solid var(--workspace-line); border-radius: var(--workspace-radius); }
 
 @media (max-width: 800px) {
   .content { padding: 16px !important; }

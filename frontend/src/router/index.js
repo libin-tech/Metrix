@@ -32,6 +32,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/market-workbench',
+    name: 'MarketWorkbench',
+    component: () => import('../views/MarketWorkbench.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/settings/ai-model',
     name: 'AiModelConfig',
     component: () => import('../views/AiModelConfig.vue'),

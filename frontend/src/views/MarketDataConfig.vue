@@ -2,13 +2,13 @@
   <div class="config-container">
     <div class="config-header">
       <h3>{{ $t('marketData.title') }}</h3>
-      <a-button type="primary" @click="showAddModal = true">{{ $t('config.add') }}</a-button>
+      <a-button type="primary" @click="resetForm(); showAddModal = true">{{ $t('config.add') }}</a-button>
     </div>
 
     <a-table :dataSource="configs" :columns="columns" row-key="id" bordered>
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'sourceName'">
-          <a-tag color="blue">{{ record.sourceName }}</a-tag>
+          <a-tag color="blue">{{ record.sourceName === 'FUYAO' ? $t('marketData.fuyaoName') : record.sourceName }}</a-tag>
         </template>
         <template v-if="column.key === 'apiKey'">
           <a-space>
@@ -45,13 +45,13 @@
       <a-form :model="form" layout="vertical">
         <a-alert type="info" show-icon style="margin-bottom: 16px">
           <template #message>
-            {{ $t('marketData.tickflowOnly') }}
-            <a href="https://tickflow.org/auth/register?ref=DA54CXKKPB" target="_blank">tickflow.org</a>
+            {{ $t('marketData.fuyaoOnly') }}
+            <a href="https://fuyao.aicubes.cn/docs/" target="_blank" rel="noopener noreferrer">fuyao.aicubes.cn</a>
             {{ $t('marketData.registerLink') }}
           </template>
         </a-alert>
         <a-form-item :label="$t('marketData.sourceType')">
-          <a-input :value="form.sourceName" disabled />
+          <a-input :value="$t('marketData.fuyaoName')" disabled />
         </a-form-item>
         <a-form-item :label="$t('marketData.apiUrl')">
           <a-input v-model:value="form.apiUrl" />
@@ -111,8 +111,8 @@ const visibleKeys = reactive({})
 const {t} = useI18n()
 
 const form = reactive({
-  sourceName: 'TICKFLOW',
-  apiUrl: 'https://api.tickflow.org',
+  sourceName: 'FUYAO',
+  apiUrl: 'https://fuyao.aicubes.cn',
   apiKey: '',
   dataType: 'STOCK_QUOTE',
   requestInterval: 30,
@@ -142,9 +142,9 @@ const loadConfigs = async () => {
 const editConfig = (config) => {
   editing.value = true
   editingId.value = config.id
-  form.sourceName = 'TICKFLOW'
-  form.apiUrl = config.apiUrl
-  form.apiKey = config.apiKey
+  form.sourceName = 'FUYAO'
+  form.apiUrl = config.sourceName === 'FUYAO' ? config.apiUrl : 'https://fuyao.aicubes.cn'
+  form.apiKey = config.sourceName === 'FUYAO' ? config.apiKey : ''
   form.dataType = config.dataType
   form.requestInterval = config.requestInterval
   form.timeout = config.timeout
@@ -188,8 +188,8 @@ const deleteConfig = (id) => {
 const resetForm = () => {
   editing.value = false
   editingId.value = null
-  form.sourceName = 'TICKFLOW'
-  form.apiUrl = 'https://api.tickflow.org'
+  form.sourceName = 'FUYAO'
+  form.apiUrl = 'https://fuyao.aicubes.cn'
   form.apiKey = ''
   form.dataType = 'STOCK_QUOTE'
   form.requestInterval = 30
@@ -217,6 +217,6 @@ onMounted(() => {
 
 .config-header h3 {
   margin: 0;
-  color: #333;
+  color: var(--theme-text, #333);
 }
 </style>

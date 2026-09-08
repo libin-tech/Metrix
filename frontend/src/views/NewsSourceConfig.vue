@@ -207,6 +207,6 @@ onMounted(() => {
 
 .config-header h3 {
   margin: 0;
-  color: #333;
+  color: var(--theme-text, #333);
 }
 </style>

@@ -1,6 +1,7 @@
 package com.bintech.metrix.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaMode;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.bintech.metrix.constants.ApiConstants;
 import com.bintech.metrix.dto.response.ApiResponse;
@@ -9,12 +10,13 @@ import com.bintech.metrix.repository.entity.StockBasic;
 import com.bintech.metrix.service.StockBasicService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
+import cn.dev33.satoken.stp.StpUtil;
+import com.bintech.metrix.dto.response.StockSyncResult;
 
 /**
  * 股票基础信息控制器
  *
- * <p>提供股票基础数据的分页查询和CSV导入功能。
+ * <p>提供股票基础数据的分页查询和增量同步功能。
  */
 @RestController
 @RequestMapping("/api/stock-basic")
@@ -34,10 +36,10 @@ public class StockBasicController {
         return ApiResponse.success(result);
     }
 
-    @PostMapping("/import")
-    @SaCheckPermission("stock:basic:import")
-    public ApiResponse<String> importCsv(@RequestParam("file") MultipartFile file) {
-        String msg = stockBasicService.importCsv(file);
-        return ApiResponse.success(msg);
+    @PostMapping("/sync")
+    // 迁移期间沿用原标的维护权限，旧导入接口已移除。
+    @SaCheckPermission(value = {"stock:basic:sync", "stock:basic:import"}, mode = SaMode.OR)
+    public ApiResponse<StockSyncResult> sync() {
+        return ApiResponse.success(stockBasicService.sync(StpUtil.getLoginIdAsLong()));
     }
 }

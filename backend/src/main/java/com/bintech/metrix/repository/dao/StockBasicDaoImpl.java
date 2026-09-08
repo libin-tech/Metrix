@@ -12,6 +12,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Arrays;
+import org.apache.ibatis.executor.BatchResult;
+import java.sql.Statement;
+import com.bintech.metrix.constants.StockSyncConstants;
 
 @Slf4j
 @Repository
@@ -23,6 +27,26 @@ class StockBasicDaoImpl implements StockBasicDao {
     @Override
     public int insert(StockBasic entity) {
         return baseMapper.insert(entity);
+    }
+
+    @Override
+    public void insertBatch(List<StockBasic> entities) {
+        if (CollUtil.isEmpty(entities)) return;
+        validateBatchResult(baseMapper.insert(entities, StockSyncConstants.BATCH_SIZE));
+    }
+
+    @Override
+    public void updateBatch(List<StockBasic> entities) {
+        if (CollUtil.isEmpty(entities)) return;
+        validateBatchResult(baseMapper.updateById(entities, StockSyncConstants.BATCH_SIZE));
+    }
+
+    private void validateBatchResult(List<BatchResult> results) {
+        boolean failed = results.stream().flatMapToInt(result -> Arrays.stream(result.getUpdateCounts()))
+                .anyMatch(count -> count == 0 || count == Statement.EXECUTE_FAILED);
+        if (failed) {
+            throw new IllegalStateException("标的数据已被其他操作修改，本次同步回滚，请重试");
+        }
     }
 
     @Override

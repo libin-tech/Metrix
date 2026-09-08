@@ -2,12 +2,12 @@ package com.bintech.metrix.service;
 
 import com.bintech.metrix.dto.response.PageResult;
 import com.bintech.metrix.repository.entity.StockBasic;
-import org.springframework.web.multipart.MultipartFile;
+import com.bintech.metrix.dto.response.StockSyncResult;
 
 /**
  * 股票基础信息服务接口
  *
- * <p>提供股票基础数据的查询、导入等功能，数据来源于Tushare等数据源的基础信息表。
+ * <p>提供股票基础数据的查询、增量同步等功能，数据来源于同花顺金融数据 API。
  */
 public interface StockBasicService {
 
@@ -21,13 +21,8 @@ public interface StockBasicService {
      */
     PageResult<StockBasic> pageQuery(String keyword, int page, int size);
 
-    /**
-     * 从CSV文件导入股票基础信息
-     *
-     * @param file CSV文件（格式需符合Tushare stock_basic导出规范）
-     * @return 导入结果描述（成功条数/失败原因）
-     */
-    String importCsv(MultipartFile file);
+    /** 使用当前用户的行情配置同步 A 股标的。 */
+    StockSyncResult sync(Long userId);
 
     /**
      * 根据股票代码获取股票基础信息

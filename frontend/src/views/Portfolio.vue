@@ -1,222 +1,243 @@
 <template>
   <div class="portfolio-page">
-    <section class="portfolio-hero">
-      <div class="hero-top-row">
-        <div class="hero-title-block">
-          <p class="hero-eyebrow">{{ $t('portfolio.overview') }}</p>
-          <h1 class="page-title">
-            <WalletOutlined /> {{ $t('portfolio.title') }}
-            <a-button type="text" class="eye-btn" @click="showSensitiveInfo = !showSensitiveInfo">
-              <EyeOutlined v-if="showSensitiveInfo" />
-              <EyeInvisibleOutlined v-else />
-            </a-button>
-            <span class="title-count" v-if="holdings.length > 0">{{ uniqueStockCount }}</span>
-          </h1>
-        </div>
-        <div class="top-actions">
-          <a-button class="hero-secondary-action" @click="router.push('/settings/account-management')">
-            <SettingOutlined /> {{ $t('portfolio.manageAccount') }}
-          </a-button>
-          <a-button class="hero-secondary-action" :loading="refreshing" @click="handleRefreshPrices">
-            <ReloadOutlined /> {{ $t('portfolio.refreshPrices') }}
-          </a-button>
-          <a-button type="primary" ghost class="batch-evaluate-button" :loading="batchEvaluating" @click="handleBatchEvaluate">
-            <PlayCircleOutlined /> {{ $t('portfolio.batchEvaluate') }}
-          </a-button>
-          <a-button type="primary" class="hero-primary-action" @click="showAddHoldingModal = true">
-            <PlusOutlined /> {{ $t('portfolio.addHolding') }}
-          </a-button>
-        </div>
-      </div>
-      <div class="hero-meta-row">
-        <span class="refresh-hint"><ReloadOutlined /> {{ $t('portfolio.refreshHint') }}</span>
-        <span class="hero-meta-divider" aria-hidden="true"></span>
-        <InfoCircleOutlined class="disclaimer-icon" />
-        <span class="disclaimer-text">{{ $t('portfolio.disclaimer') }}</span>
-      </div>
-    </section>
+    <div class="portfolio-layout">
+      <div class="portfolio-main">
+        <section class="portfolio-hero">
+          <div class="hero-top-row">
+            <div class="hero-title-block">
+              <p class="hero-eyebrow">{{ $t('portfolio.overview') }}</p>
+              <h1 class="page-title">
+                <WalletOutlined /> {{ $t('portfolio.title') }}
+                <a-button type="text" class="eye-btn" @click="showSensitiveInfo = !showSensitiveInfo">
+                  <EyeOutlined v-if="showSensitiveInfo" />
+                  <EyeInvisibleOutlined v-else />
+                </a-button>
+                <span class="title-count" v-if="holdings.length > 0">{{ uniqueStockCount }}</span>
+              </h1>
+            </div>
+            <div class="top-actions">
+              <a-button class="hero-secondary-action" @click="router.push('/settings/account-management')">
+                <SettingOutlined /> {{ $t('portfolio.manageAccount') }}
+              </a-button>
+              <a-button class="hero-secondary-action" :loading="refreshing" @click="handleRefreshPrices">
+                <ReloadOutlined /> {{ $t('portfolio.refreshPrices') }}
+              </a-button>
+              <a-button type="primary" ghost class="batch-evaluate-button" :loading="batchEvaluating" @click="handleBatchEvaluate">
+                <PlayCircleOutlined /> {{ $t('portfolio.batchEvaluate') }}
+              </a-button>
+              <a-button type="primary" class="hero-primary-action" @click="showAddHoldingModal = true">
+                <PlusOutlined /> {{ $t('portfolio.addHolding') }}
+              </a-button>
+            </div>
+          </div>
+          <div class="hero-meta-row">
+            <span class="refresh-hint"><ReloadOutlined /> {{ $t('portfolio.refreshHint') }}</span>
+            <span class="hero-meta-divider" aria-hidden="true"></span>
+            <InfoCircleOutlined class="disclaimer-icon" />
+            <span class="disclaimer-text">{{ $t('portfolio.disclaimer') }}</span>
+          </div>
+        </section>
 
-    <div v-if="summary" class="summary-section">
-      <div class="summary-grid">
-        <div class="summary-card summary-card-primary">
-            <div class="summary-label">{{ $t('portfolio.totalMarketValue') }}</div>
-            <div class="summary-value" :class="{ 'sensitive-hidden-text': !showSensitiveInfo }">
-              <template v-if="showSensitiveInfo">{{ formatPrice(summary.totalMarketValue) }}</template>
-              <template v-else>***</template>
+        <div v-if="summary" class="summary-section">
+            <div class="summary-grid">
+              <div class="summary-card summary-card-primary">
+                <div class="summary-label">{{ $t('portfolio.totalMarketValue') }}</div>
+                <div class="summary-value" :class="{ 'sensitive-hidden-text': !showSensitiveInfo }">
+                  <template v-if="showSensitiveInfo">{{ formatPrice(summary.totalMarketValue) }}</template>
+                  <template v-else>***</template>
+                </div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-label">{{ $t('portfolio.totalProfitLossPct') }}</div>
+                <div class="summary-value" :class="getProfitClass(summary.totalProfitLossPercent)">
+                  {{ formatSignedPercent(summary.totalProfitLossPercent) }}
+                </div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-label">{{ $t('portfolio.totalProfitLossAmt') }}</div>
+                <div class="summary-value" :class="getProfitClass(summary.totalProfitLossAmount)">
+                  <template v-if="showSensitiveInfo">{{ formatSignedPrice(summary.totalProfitLossAmount) }}</template>
+                  <template v-else>***</template>
+                </div>
+              </div>
+              <div class="summary-card summary-break-even">
+                <div class="summary-label summary-break-even-label">
+                  {{ $t('portfolio.breakEvenDifficulty') }}
+                  <a-popover
+                    v-model:open="breakEvenPopoverOpen"
+                    trigger="click"
+                    placement="bottomRight"
+                    overlay-class-name="break-even-popover"
+                    :overlay-style="{ maxWidth: 'calc(100vw - 24px)' }"
+                    @open-change="handleBreakEvenPopoverChange"
+                  >
+                    <template #content>
+                      <div class="break-even-popover-content">
+                        <div class="break-even-popover-heading">
+                          <strong>{{ $t('portfolio.breakEvenAnalysisTitle') }}</strong>
+                          <span>{{ $t('portfolio.breakEvenAnalysisHint') }}</span>
+                        </div>
+                        <div ref="breakEvenChartRef" class="break-even-chart"></div>
+                      </div>
+                    </template>
+                    <QuestionCircleOutlined class="break-even-help" />
+                  </a-popover>
+                </div>
+                <div class="summary-value" :class="breakEvenDifficulty === 0 ? 'profit-up' : 'profit-down'">{{ formatBreakEvenDifficulty(breakEvenDifficulty) }}</div>
+                <div class="summary-break-even-analysis">{{ getBreakEvenAnalysis(breakEvenDifficulty) }}</div>
+              </div>
             </div>
         </div>
-        <div class="summary-card">
-            <div class="summary-label">{{ $t('portfolio.totalProfitLossPct') }}</div>
-            <div class="summary-value" :class="getProfitClass(summary.totalProfitLossPercent)">
-              {{ formatSignedPercent(summary.totalProfitLossPercent) }}
-            </div>
+
+        <section class="portfolio-controls">
+          <div class="holdings-heading">
+            <div><p class="section-kicker">{{ $t('portfolio.overview') }}</p><h2>{{ $t('portfolio.holdingsDetail') }}</h2></div>
+            <span class="holding-total">{{ uniqueStockCount }}</span>
+          </div>
+          <div class="holdings-actions">
+            <span class="holdings-refresh-time"><ReloadOutlined /> {{ $t('portfolio.lastRefreshTime') }}：{{ summary?.refreshTime ? formatTime(summary.refreshTime) : '-' }}</span>
+            <a-space class="search-bar" wrap>
+              <a-select
+                v-model:value="searchAccountId"
+                :placeholder="$t('portfolio.searchAccountPlaceholder')"
+                allow-clear
+                class="search-account-select"
+                @change="loadHoldings"
+              >
+                <a-select-option :value="null">{{ $t('portfolio.allAccounts') }}</a-select-option>
+                <a-select-option v-for="a in accounts" :key="a.id" :value="a.id">
+                  {{ a.brokerName }}{{ a.accountNumber ? ' (' + getLastFour(a.accountNumber) + ')' : '' }}
+                </a-select-option>
+              </a-select>
+              <a-input-search
+                v-model:value="searchKeyword"
+                :placeholder="$t('portfolio.searchPlaceholder')"
+                allow-clear
+                class="search-input"
+                @search="loadHoldings"
+                @press-enter="loadHoldings"
+              >
+                <template #prefix><SearchOutlined /></template>
+              </a-input-search>
+            </a-space>
+          </div>
+        </section>
+
+        <!-- Loading State -->
+        <div v-if="loading" class="loading-container">
+          <a-spin :tip="$t('portfolio.loading')" size="large" />
         </div>
-        <div class="summary-card">
-            <div class="summary-label">{{ $t('portfolio.totalProfitLossAmt') }}</div>
-            <div class="summary-value" :class="getProfitClass(summary.totalProfitLossAmount)">
-              <template v-if="showSensitiveInfo">{{ formatSignedPrice(summary.totalProfitLossAmount) }}</template>
-              <template v-else>***</template>
-            </div>
-        </div>
-        <div class="summary-card summary-break-even">
-          <div class="summary-label summary-break-even-label">
-            {{ $t('portfolio.breakEvenDifficulty') }}
-            <a-popover
-              v-model:open="breakEvenPopoverOpen"
-              trigger="click"
-              placement="bottomRight"
-              overlay-class-name="break-even-popover"
-              :overlay-style="{ maxWidth: 'calc(100vw - 24px)' }"
-              @open-change="handleBreakEvenPopoverChange"
-            >
-              <template #content>
-                <div class="break-even-popover-content">
-                  <div class="break-even-popover-heading">
-                    <strong>{{ $t('portfolio.breakEvenAnalysisTitle') }}</strong>
-                    <span>{{ $t('portfolio.breakEvenAnalysisHint') }}</span>
-                  </div>
-                  <div ref="breakEvenChartRef" class="break-even-chart"></div>
+
+        <div v-else-if="holdings.length > 0" class="holdings-list">
+          <a-table
+            :dataSource="holdings"
+            :columns="columns"
+            row-key="id"
+            :pagination="false"
+            :scroll="{ x: 1200 }"
+            class="holdings-table"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'brokerName'">
+                <div class="broker-cell">
+                  <span class="broker-name">{{ record.brokerName || '-' }}</span>
+                  <span v-if="record.accountNumber" class="account-suffix">
+                    {{ $t('portfolio.accountSuffix') }}{{ getLastFour(record.accountNumber) }}
+                  </span>
                 </div>
               </template>
-              <QuestionCircleOutlined class="break-even-help" />
-            </a-popover>
-          </div>
-          <div class="summary-value" :class="breakEvenDifficulty === 0 ? 'profit-up' : 'profit-down'">{{ formatBreakEvenDifficulty(breakEvenDifficulty) }}</div>
-          <div class="summary-break-even-analysis">{{ getBreakEvenAnalysis(breakEvenDifficulty) }}</div>
+              <template v-if="column.key === 'stockCode'">
+                <span class="stock-code">{{ record.stockCode }}</span>
+              </template>
+              <template v-if="column.key === 'stockName'">
+                <span class="stock-name">{{ record.stockName }}</span>
+              </template>
+              <template v-if="column.key === 'quantity'">
+                <span v-if="showSensitiveInfo">{{ formatNum(record.quantity) }}</span>
+                <span v-else class="sensitive-hidden">***</span>
+              </template>
+              <template v-if="column.key === 'cost'">
+                <span :class="getCostClass(record)">{{ formatPrice(record.cost) }}</span>
+              </template>
+              <template v-if="column.key === 'marketValue'">
+                <span v-if="showSensitiveInfo && record.currentPrice && record.quantity" :class="getMarketValueClass(record)">
+                  {{ formatPrice(record.currentPrice * record.quantity) }}
+                </span>
+                <span v-else-if="showSensitiveInfo" class="price-na">--</span>
+                <span v-else class="sensitive-hidden">***</span>
+              </template>
+              <template v-if="column.key === 'currentPrice'">
+                <span v-if="record.currentPrice" :class="getPriceClass(record)">
+                  {{ formatPrice(record.currentPrice) }}
+                </span>
+                <span v-else class="price-na">--</span>
+              </template>
+              <template v-if="column.key === 'profitLossPercent'">
+                <span v-if="record.profitLossPercent != null" :class="getProfitClass(record.profitLossPercent)">
+                  {{ formatSignedPercent(record.profitLossPercent) }}
+                </span>
+                <span v-else class="price-na">--</span>
+              </template>
+              <template v-if="column.key === 'profitLossAmount'">
+                <span v-if="showSensitiveInfo && record.profitLossAmount != null" :class="getProfitClass(record.profitLossAmount)">
+                  {{ formatSignedPrice(record.profitLossAmount) }}
+                </span>
+                <span v-else-if="showSensitiveInfo" class="price-na">--</span>
+                <span v-else class="sensitive-hidden">***</span>
+              </template>
+              <template v-if="column.key === 'breakEvenGain'">
+                <span :class="getBreakEvenClass(record)">{{ formatBreakEvenGain(record) }}</span>
+              </template>
+              <template v-if="column.key === 'action'">
+                <a-space>
+                  <a-button type="link" size="small" :loading="evaluating.has(record.stockCode)" @click="handleEvaluate(record)">
+                    <PlayCircleOutlined /> {{ $t('portfolio.evaluate') }}
+                  </a-button>
+                  <a-popconfirm
+                    :title="$t('portfolio.confirmDelete')"
+                    :description="$t('portfolio.confirmDeleteDesc')"
+                    @confirm="handleDelete(record.id)"
+                    ok-text="确定"
+                    cancel-text="取消"
+                  >
+                    <a-button type="text" danger size="small">
+                      <DeleteOutlined />
+                    </a-button>
+                  </a-popconfirm>
+                </a-space>
+              </template>
+            </template>
+            <template #headerCell="{ column }">
+              <template v-if="column.key === 'currentPrice' || column.key === 'marketValue' || column.key === 'profitLossPercent' || column.key === 'profitLossAmount'">
+                {{ column.title }} <a-tag color="blue" style="font-size:10px; line-height:16px; margin-left:2px;">{{ $t('portfolio.realtimeTag') }}</a-tag>
+              </template>
+            </template>
+          </a-table>
+        </div>
+
+        <!-- Empty State -->
+        <div v-else class="empty-state">
+          <InboxOutlined class="empty-icon" />
+          <p class="empty-text">{{ $t('portfolio.noHoldings') }}</p>
+          <p class="empty-hint">{{ $t('portfolio.noHoldingsHint') }}</p>
         </div>
       </div>
-    </div>
-
-    <section class="portfolio-controls">
-      <div class="holdings-heading">
-        <div><p class="section-kicker">{{ $t('portfolio.overview') }}</p><h2>{{ $t('portfolio.holdingsDetail') }}</h2></div>
-        <span class="holding-total">{{ uniqueStockCount }}</span>
-      </div>
-      <div class="holdings-actions">
-        <span class="holdings-refresh-time"><ReloadOutlined /> {{ $t('portfolio.lastRefreshTime') }}：{{ summary?.refreshTime ? formatTime(summary.refreshTime) : '-' }}</span>
-        <a-space class="search-bar" wrap>
-          <a-select
-            v-model:value="searchAccountId"
-            :placeholder="$t('portfolio.searchAccountPlaceholder')"
-            allow-clear
-            class="search-account-select"
-            @change="loadHoldings"
-          >
-            <a-select-option :value="null">{{ $t('portfolio.allAccounts') }}</a-select-option>
-            <a-select-option v-for="a in accounts" :key="a.id" :value="a.id">
-              {{ a.brokerName }}{{ a.accountNumber ? ' (' + getLastFour(a.accountNumber) + ')' : '' }}
-            </a-select-option>
-          </a-select>
-          <a-input-search
-            v-model:value="searchKeyword"
-            :placeholder="$t('portfolio.searchPlaceholder')"
-            allow-clear
-            class="search-input"
-            @search="loadHoldings"
-            @press-enter="loadHoldings"
-          >
-            <template #prefix><SearchOutlined /></template>
-          </a-input-search>
-        </a-space>
-      </div>
-    </section>
-
-    <!-- Loading State -->
-    <div v-if="loading" class="loading-container">
-      <a-spin :tip="$t('portfolio.loading')" size="large" />
-    </div>
-
-    <div v-else-if="holdings.length > 0" class="holdings-list">
-      <a-table
-        :dataSource="holdings"
-        :columns="columns"
-        row-key="id"
-        :pagination="false"
-        class="holdings-table"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'brokerName'">
-            <div class="broker-cell">
-              <span class="broker-name">{{ record.brokerName || '-' }}</span>
-              <span v-if="record.accountNumber" class="account-suffix">
-                {{ $t('portfolio.accountSuffix') }}{{ getLastFour(record.accountNumber) }}
-              </span>
-            </div>
-          </template>
-          <template v-if="column.key === 'stockCode'">
-            <span class="stock-code">{{ record.stockCode }}</span>
-          </template>
-          <template v-if="column.key === 'stockName'">
-            <span class="stock-name">{{ record.stockName }}</span>
-          </template>
-          <template v-if="column.key === 'quantity'">
-            <span v-if="showSensitiveInfo">{{ formatNum(record.quantity) }}</span>
-            <span v-else class="sensitive-hidden">***</span>
-          </template>
-          <template v-if="column.key === 'cost'">
-            <span :class="getCostClass(record)">{{ formatPrice(record.cost) }}</span>
-          </template>
-          <template v-if="column.key === 'marketValue'">
-            <span v-if="showSensitiveInfo && record.currentPrice && record.quantity" :class="getMarketValueClass(record)">
-              {{ formatPrice(record.currentPrice * record.quantity) }}
-            </span>
-            <span v-else-if="showSensitiveInfo" class="price-na">--</span>
-            <span v-else class="sensitive-hidden">***</span>
-          </template>
-          <template v-if="column.key === 'currentPrice'">
-            <span v-if="record.currentPrice" :class="getPriceClass(record)">
-              {{ formatPrice(record.currentPrice) }}
-            </span>
-            <span v-else class="price-na">--</span>
-          </template>
-          <template v-if="column.key === 'profitLossPercent'">
-            <span v-if="record.profitLossPercent != null" :class="getProfitClass(record.profitLossPercent)">
-              {{ formatSignedPercent(record.profitLossPercent) }}
-            </span>
-            <span v-else class="price-na">--</span>
-          </template>
-          <template v-if="column.key === 'profitLossAmount'">
-            <span v-if="showSensitiveInfo && record.profitLossAmount != null" :class="getProfitClass(record.profitLossAmount)">
-              {{ formatSignedPrice(record.profitLossAmount) }}
-            </span>
-            <span v-else-if="showSensitiveInfo" class="price-na">--</span>
-            <span v-else class="sensitive-hidden">***</span>
-          </template>
-          <template v-if="column.key === 'breakEvenGain'">
-            <span :class="getBreakEvenClass(record)">{{ formatBreakEvenGain(record) }}</span>
-          </template>
-          <template v-if="column.key === 'action'">
-            <a-space>
-              <a-button type="link" size="small" :loading="evaluating.has(record.stockCode)" @click="handleEvaluate(record)">
-                <PlayCircleOutlined /> {{ $t('portfolio.evaluate') }}
-              </a-button>
-              <a-popconfirm
-                :title="$t('portfolio.confirmDelete')"
-                :description="$t('portfolio.confirmDeleteDesc')"
-                @confirm="handleDelete(record.id)"
-                ok-text="确定"
-                cancel-text="取消"
-              >
-                <a-button type="text" danger size="small">
-                  <DeleteOutlined />
-                </a-button>
-              </a-popconfirm>
-            </a-space>
-          </template>
-        </template>
-        <template #headerCell="{ column }">
-          <template v-if="column.key === 'currentPrice' || column.key === 'marketValue' || column.key === 'profitLossPercent' || column.key === 'profitLossAmount'">
-            {{ column.title }} <a-tag color="blue" style="font-size:10px; line-height:16px; margin-left:2px;">{{ $t('portfolio.realtimeTag') }}</a-tag>
-          </template>
-        </template>
-      </a-table>
-    </div>
-
-    <!-- Empty State -->
-    <div v-else class="empty-state">
-      <InboxOutlined class="empty-icon" />
-      <p class="empty-text">{{ $t('portfolio.noHoldings') }}</p>
-      <p class="empty-hint">{{ $t('portfolio.noHoldingsHint') }}</p>
+      <aside class="portfolio-anomaly-card" :aria-label="$t('portfolio.anomalyTitle')">
+        <div class="portfolio-anomaly-heading">
+          <div><strong>{{ $t('portfolio.anomalyTitle') }}</strong><small>{{ anomalySnapshot.dataTime || '—' }}</small></div>
+          <span>{{ anomalySnapshot.source || $t('portfolio.anomalySource') }}</span>
+        </div>
+        <div v-if="anomalyLoading" class="portfolio-anomaly-state"><a-spin size="small" />{{ $t('portfolio.anomalyLoading') }}</div>
+        <div v-else-if="anomalySnapshot.error" class="portfolio-anomaly-state portfolio-anomaly-error">{{ anomalySnapshot.error }}</div>
+        <div v-else-if="anomalySnapshot.items?.length" class="portfolio-anomaly-list">
+          <article v-for="(item, index) in anomalySnapshot.items" :key="`${item.thscode || item.stockCode || index}-${index}`" class="portfolio-anomaly-item">
+            <div><strong>{{ item.name || item.stockName || '—' }}</strong><small>{{ item.thscode || item.stockCode || '—' }}{{ item.tag_name || item.tagName ? ` · ${item.tag_name || item.tagName}` : '' }}</small></div>
+            <p>{{ item.content || item.reason || '—' }}</p>
+            <em v-if="item.keywords">{{ item.keywords }}</em>
+          </article>
+        </div>
+        <div v-else class="portfolio-anomaly-state">{{ $t('portfolio.noAnomalies') }}</div>
+      </aside>
     </div>
 
     <!-- Batch Add Holding Modal -->
@@ -281,7 +302,9 @@
 </template>
 
 <script setup>
-import {computed, nextTick, onMounted, onUnmounted, ref} from 'vue'
+import {computed, nextTick, onMounted, onUnmounted, ref, watch} from 'vue'
+import {useTheme} from '../composables/useTheme'
+const {isDark} = useTheme()
 import {init, use} from 'echarts/core'
 import {LineChart} from 'echarts/charts'
 import {GridComponent, TooltipComponent} from 'echarts/components'
@@ -310,6 +333,7 @@ import {
   deletePortfolioHolding,
   getAllAnalysis,
   getBrokerAccounts,
+  getMarketWorkbenchAnomalies,
   getPortfolioHoldings,
   pollRefreshedPrices,
   refreshPortfolioPrices,
@@ -339,6 +363,8 @@ const evaluating = ref(new Set())
 const batchEvaluating = ref(false)
 const breakEvenChartRef = ref(null)
 const breakEvenPopoverOpen = ref(false)
+const anomalySnapshot = ref({items: []})
+const anomalyLoading = ref(true)
 let breakEvenChart = null
 
 const batchAccountId = ref(undefined)
@@ -352,6 +378,18 @@ const createEmptyBatchItem = () => ({
   quantity: undefined,
   stockOptions: []
 })
+
+const loadAnomalies = async () => {
+  anomalyLoading.value = true
+  try {
+    const response = await getMarketWorkbenchAnomalies()
+    anomalySnapshot.value = response.data || {items: []}
+  } catch (error) {
+    anomalySnapshot.value = {items: [], error: error.message || t('portfolio.anomalyLoadFailed')}
+  } finally {
+    anomalyLoading.value = false
+  }
+}
 
 let batchSearchTimer = null
 
@@ -518,18 +556,18 @@ const renderBreakEvenChart = () => {
       type: 'category',
       data: guide.map(item => `-${item.loss}%`),
       boundaryGap: false,
-      axisLine: { lineStyle: { color: '#dbe3ee' } },
+      axisLine: { lineStyle: { color: isDark.value ? '#34445b' : '#dbe3ee' } },
       axisTick: { show: false },
-      axisLabel: { color: '#7c8aa0', fontSize: 11 }
+      axisLabel: { color: isDark.value ? '#a3b0c4' : '#7c8aa0', fontSize: 11 }
     },
     yAxis: {
       type: 'value',
       name: t('portfolio.requiredGain'),
-      nameTextStyle: { color: '#7c8aa0', fontSize: 11, padding: [0, 0, 0, -6] },
+      nameTextStyle: { color: isDark.value ? '#a3b0c4' : '#7c8aa0', fontSize: 11, padding: [0, 0, 0, -6] },
       min: 0,
       max: 900,
-      axisLabel: { color: '#7c8aa0', fontSize: 11, formatter: '{value}%' },
-      splitLine: { lineStyle: { color: '#edf1f6', type: 'dashed' } }
+      axisLabel: { color: isDark.value ? '#a3b0c4' : '#7c8aa0', fontSize: 11, formatter: '{value}%' },
+      splitLine: { lineStyle: { color: isDark.value ? '#34445b' : '#edf1f6', type: 'dashed' } }
     },
     series: [{
       type: 'line',
@@ -543,6 +581,8 @@ const renderBreakEvenChart = () => {
     }]
   })
 }
+
+watch(isDark, () => nextTick(renderBreakEvenChart))
 
 const resizeBreakEvenChart = () => breakEvenChart?.resize()
 
@@ -696,7 +736,7 @@ const handleAddHolding = async () => {
     message.success(t('portfolio.addHoldingSuccess'))
     showAddHoldingModal.value = false
     resetHoldingForm()
-    await loadHoldings()
+    await Promise.all([loadHoldings(), loadAnomalies()])
   } catch (error) {
     message.error(error.response?.data?.message || t('portfolio.addHoldingFailed'))
   } finally {
@@ -864,7 +904,7 @@ const handleDelete = async (id) => {
   try {
     await deletePortfolioHolding(id)
     message.success(t('portfolio.deleteSuccess'))
-    await loadHoldings()
+    await Promise.all([loadHoldings(), loadAnomalies()])
   } catch (error) {
     message.error(error.response?.data?.message || t('portfolio.deleteFailed'))
   }
@@ -876,8 +916,7 @@ const resetHoldingForm = () => {
 }
 
 onMounted(async () => {
-  await loadAccounts()
-  await loadHoldings()
+  await Promise.all([loadAccounts(), loadHoldings(), loadAnomalies()])
   batchItems.value = [createEmptyBatchItem()]
   window.addEventListener('resize', resizeBreakEvenChart)
 })
@@ -885,11 +924,12 @@ onMounted(async () => {
 
 <style scoped>
 .portfolio-page {
+  --workspace-content-width: 1750px;
   padding: 0;
 }
 
 .page-top-section {
-  background: #fff;
+  background: var(--theme-surface, #fff);
   border-radius: 12px;
   padding: 20px 24px;
   margin-bottom: 16px;
@@ -912,23 +952,23 @@ onMounted(async () => {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: #1a1a2e;
+  color: var(--theme-text, #1a1a2e);
 }
 
 .page-title .anticon {
   margin-right: 8px;
-  color: #1890ff;
+  color: var(--theme-blue, #1890ff);
 }
 
 .eye-btn {
   margin-left: 4px;
-  color: #999;
+  color: var(--theme-muted, #999);
   font-size: 16px;
   vertical-align: middle;
 }
 
 .eye-btn:hover {
-  color: #1890ff;
+  color: var(--theme-blue, #1890ff);
 }
 
 .title-count {
@@ -941,7 +981,7 @@ onMounted(async () => {
   margin-left: 8px;
   font-size: 12px;
   font-weight: 500;
-  color: #fff;
+  color: var(--theme-text, #fff);
   background: #1890ff;
   border-radius: 11px;
   vertical-align: middle;
@@ -954,7 +994,7 @@ onMounted(async () => {
 }
 
 .batch-evaluate-button {
-  color: #fff !important;
+  color: var(--theme-text, #fff) !important;
 }
 
 .refresh-group {
@@ -966,7 +1006,7 @@ onMounted(async () => {
 
 .refresh-hint {
   font-size: 11px;
-  color: #999;
+  color: var(--theme-muted, #999);
   white-space: nowrap;
 }
 
@@ -975,11 +1015,11 @@ onMounted(async () => {
   align-items: center;
   gap: 6px;
   padding: 10px 14px;
-  background: #fffbe6;
-  border: 1px solid #ffe58f;
+  background: var(--theme-raised, #fffbe6);
+  border: 1px solid var(--theme-line, #ffe58f);
   border-radius: 8px;
   font-size: 13px;
-  color: #ad8b00;
+  color: var(--theme-amber, #ad8b00);
 }
 
 .disclaimer-icon {
@@ -1008,13 +1048,13 @@ onMounted(async () => {
 }
 
 .sensitive-hidden {
-  color: #d9d9d9;
+  color: var(--theme-text, #d9d9d9);
   font-size: 14px;
   letter-spacing: 2px;
 }
 
 .sensitive-hidden-text {
-  color: #d9d9d9;
+  color: var(--theme-text, #d9d9d9);
   font-size: 14px;
   letter-spacing: 2px;
 }
@@ -1025,7 +1065,7 @@ onMounted(async () => {
 }
 
 .summary-card {
-  background: #fff;
+  background: var(--theme-surface, #fff);
   border-radius: 12px;
   padding: 16px 20px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
@@ -1034,7 +1074,7 @@ onMounted(async () => {
 
 .summary-label {
   font-size: 13px;
-  color: #999;
+  color: var(--theme-muted, #999);
   margin-bottom: 8px;
 }
 
@@ -1047,7 +1087,7 @@ onMounted(async () => {
 .summary-time {
   font-size: 13px;
   font-weight: 400;
-  color: #666;
+  color: var(--theme-text, #666);
 }
 
 .loading-container {
@@ -1058,17 +1098,17 @@ onMounted(async () => {
 }
 
 .holdings-list {
-  background: #fff;
+  background: var(--theme-surface, #fff);
   border-radius: 12px;
   padding: 16px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
 .holdings-table :deep(.ant-table-thead > tr > th) {
-  background: #fafafa;
+  background: var(--theme-raised, #fafafa);
   font-weight: 600;
   font-size: 13px;
-  color: #555;
+  color: var(--theme-text, #555);
 }
 
 .holdings-table :deep(.ant-table-tbody > tr > td) {
@@ -1076,7 +1116,7 @@ onMounted(async () => {
 }
 
 .holdings-table :deep(.ant-table-tbody > tr:hover) {
-  background: #f0f5ff;
+  background: var(--theme-raised, #f0f5ff);
 }
 
 .broker-cell {
@@ -1087,22 +1127,22 @@ onMounted(async () => {
 
 .broker-name {
   font-weight: 600;
-  color: #333;
+  color: var(--theme-text, #333);
 }
 
 .account-suffix {
   font-size: 11px;
-  color: #999;
+  color: var(--theme-muted, #999);
 }
 
 .stock-code {
   font-weight: 600;
-  color: #333;
+  color: var(--theme-text, #333);
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace;
 }
 
 .stock-name {
-  color: #555;
+  color: var(--theme-text, #555);
 }
 
 .price-value {
@@ -1111,31 +1151,31 @@ onMounted(async () => {
 }
 
 .price-na {
-  color: #bbb;
+  color: var(--theme-muted, #bbb);
 }
 
 .profit-up {
-  color: #ff4d4f;
+  color: var(--theme-red, #ff4d4f);
   font-weight: 600;
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace;
 }
 
 .profit-down {
-  color: #006d2c;
+  color: var(--theme-green, #006d2c);
   font-weight: 600;
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace;
 }
 
 .batch-hint {
   font-size: 13px;
-  color: #999;
+  color: var(--theme-muted, #999);
   margin-bottom: 12px;
 }
 
 .batch-row {
   margin-bottom: 8px;
   padding: 8px 4px;
-  background: #fafafa;
+  background: var(--theme-raised, #fafafa);
   border-radius: 6px;
 }
 
@@ -1155,7 +1195,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   min-height: 300px;
-  background: #fff;
+  background: var(--theme-surface, #fff);
   border-radius: 12px;
   padding: 40px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
@@ -1163,29 +1203,57 @@ onMounted(async () => {
 
 .empty-icon {
   font-size: 48px;
-  color: #d9d9d9;
+  color: var(--theme-text, #d9d9d9);
   margin-bottom: 16px;
 }
 
 .empty-text {
   font-size: 16px;
-  color: #999;
+  color: var(--theme-muted, #999);
   margin-bottom: 4px;
 }
 
 .empty-hint {
   font-size: 13px;
-  color: #bbb;
+  color: var(--theme-muted, #bbb);
 }
 
-.portfolio-page { padding: 8px 0 38px; color: #182336; }
-.portfolio-hero { position: relative; overflow: hidden; min-height: 194px; padding: 30px 32px 68px; color: #fff; background: radial-gradient(circle at 86% -35%, #5578b7 0, transparent 38%), radial-gradient(circle at 18% 120%, #294166 0, transparent 45%), #17243a; border-radius: 18px; }.portfolio-hero::after { position: absolute; right: 7%; bottom: -64px; width: 210px; height: 210px; content: ''; border: 1px solid rgba(185, 211, 255, .15); border-radius: 50%; box-shadow: 0 0 0 30px rgba(185, 211, 255, .04), 0 0 0 64px rgba(185, 211, 255, .025); }.hero-top-row { position: relative; z-index: 1; display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }.hero-eyebrow, .section-kicker { margin: 0 0 7px; color: #91acd7; font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }.page-title { display: flex; align-items: center; margin: 0; color: #fff; font-size: clamp(26px, 3vw, 34px); font-weight: 750; letter-spacing: -.04em; }.page-title .anticon { margin-right: 10px; color: #a9c4ff; }.eye-btn { margin-left: 8px; color: #b9c8e1; }.eye-btn:hover { color: #fff; }.title-count, .holding-total { color: #1b3153; background: #dce9ff; border-radius: 999px; }.title-count { min-width: 25px; height: 25px; margin-left: 10px; font-size: 12px; font-weight: 700; }.top-actions { position: relative; z-index: 1; align-items: center; gap: 10px; }.hero-secondary-action { color: #e4edff; background: rgba(255, 255, 255, .08); border-color: rgba(220, 233, 255, .26); }.hero-secondary-action:hover { color: #fff !important; background: rgba(255, 255, 255, .16); border-color: rgba(220, 233, 255, .5); }.batch-evaluate-button { color: #203b61 !important; background: #d7e7ff; border-color: #d7e7ff; }.hero-primary-action { box-shadow: 0 8px 20px rgba(0, 0, 0, .18); }.hero-meta-row { position: relative; z-index: 1; display: flex; align-items: center; gap: 9px; margin-top: 27px; color: #c2d1e8; font-size: 12px; }.refresh-hint { display: inline-flex; align-items: center; gap: 5px; color: #b8c9e3; font-size: 12px; }.hero-meta-divider { width: 1px; height: 13px; background: rgba(220, 233, 255, .28); }.disclaimer-icon { color: #f3d987; }.disclaimer-text { color: #c2d1e8; }
-.summary-section { position: relative; z-index: 2; margin: -42px 24px 22px; }.summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }.summary-card { min-height: 115px; padding: 20px 21px; text-align: left; background: rgba(255, 255, 255, .96); border: 1px solid #e6ebf2; border-radius: 14px; box-shadow: 0 12px 28px rgba(30, 48, 77, .09); }.summary-card-primary { color: #fff; background: linear-gradient(135deg, #2f5e9b, #1d365a); border-color: transparent; }.summary-card-primary .summary-label { color: #c7d9f6; }.summary-label { margin-bottom: 10px; color: #7a879a; font-size: 12px; font-weight: 650; }.summary-value { color: #213653; font-size: 23px; font-weight: 750; letter-spacing: -.025em; }.summary-card-primary .summary-value { color: #fff; }.summary-break-even-label { display: flex; align-items: center; gap: 5px; }.break-even-help { color: #a07b80; font-size: 13px; cursor: pointer; transition: color .2s ease; }.break-even-help:hover { color: #d7505d; }.summary-break-even-analysis { min-height: 32px; margin-top: 7px; color: #8b7680; font-size: 12px; line-height: 1.45; }.sensitive-hidden-text { color: #a9bddb !important; }.break-even-popover-content { width: min(680px, calc(100vw - 48px)); }.break-even-popover-heading { display: grid; gap: 4px; padding: 2px 4px 0; }.break-even-popover-heading strong { color: #362832; font-size: 15px; }.break-even-popover-heading span { color: #8c7780; font-size: 12px; line-height: 1.5; }.break-even-chart { width: 100%; height: 300px; }.break-even-gain { color: #d7505d; font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace; font-weight: 700; }
-.portfolio-controls, .holdings-list { margin: 0 24px 18px; background: #fff; border: 1px solid #e4e9f0; border-radius: 14px; box-shadow: 0 8px 24px rgba(30, 48, 77, .045); }.portfolio-controls { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding: 19px 22px; }.holdings-heading { display: flex; align-items: flex-end; gap: 11px; }.holdings-heading h2 { margin: 0; color: #1d2c43; font-size: 18px; letter-spacing: -.025em; }.section-kicker { margin-bottom: 5px; color: #8393aa; }.holding-total { display: grid; place-items: center; min-width: 26px; height: 26px; margin-bottom: 1px; padding: 0 7px; font-size: 12px; font-weight: 750; }.holdings-actions { display: flex; align-items: center; justify-content: flex-end; gap: 16px; }.holdings-refresh-time { display: inline-flex; align-items: center; gap: 5px; color: #7d8da3; font-size: 12px; white-space: nowrap; }.search-bar { width: auto; }.search-account-select { width: 190px; }.search-input { width: 280px; }.holdings-list { padding: 8px 18px 14px; }.holdings-table :deep(.ant-table) { background: transparent; }.holdings-table :deep(.ant-table-thead > tr > th) { padding: 15px 11px; color: #8390a2; font-size: 11px; font-weight: 750; letter-spacing: .055em; text-transform: uppercase; background: transparent; border-bottom: 1px solid #dfe6ef; }.holdings-table :deep(.ant-table-tbody > tr > td) { padding: 17px 11px; font-size: 14px; border-bottom-color: #edf1f5; }.holdings-table :deep(.ant-table-tbody > tr:hover > td) { background: #f4f8ff !important; }.broker-name, .stock-code { color: #263957; }.stock-name { color: #263957; font-size: 15px; font-weight: 650; }.account-suffix { color: #8794a7; }.profit-up { color: #d7505d; }.profit-down { color: #087443; }.loading-container, .empty-state { margin: 0 24px; background: #fff; border: 1px solid #e4e9f0; box-shadow: 0 8px 24px rgba(30, 48, 77, .045); }.empty-state { min-height: 330px; border-radius: 14px; }.empty-icon { color: #aebdd0; }.empty-text { color: #4c5d75; font-weight: 650; }.empty-hint { color: #8491a3; }
+.portfolio-page { padding: 8px 0 38px; color: var(--theme-text, #182336); }
+.portfolio-hero { position: relative; overflow: hidden; min-height: 194px; padding: 30px 32px 68px; color: var(--theme-text, #fff); background: radial-gradient(circle at 86% -35%, #5578b7 0, transparent 38%), radial-gradient(circle at 18% 120%, var(--theme-raised, #294166) 0, transparent 45%), var(--theme-raised, #17243a); border-radius: 18px; }.portfolio-hero::after { position: absolute; right: 7%; bottom: -64px; width: 210px; height: 210px; content: ''; border: 1px solid rgba(185, 211, 255, .15); border-radius: 50%; box-shadow: 0 0 0 30px rgba(185, 211, 255, .04), 0 0 0 64px rgba(185, 211, 255, .025); }.hero-top-row { position: relative; z-index: 1; display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }.hero-eyebrow, .section-kicker { margin: 0 0 7px; color: var(--theme-blue, #91acd7); font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }.page-title { display: flex; align-items: center; margin: 0; color: var(--theme-text, #fff); font-size: clamp(26px, 3vw, 34px); font-weight: 750; letter-spacing: -.04em; }.page-title .anticon { margin-right: 10px; color: var(--theme-blue, #a9c4ff); }.eye-btn { margin-left: 8px; color: var(--theme-text, #b9c8e1); }.eye-btn:hover { color: var(--theme-text, #fff); }.title-count, .holding-total { color: var(--theme-text, #1b3153); background: var(--theme-blue-surface, #dce9ff); border-radius: 999px; }.title-count { min-width: 25px; height: 25px; margin-left: 10px; font-size: 12px; font-weight: 700; }.top-actions { position: relative; z-index: 1; align-items: center; gap: 10px; }.hero-secondary-action { color: var(--theme-text, #e4edff); background: rgba(255, 255, 255, .08); border-color: rgba(220, 233, 255, .26); }.hero-secondary-action:hover { color: var(--theme-text, #fff) !important; background: rgba(255, 255, 255, .16); border-color: var(--theme-line, rgba(220, 233, 255, .5)); }.batch-evaluate-button { color: var(--theme-text, #203b61) !important; background: var(--theme-blue-surface, #d7e7ff); border-color: var(--theme-line, #d7e7ff); }.hero-primary-action { box-shadow: 0 8px 20px rgba(0, 0, 0, .18); }.hero-meta-row { position: relative; z-index: 1; display: flex; align-items: center; gap: 9px; margin-top: 27px; color: var(--theme-text, #c2d1e8); font-size: 12px; }.refresh-hint { display: inline-flex; align-items: center; gap: 5px; color: var(--theme-text, #b8c9e3); font-size: 12px; }.hero-meta-divider { width: 1px; height: 13px; background: rgba(220, 233, 255, .28); }.disclaimer-icon { color: var(--theme-amber, #f3d987); }.disclaimer-text { color: var(--theme-text, #c2d1e8); }
+.summary-section { position: relative; z-index: 2; margin: -42px 24px 22px; }.summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }.summary-card { min-height: 115px; padding: 20px 21px; text-align: left; background: var(--theme-surface, rgba(255, 255, 255, .96)); border: 1px solid var(--theme-line, #e6ebf2); border-radius: 14px; box-shadow: 0 12px 28px rgba(30, 48, 77, .09); }.summary-card-primary { color: var(--theme-text, #fff); background: linear-gradient(135deg, #2f5e9b, var(--theme-raised, #1d365a)); border-color: transparent; }.summary-card-primary .summary-label { color: var(--theme-text, #c7d9f6); }.summary-label { margin-bottom: 10px; color: var(--theme-muted, #7a879a); font-size: 12px; font-weight: 650; }.summary-value { color: var(--theme-text, #213653); font-size: 23px; font-weight: 750; letter-spacing: -.025em; }.summary-card-primary .summary-value { color: var(--theme-text, #fff); }.summary-break-even-label { display: flex; align-items: center; gap: 5px; }.break-even-help { color: var(--theme-muted, #a07b80); font-size: 13px; cursor: pointer; transition: color .2s ease; }.break-even-help:hover { color: var(--theme-red, #d7505d); }.summary-break-even-analysis { min-height: 32px; margin-top: 7px; color: var(--theme-muted, #8b7680); font-size: 12px; line-height: 1.45; }.sensitive-hidden-text { color: var(--theme-muted, #a9bddb) !important; }.break-even-popover-content { width: min(680px, calc(100vw - 48px)); }.break-even-popover-heading { display: grid; gap: 4px; padding: 2px 4px 0; }.break-even-popover-heading strong { color: var(--theme-text, #362832); font-size: 15px; }.break-even-popover-heading span { color: var(--theme-muted, #8c7780); font-size: 12px; line-height: 1.5; }.break-even-chart { width: 100%; height: 300px; }.break-even-gain { color: var(--theme-red, #d7505d); font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace; font-weight: 700; }
+.portfolio-controls, .holdings-list { margin: 0 24px 18px; background: var(--theme-surface, #fff); border: 1px solid var(--theme-line, #e4e9f0); border-radius: 14px; box-shadow: 0 8px 24px rgba(30, 48, 77, .045); }.portfolio-controls { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding: 19px 22px; }.holdings-heading { display: flex; align-items: flex-end; gap: 11px; }.holdings-heading h2 { margin: 0; color: var(--theme-text, #1d2c43); font-size: 18px; letter-spacing: -.025em; }.section-kicker { margin-bottom: 5px; color: var(--theme-muted, #8393aa); }.holding-total { display: grid; place-items: center; min-width: 26px; height: 26px; margin-bottom: 1px; padding: 0 7px; font-size: 12px; font-weight: 750; }.holdings-actions { display: flex; align-items: center; justify-content: flex-end; gap: 16px; }.holdings-refresh-time { display: inline-flex; align-items: center; gap: 5px; color: var(--theme-muted, #7d8da3); font-size: 12px; white-space: nowrap; }.search-bar { width: auto; }.search-account-select { width: 190px; }.search-input { width: 280px; }.holdings-list { padding: 8px 18px 14px; }.holdings-table :deep(.ant-table) { background: transparent; }.holdings-table :deep(.ant-table-thead > tr > th) { padding: 15px 11px; color: var(--theme-muted, #8390a2); font-size: 11px; font-weight: 750; letter-spacing: .055em; text-transform: uppercase; background: transparent; border-bottom: 1px solid var(--theme-line, #dfe6ef); }.holdings-table :deep(.ant-table-tbody > tr > td) { padding: 17px 11px; font-size: 14px; border-bottom-color: var(--theme-line, #edf1f5); }.holdings-table :deep(.ant-table-tbody > tr:hover > td) { background: var(--theme-raised, #f4f8ff) !important; }.broker-name, .stock-code { color: var(--theme-text, #263957); }.stock-name { color: var(--theme-text, #263957); font-size: 15px; font-weight: 650; }.account-suffix { color: var(--theme-muted, #8794a7); }.profit-up { color: var(--theme-red, #d7505d); }.profit-down { color: var(--theme-green, #087443); }.loading-container, .empty-state { margin: 0 24px; background: var(--theme-surface, #fff); border: 1px solid var(--theme-line, #e4e9f0); box-shadow: 0 8px 24px rgba(30, 48, 77, .045); }.empty-state { min-height: 330px; border-radius: 14px; }.empty-icon { color: var(--theme-muted, #aebdd0); }.empty-text { color: var(--theme-text, #4c5d75); font-weight: 650; }.empty-hint { color: var(--theme-muted, #8491a3); }
 @media (max-width: 1100px) { .portfolio-hero { padding: 26px 24px 64px; }.top-actions { flex-wrap: wrap; justify-content: flex-end; }.summary-section { margin-right: 16px; margin-left: 16px; }.summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }.portfolio-controls, .holdings-list, .loading-container, .empty-state { margin-right: 16px; margin-left: 16px; }.portfolio-controls { align-items: flex-start; flex-direction: column; }.holdings-actions, .search-bar { width: 100%; }.holdings-actions { justify-content: space-between; } }
 @media (max-width: 760px) { .portfolio-page { padding-top: 0; }.portfolio-hero { padding: 22px 18px 58px; border-radius: 0 0 16px 16px; }.hero-top-row { align-items: stretch; flex-direction: column; }.top-actions { justify-content: flex-start; }.hero-meta-row { align-items: flex-start; flex-wrap: wrap; }.hero-meta-divider { display: none; }.summary-section { margin: -36px 12px 16px; }.summary-grid { grid-template-columns: 1fr; gap: 12px; }.portfolio-controls, .holdings-list, .loading-container, .empty-state { margin-right: 12px; margin-left: 12px; }.break-even-chart { height: 250px; }.portfolio-controls, .holdings-actions { align-items: flex-start; flex-direction: column; }.holdings-actions { gap: 12px; }.portfolio-controls { padding: 17px; }.search-bar :deep(.ant-space-item), .search-account-select, .search-input { width: 100%; }.holdings-list { padding: 6px 10px 12px; }.page-title { font-size: 28px; } }
 @media (min-width: 1200px) { .portfolio-hero { min-height: 206px; }.summary-section { margin-right: 32px; margin-left: 32px; }.portfolio-controls, .holdings-list, .loading-container, .empty-state { margin-right: 32px; margin-left: 32px; } }
 
 /* 默认浅色：组合概览保留层级和重点，不再以深色横幅承载信息。 */
-.portfolio-hero { color: #263957; background: radial-gradient(circle at 86% -35%, #d5e4fb 0, transparent 42%), radial-gradient(circle at 18% 120%, #e2eefb 0, transparent 48%), #f8fbff; border: 1px solid #d9e5f3; box-shadow: 0 10px 26px rgba(41, 64, 102, .05); }.portfolio-hero::after { border-color: rgba(88, 120, 194, .14); box-shadow: 0 0 0 30px rgba(88, 120, 194, .035), 0 0 0 64px rgba(88, 120, 194, .02); }.hero-eyebrow { color: #6380af; }.page-title { color: #1e3455; }.page-title .anticon { color: #5878c2; }.eye-btn { color: #627a9f; }.eye-btn:hover { color: #315f9e; }.hero-secondary-action { color: #42628e; background: rgba(255, 255, 255, .72); border-color: #cbd9eb; }.hero-secondary-action:hover { color: #274f85 !important; background: #fff; border-color: #aebfda; }.batch-evaluate-button { color: #315f9e !important; background: #e3efff; border-color: #d2e3fb; }.hero-meta-row, .refresh-hint, .disclaimer-text { color: #6f819a; }.hero-meta-divider { background: #cfdaea; }.disclaimer-icon { color: #b98b2b; }.summary-section { margin-top: -34px; }.summary-card-primary { color: #263957; background: #fff; border-color: #d8e5f3; }.summary-card-primary .summary-label { color: #7a879a; }.summary-card-primary .summary-value { color: #213653; }.sensitive-hidden-text { color: #9aacc6 !important; }
+.portfolio-hero { color: var(--theme-text, #263957); background: radial-gradient(circle at 86% -35%, var(--theme-blue-surface, #d5e4fb) 0, transparent 42%), radial-gradient(circle at 18% 120%, var(--theme-raised, #e2eefb) 0, transparent 48%), var(--theme-surface, #f8fbff); border: 1px solid var(--theme-line, #d9e5f3); box-shadow: 0 10px 26px rgba(41, 64, 102, .05); }.portfolio-hero::after { border-color: rgba(88, 120, 194, .14); box-shadow: 0 0 0 30px rgba(88, 120, 194, .035), 0 0 0 64px rgba(88, 120, 194, .02); }.hero-eyebrow { color: var(--theme-blue, #6380af); }.page-title { color: var(--theme-text, #1e3455); }.page-title .anticon { color: var(--theme-blue, #5878c2); }.eye-btn { color: var(--theme-muted, #627a9f); }.eye-btn:hover { color: var(--theme-blue, #315f9e); }.hero-secondary-action { color: var(--theme-blue, #42628e); background: var(--theme-surface, rgba(255, 255, 255, .72)); border-color: var(--theme-line, #cbd9eb); }.hero-secondary-action:hover { color: var(--theme-blue, #274f85) !important; background: var(--theme-surface, #fff); border-color: var(--theme-line, #aebfda); }.batch-evaluate-button { color: var(--theme-blue, #315f9e) !important; background: var(--theme-blue-surface, #e3efff); border-color: var(--theme-line, #d2e3fb); }.hero-meta-row, .refresh-hint, .disclaimer-text { color: var(--theme-muted, #6f819a); }.hero-meta-divider { background: var(--theme-blue-surface, #cfdaea); }.disclaimer-icon { color: var(--theme-amber, #b98b2b); }.summary-section { margin-top: -34px; }.summary-card-primary { color: var(--theme-text, #263957); background: var(--theme-surface, #fff); border-color: var(--theme-line, #d8e5f3); }.summary-card-primary .summary-label { color: var(--theme-muted, #7a879a); }.summary-card-primary .summary-value { color: var(--theme-text, #213653); }.sensitive-hidden-text { color: var(--theme-muted, #9aacc6) !important; }
+
+.portfolio-anomaly-card { min-width: 0; min-height: 115px; padding: 15px 17px; background: var(--theme-surface, rgba(255, 255, 255, .96)); border: 1px solid var(--theme-line, #d8e5f3); border-radius: 14px; box-shadow: 0 12px 28px rgba(30, 48, 77, .09); }.portfolio-anomaly-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-bottom: 9px; border-bottom: 1px solid var(--theme-line, #edf1f6); }.portfolio-anomaly-heading strong { display: block; color: var(--theme-text, #293d5b); font-size: 13px; }.portfolio-anomaly-heading small, .portfolio-anomaly-heading > span { display: block; margin-top: 3px; color: var(--theme-muted, #8c9aae); font-size: 10px; }.portfolio-anomaly-heading > span { margin-top: 0; color: var(--theme-blue, #6683b0); }.portfolio-anomaly-list { display: grid; max-height: calc(100vh - 180px); overflow-y: auto; }.portfolio-anomaly-item { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 16px 0; border-bottom: 1px solid var(--theme-line, #eef2f7); }.portfolio-anomaly-item:last-child { border-bottom: 0; }.portfolio-anomaly-item div { display: grid; gap: 2px; }.portfolio-anomaly-item strong { overflow: hidden; color: var(--theme-text, #314660); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }.portfolio-anomaly-item small, .portfolio-anomaly-item em { overflow: hidden; color: var(--theme-muted, #94a0b0); font-size: 10px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }.portfolio-anomaly-item p { overflow: hidden; margin: 0; color: var(--theme-muted, #61728a); font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }.portfolio-anomaly-item em { color: var(--theme-blue, #6683b0); white-space: normal; overflow-wrap: anywhere; }.portfolio-anomaly-state { display: flex; align-items: center; gap: 7px; min-height: 74px; color: var(--theme-muted, #92a0b1); font-size: 12px; }.portfolio-anomaly-error { color: var(--theme-red, #b86f78); line-height: 1.45; }
+.portfolio-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  align-items: start;
+  gap: 20px;
+}
+.portfolio-main { min-width: 0; }
+.portfolio-anomaly-card { position: sticky; top: 20px; }
+.portfolio-anomaly-heading strong { font-size: 16px; }
+.portfolio-anomaly-item strong { font-size: 14px; }
+.portfolio-anomaly-item small { font-size: 12px; }
+.hero-top-row, .portfolio-controls, .holdings-actions { flex-wrap: wrap; }
+.top-actions { flex-wrap: wrap; }
+@media (min-width: 1101px) and (max-width: 1600px) {
+  .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hero-top-row, .portfolio-controls { flex-direction: column; align-items: stretch; }
+  .top-actions, .holdings-actions { justify-content: flex-start; }
+}
+@media (max-width: 1100px) {
+  .portfolio-layout { grid-template-columns: minmax(0, 1fr); }
+  .portfolio-anomaly-card { position: static; margin: 0 16px; }
+  .portfolio-anomaly-list { max-height: 560px; }
+}
+@media (max-width: 760px) {
+  .portfolio-anomaly-card { margin: 0 12px; }
+}
 </style>

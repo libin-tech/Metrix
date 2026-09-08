@@ -29,8 +29,6 @@ public final class BusinessConstants {
 
     /* ==================== 价格/百分比率 ==================== */
     public static final BigDecimal PCT_MULTIPLIER = BigDecimal.valueOf(100);
-    public static final BigDecimal CHANGE_PCT_THRESHOLD = BigDecimal.valueOf(1);
-    public static final BigDecimal TURNOVER_RATE_THRESHOLD = BigDecimal.valueOf(1);
 
     /* ==================== 入场/止损/目标价因子 ==================== */
     public static final BigDecimal IDEAL_ENTRY_FACTOR = BigDecimal.valueOf(0.99);

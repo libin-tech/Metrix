@@ -1,0 +1,51 @@
+/* Dark overrides use semantic colors; existing light colors remain each declaration's fallback. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --theme-surface: #172231;
+  --theme-raised: #1d2b3f;
+  --theme-text: #e0e8f3;
+  --theme-muted: #a3b0c4;
+  --theme-line: #34445b;
+  --theme-red: #ff8790;
+  --theme-green: #5dcc9e;
+  --theme-amber: #f3be69;
+  --theme-blue: #94b9ff;
+  --theme-purple: #c1a3ef;
+  --theme-red-surface: #35232d;
+  --theme-green-surface: #17352e;
+  --theme-amber-surface: #352f22;
+  --theme-blue-surface: #20334f;
+  --theme-purple-surface: #302a43;
+  --workspace-ink: var(--theme-text);
+  --workspace-muted: var(--theme-muted);
+  --workspace-line: var(--theme-line);
+  --workspace-surface: var(--theme-surface);
+  --workspace-canvas: #101824;
+  --workspace-accent: #5278ba;
+  --workspace-soft-accent: #20334f;
+}
+:root[data-theme='light'] { color-scheme: light; }
+:root[data-theme='dark'] body,
+:root[data-theme='dark'] .content {
+  color: var(--workspace-ink);
+  background: var(--workspace-canvas);
+}
+:root[data-theme='dark'] .content {
+  background-image: radial-gradient(circle at 10% 0, #18283d66, transparent 40%);
+}
+:root[data-theme='dark'] .ant-input::placeholder,
+:root[data-theme='dark'] textarea::placeholder { color: var(--theme-muted); }
+:root[data-theme='dark'] .ant-skeleton .ant-skeleton-content .ant-skeleton-title,
+:root[data-theme='dark'] .ant-skeleton .ant-skeleton-content .ant-skeleton-paragraph > li { background: var(--theme-raised); }
+/* Static Ant Design messages/confirmations are mounted outside the app provider. */
+:root[data-theme='dark'] .ant-modal-content,
+:root[data-theme='dark'] .ant-modal-header,
+:root[data-theme='dark'] .ant-message-notice-content,
+:root[data-theme='dark'] .ant-notification-notice {
+  color: var(--theme-text);
+  background: var(--theme-raised);
+}
+:root[data-theme='dark'] .ant-modal-confirm-title,
+:root[data-theme='dark'] .ant-modal-confirm-content,
+:root[data-theme='dark'] .ant-notification-notice-message,
+:root[data-theme='dark'] .ant-notification-notice-description { color: var(--theme-text) !important; }

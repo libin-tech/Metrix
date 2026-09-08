@@ -1,5 +1,7 @@
 package com.bintech.metrix.service.impl;
 
+import com.bintech.metrix.constants.ApiConstants;
+
 import com.bintech.metrix.constants.BusinessConstants;
 import com.bintech.metrix.core.analysis.StockAdvisorPromptBuilder;
 import com.bintech.metrix.dto.response.AnalysisResult;
@@ -161,8 +163,9 @@ public class ChatServiceImpl implements ChatService {
                 sendStep(emitter, "**Step 5/7** 📊 获取筹码分布...");
                 try {
                     chipData = marketDataService.fetchChipData(stockBasic, userId);
-                    sendStep(emitter, "✅ **Step 5/7** 📊 获取筹码分布完成");
-                    addStepRecord(stepRecords, 5, "获取筹码分布", System.currentTimeMillis() - t6, "completed");
+                    boolean chipAvailable = ApiConstants.STATUS_SUCCESS.equals(chipData.get(ApiConstants.KEY_STATUS));
+                    sendStep(emitter, "**Step 5/7** 📊 " + chipData.getOrDefault(ApiConstants.KEY_MESSAGE, "获取筹码分布完成"));
+                    addStepRecord(stepRecords, 5, "获取筹码分布", System.currentTimeMillis() - t6, chipAvailable ? "completed" : "failed");
                 } catch (Exception e) {
                     log.warn("获取筹码分布失败: {}", e.getMessage());
                     sendStep(emitter, "⚠️ **Step 5/7** 📊 获取筹码分布失败");

@@ -28,7 +28,7 @@ Metrix = Metric（指标） + Matrix（矩阵）
 | AI | LangChain4j 0.36.2 (OpenAI / Ollama)            |
 | 认证 | Sa-Token 1.45.0 (JWT, 注解鉴权)                  |
 | 前端 | Vue 3, Ant Design Vue, Vite                     |
-| 数据源 | TickFlow (行情), 博查 (新闻), AKshare (基础数据)          |
+| 数据源 | 同花顺金融数据 API (行情), 博查 (新闻), AKshare (基础数据)          |
 | 工具 | Hutool 5.8.13, Lombok                           |
 
 ## 功能特性
@@ -36,9 +36,9 @@ Metrix = Metric（指标） + Matrix（矩阵）
 - **AI 智能分析** — 集成大模型对股票进行多维度分析（技术面、资金面、消息面）
 - **AI 问一问** — 支持多轮对话式分析，实时追踪 8 步处理过程的耗时与状态，Markdown 流式渲染
 - **主题切换** — 内置 5 种主题色（天空蓝/翡翠绿/暮光紫/落日橙/极光青），基于 Ant Design Vue Design Token 全局生效
-- **实时行情** — 通过 TickFlow 获取实时报价、深度数据、K 线数据
+- **实时行情** — 通过同花顺金融数据 API 获取基础报价、前复权日 K 数据，MACD 本地计算
 - **新闻聚合** — 通过博查 API 获取相关股票新闻并自动摘要
-- **筹码分析** — Python 脚本计算筹码分布与成本集中度
+- **筹码分析** — 通过 AKShare 获取最近交易日的筹码指标（前复权），包括获利比例、成本区间与集中度，无需行情 API Key
 - **大盘复盘** — 对每日 A 股主要指数进行 AI 复盘分析，生成市场总结与趋势研判
 - **持仓管理** — 多账户持仓管理，支持批量录入、一键评估、实时盈亏监控
 - **飞书通知** — 分析完成后通过飞书 Webhook 推送结果
@@ -60,9 +60,8 @@ Metrix = Metric（指标） + Matrix（矩阵）
 ### 本地开发
 
 ```bash
-# 0. 安装 AKShare、Tickflow 和 Baostock
+# 0. 安装 AKShare 和 Baostock
 pip install akshare --upgrade
-pip install "tickflow[all]" --upgrade
 pip install baostock --upgrade
 
 # 1. 配置数据库
@@ -189,9 +188,9 @@ Metrix/
 
 ### 数据源配置
 
-- **TickFlow**：实时行情数据，需配置 API Key
+- **同花顺金融数据 API（FUYAO）**：基础报价、前复权日 K 和当日指数成交额。市场数据配置中填写 `https://fuyao.aicubes.cn` 和新的 API Key；旧行情 Key 不通用。换手率、量比暂缺，显示为空。历史成交额仍使用 Baostock。文档：https://fuyao.aicubes.cn/docs/
 - **博查**：新闻数据，需配置 API Key
-- **Tushare**：股票基础数据，导入 CSV 文件
+- **标的数据**：配置并启用同花顺金融数据 API 后，在标的数据页面点击“同步”。按完整股票代码新增或更新 A 股名称和代码，未变化记录不写库；已有行业、上市日期等信息保留。未配置时提供前往配置页的引导。
 
 > **注意**：Windows 下使用 AKShare 时如遇网络代理错误，系统会自动清除子进程的 `HTTP_PROXY`/`HTTPS_PROXY` 环境变量，确保直连外网。
 
@@ -222,6 +221,7 @@ Metrix/
 | `GET  /api/portfolio/holdings` | 持仓列表 |
 | `POST /api/portfolio/holdings/batch` | 批量新增持仓 |
 | `GET  /api/stock-basic/page` | 标的数据（分页） |
+| `POST /api/stock-basic/sync` | 增量同步 A 股标的（需金融数据 API 配置） |
 | `GET  /api/stocks/search` | 标的搜索 |
 
 ### 管理接口
@@ -250,3 +250,5 @@ Metrix/
 ## 许可证
 
 MIT License | Copyright © 2026 bin.li
+
+标的同步权限元信息迁移脚本：`backend/.doc/db/V20260907_01__stock_basic_sync.sql`。迁移保持原 API ID 和角色授权关系；代码在迁移期间兼容原标的导入权限，CSV 导入接口已移除。

@@ -37,7 +37,6 @@ public final class SystemConstants {
     public static final String KLINE_PERIOD_DAY = "1d";
     public static final int KLINE_DISPLAY_COUNT = 30;
     public static final int MARKET_TURNOVER_HISTORY_SIZE = 60;
-    public static final int MARKET_TURNOVER_LATEST_COUNT = 1;
     public static final String MARKET_TURNOVER_SHANGHAI_SYMBOL = "000001.SH";
     public static final String MARKET_TURNOVER_SHENZHEN_SYMBOL = "399001.SZ";
     public static final String MARKET_DASHBOARD_WEBSOCKET_PATH = "/api/ws/market-dashboard";
