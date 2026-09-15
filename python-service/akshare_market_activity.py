@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""新浪沪深 A 股涨跌统计 + 东方财富完整涨跌停池，超时由后端管理。"""
+"""新浪沪深北 A 股涨跌统计 + 东方财富完整涨跌停池，超时由后端管理。"""
 import io
 import json
 from contextlib import redirect_stdout, redirect_stderr
@@ -10,6 +10,7 @@ import pandas as pd
 
 MARKET_ZONE = ZoneInfo("Asia/Shanghai")
 STOCK_CODE_PATTERN = r"(?:0|3|6)\d{5}"
+BREADTH_CODE_PATTERN = r"(?:(?:0|3|4|6|8)\d{5}|920\d{3})"
 
 
 def normalizeCodes(series):
@@ -18,12 +19,12 @@ def normalizeCodes(series):
 
 
 def countBreadth(frame):
-    """统计有有效成交报价的沪深 A 股，零成交记录不作为平盘。"""
+    """统计有有效成交报价的沪深北 A 股，零成交记录不作为平盘。"""
     if frame is None or frame.empty:
         raise ValueError("新浪全市场行情为空")
     quotes = frame.copy()
     quotes["代码"] = normalizeCodes(quotes["代码"])
-    quotes = quotes[quotes["代码"].str.fullmatch(STOCK_CODE_PATTERN)].drop_duplicates("代码")
+    quotes = quotes[quotes["代码"].str.fullmatch(BREADTH_CODE_PATTERN)].drop_duplicates("代码")
     numeric = quotes[["最新价", "昨收", "成交量", "涨跌额"]].apply(pd.to_numeric, errors="coerce")
     valid = numeric.notna().all(axis=1) & ~numeric.isin([float("inf"), float("-inf")]).any(axis=1)
     trading = numeric[valid & (numeric["最新价"] > 0) & (numeric["昨收"] > 0) & (numeric["成交量"] > 0)]
@@ -65,7 +66,7 @@ def fetchActivity(ak, now):
     result.update({"limitUp": countPool(ak.stock_zt_pool_em(date=tradeDate)),
                    "limitDown": countPool(ak.stock_zt_pool_dtgc_em(date=tradeDate)),
                    "statDate": tradeDate, "fetchedAt": now.isoformat(), "stale": False,
-                   "source": "sina+eastmoney", "scope": "SH_SZ_A"})
+                   "source": "sina+eastmoney", "scope": "SH_SZ_BJ_A", "limitScope": "SH_SZ_A"})
     return result
 
 

@@ -1,12 +1,16 @@
 package com.bintech.metrix.service.impl;
 
+import cn.hutool.json.JSONUtil;
+import com.bintech.metrix.constants.CacheConstants;
 import com.bintech.metrix.dto.response.PortfolioHoldingListResponse;
 import com.bintech.metrix.repository.dao.StockBasicDao;
 import com.bintech.metrix.repository.dao.PortfolioHoldingDao;
 import com.bintech.metrix.repository.entity.PortfolioHolding;
 import com.bintech.metrix.repository.entity.StockBasic;
 import com.bintech.metrix.service.MarketDataService;
+import com.bintech.metrix.service.MarketTradingSession;
 import com.bintech.metrix.service.PortfolioHoldingService;
+import com.bintech.metrix.service.RedisCacheService;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -30,6 +34,26 @@ import static org.mockito.Mockito.when;
 class MarketWorkbenchServiceImplTest {
 
     @Test
+    void shouldLoadIntradayIndependentlyAndRejectInvalidPayloads() {
+        StockBasicDao stockDao = mock(StockBasicDao.class);
+        MarketDataService marketData = mock(MarketDataService.class);
+        StockBasic stock = new StockBasic();
+        stock.setTsCode("600519.SH");
+        when(stockDao.selectByTsCode("600519.SH")).thenReturn(stock);
+        var service = new MarketWorkbenchServiceImpl(stockDao, mock(PortfolioHoldingDao.class),
+                marketData, mock(PortfolioHoldingService.class), mock(RedisCacheService.class), mock(MarketTradingSession.class));
+        when(marketData.fetchIntradayData(stock)).thenReturn(Map.of("status", "success",
+                "data", Map.of("date", "2026-09-11", "points", List.of())));
+        assertEquals("2026-09-11", service.intraday("600519.SH").get("date"));
+        verify(marketData, never()).fetchKlinesData(any(), eq(252), any());
+        when(marketData.fetchIntradayData(stock)).thenReturn(Map.of("status", "error", "message", "upstream"));
+        assertThrows(IllegalStateException.class, () -> service.intraday("600519.SH"));
+        when(marketData.fetchIntradayData(stock)).thenReturn(Map.of("status", "success", "data", Map.of()));
+        assertThrows(IllegalStateException.class, () -> service.intraday("600519.SH"));
+        assertThrows(IllegalArgumentException.class, () -> service.intraday("invalid"));
+    }
+
+    @Test
     void shouldBuildMetricsFromForwardAdjustedDailyBars() {
         StockBasicDao stockDao = mock(StockBasicDao.class);
         PortfolioHoldingDao holdingDao = mock(PortfolioHoldingDao.class);
@@ -44,7 +68,7 @@ class MarketWorkbenchServiceImplTest {
         when(marketData.fetchKlinesData(stock, 252, 1L)).thenReturn(klineResponse());
         when(holdings.getHoldings(null, null)).thenReturn(new PortfolioHoldingListResponse(List.of(), null));
 
-        var result = new MarketWorkbenchServiceImpl(stockDao, holdingDao, marketData, holdings).load("600519.SH", 1L);
+        var result = workbenchService(stockDao, holdingDao, marketData, holdings).load("600519.SH", 1L);
 
         assertEquals("贵州茅台", result.instrument().get("name"));
         assertEquals("同花顺金融数据 API", result.source());
@@ -61,12 +85,64 @@ class MarketWorkbenchServiceImplTest {
     }
 
     @Test
+    void shouldUseCachedSnapshotOutsideTradingSessionWithoutCallingUpstream() {
+        StockBasicDao stockDao = mock(StockBasicDao.class);
+        MarketDataService marketData = mock(MarketDataService.class);
+        PortfolioHoldingService holdings = mock(PortfolioHoldingService.class);
+        RedisCacheService cache = mock(RedisCacheService.class);
+        MarketTradingSession session = mock(MarketTradingSession.class);
+        StockBasic stock = new StockBasic();
+        stock.setTsCode("600519.SH");
+        stock.setSymbol("600519");
+        stock.setName("贵州茅台");
+        when(stockDao.selectByTsCode(stock.getTsCode())).thenReturn(stock);
+        when(session.isTrading()).thenReturn(false);
+        when(cache.get(CacheConstants.MARKET_WORKBENCH_SNAPSHOT_KEY_PREFIX + stock.getTsCode()))
+                .thenReturn(JSONUtil.toJsonStr(Map.of("quote", quoteResponse(), "klines", klineResponse())));
+        when(holdings.getHoldings(null, null)).thenReturn(new PortfolioHoldingListResponse(List.of(), null));
+
+        var result = new MarketWorkbenchServiceImpl(stockDao, mock(PortfolioHoldingDao.class), marketData, holdings, cache, session)
+                .load(stock.getTsCode(), 1L);
+
+        assertEquals(new BigDecimal("13"), result.quote().get("lastPrice"));
+        assertEquals(5, result.bars().size());
+        verify(marketData, never()).fetchRealTimeData(any(), eq(1L));
+        verify(marketData, never()).fetchKlinesData(any(), eq(252), eq(1L));
+    }
+
+    @Test
+    void shouldRefreshSnapshotFromUpstreamDuringTradingSession() {
+        StockBasicDao stockDao = mock(StockBasicDao.class);
+        MarketDataService marketData = mock(MarketDataService.class);
+        PortfolioHoldingService holdings = mock(PortfolioHoldingService.class);
+        RedisCacheService cache = mock(RedisCacheService.class);
+        MarketTradingSession session = mock(MarketTradingSession.class);
+        StockBasic stock = new StockBasic();
+        stock.setTsCode("600519.SH");
+        stock.setSymbol("600519");
+        stock.setName("贵州茅台");
+        when(stockDao.selectByTsCode(stock.getTsCode())).thenReturn(stock);
+        when(session.isTrading()).thenReturn(true);
+        when(marketData.fetchRealTimeData(stock, 1L)).thenReturn(quoteResponse());
+        when(marketData.fetchKlinesData(stock, 252, 1L)).thenReturn(klineResponse());
+        when(holdings.getHoldings(null, null)).thenReturn(new PortfolioHoldingListResponse(List.of(), null));
+
+        new MarketWorkbenchServiceImpl(stockDao, mock(PortfolioHoldingDao.class), marketData, holdings, cache, session)
+                .load(stock.getTsCode(), 1L);
+
+        verify(marketData).fetchRealTimeData(stock, 1L);
+        verify(marketData).fetchKlinesData(stock, 252, 1L);
+        verify(cache, never()).get(CacheConstants.MARKET_WORKBENCH_SNAPSHOT_KEY_PREFIX + stock.getTsCode());
+        verify(cache).setJson(eq(CacheConstants.MARKET_WORKBENCH_SNAPSHOT_KEY_PREFIX + stock.getTsCode()), any());
+    }
+
+    @Test
     void shouldFailBeforeUpstreamCallsForUnknownOrInvalidInstrument() {
         StockBasicDao stockDao = mock(StockBasicDao.class);
         PortfolioHoldingDao holdingDao = mock(PortfolioHoldingDao.class);
         MarketDataService marketData = mock(MarketDataService.class);
         PortfolioHoldingService holdings = mock(PortfolioHoldingService.class);
-        var service = new MarketWorkbenchServiceImpl(stockDao, holdingDao, marketData, holdings);
+        var service = workbenchService(stockDao, holdingDao, marketData, holdings);
 
         assertThrows(IllegalArgumentException.class, () -> service.load("600519", 1L));
         when(stockDao.selectByTsCode("600519.SH")).thenReturn(null);
@@ -87,7 +163,7 @@ class MarketWorkbenchServiceImplTest {
                 "item", List.of(Map.of("stock_name", "贵州茅台", "thscode", "600519.SH", "tag_name", "大涨",
                         "analysis_content", "异动原因", "keyword_list", List.of("白酒"))))));
 
-        Map<String, Object> result = new MarketWorkbenchServiceImpl(stockDao, holdingDao, marketData, holdings).anomalies(1L);
+        Map<String, Object> result = workbenchService(stockDao, holdingDao, marketData, holdings).anomalies(1L);
 
         assertEquals("同花顺金融数据 API", result.get("source"));
         assertEquals(1, ((List<?>) result.get("items")).size());
@@ -105,7 +181,7 @@ class MarketWorkbenchServiceImplTest {
         when(holdingDao.selectByUserId(7L)).thenReturn(holdings);
         when(marketData.fetchAnomalyAnalysisData(7L)).thenReturn(Map.of("status", "success", "data", Map.of(
                 "item", List.of(Map.of("thscode", "000009.SZ"), Map.of("thscode", "600519.SH")))));
-        var service = new MarketWorkbenchServiceImpl(mock(StockBasicDao.class), holdingDao,
+        var service = workbenchService(mock(StockBasicDao.class), holdingDao,
                 marketData, mock(PortfolioHoldingService.class));
 
         assertEquals(List.of(Map.of("thscode", "000009.SZ")), service.anomalies(7L).get("items"));
@@ -117,7 +193,7 @@ class MarketWorkbenchServiceImplTest {
         PortfolioHoldingDao holdingDao = mock(PortfolioHoldingDao.class);
         MarketDataService marketData = mock(MarketDataService.class);
         when(holdingDao.selectByUserId(7L)).thenReturn(List.of());
-        var service = new MarketWorkbenchServiceImpl(mock(StockBasicDao.class), holdingDao,
+        var service = workbenchService(mock(StockBasicDao.class), holdingDao,
                 marketData, mock(PortfolioHoldingService.class));
 
         assertEquals(List.of(), service.anomalies(7L).get("items"));
@@ -170,8 +246,14 @@ class MarketWorkbenchServiceImplTest {
                 "timestamp", timestamps, "open", closes, "high", closes, "low", closes,
                 "close", closes, "volume", closes, "amount", closes)));
         when(holdings.getHoldings(null, null)).thenReturn(new PortfolioHoldingListResponse(List.of(), null));
-        return new MarketWorkbenchServiceImpl(stockDao, mock(PortfolioHoldingDao.class), marketData, holdings)
+        return workbenchService(stockDao, mock(PortfolioHoldingDao.class), marketData, holdings)
                 .load(stock.getTsCode(), 1L).metrics();
+    }
+
+    private MarketWorkbenchServiceImpl workbenchService(StockBasicDao stockDao, PortfolioHoldingDao holdingDao,
+                                                         MarketDataService marketData, PortfolioHoldingService holdings) {
+        return new MarketWorkbenchServiceImpl(stockDao, holdingDao, marketData, holdings,
+                mock(RedisCacheService.class), mock(MarketTradingSession.class));
     }
 
     private Map<String, Object> quoteResponse() {

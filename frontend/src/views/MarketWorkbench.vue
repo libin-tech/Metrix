@@ -17,15 +17,35 @@
       </a-auto-complete>
     </header>
 
-    <section class="holding-strip" :aria-label="$t('marketWorkbench.holdings')">
-      <div v-if="displayedHoldings.length" class="holding-list">
-        <button v-for="holding in displayedHoldings" :key="holding.stockCode" type="button" class="holding-chip" @click="loadOverview(holding.stockCode)">
-          <span>{{ holding.stockName }}</span>
-          <small>{{ holding.stockCode }}</small>
-          <strong :class="changeClass(holding.profitLossPercent)">{{ signedPercent(holding.profitLossPercent) }}</strong>
-        </button>
-      </div>
-      <span v-else class="holding-empty">{{ $t('marketWorkbench.noHoldings') }}</span>
+    <section v-if="recentSearches.length" class="recent-searches" :aria-label="$t('marketWorkbench.recentSearches')">
+      <span>{{ $t('marketWorkbench.recentSearches') }}</span>
+      <button v-for="stock in recentSearches" :key="stock.thscode" type="button" @click="loadOverview(stock.thscode)">{{ stock.name }} · {{ stock.thscode }}</button>
+    </section>
+
+    <section class="workbench-top">
+      <section class="holding-strip" :aria-label="$t('marketWorkbench.holdings')">
+        <div v-if="displayedHoldings.length" class="holding-list">
+          <button v-for="holding in displayedHoldings" :key="holding.stockCode" type="button" class="holding-chip" @click="loadOverview(holding.stockCode)">
+            <span>{{ holding.stockName }}</span>
+            <small>{{ holding.stockCode }}</small>
+            <strong :class="changeClass(holding.profitLossPercent)">{{ signedPercent(holding.profitLossPercent) }}</strong>
+          </button>
+        </div>
+        <span v-else class="holding-empty">{{ $t('marketWorkbench.noHoldings') }}</span>
+      </section>
+      <section class="anomaly-card" :aria-label="$t('marketWorkbench.anomalyTitle')">
+        <div class="anomaly-heading"><div><p>{{ $t('marketWorkbench.anomalyTitle') }}</p><small>{{ anomalyDataTime || $t('marketWorkbench.anomalyHint') }}</small></div></div>
+        <div v-if="anomalyLoading" class="anomaly-state">{{ $t('marketWorkbench.anomalyLoading') }}</div>
+        <div v-else-if="anomalyError" class="anomaly-state anomaly-error">{{ anomalyError }}</div>
+        <div v-else-if="anomalies.length" class="anomaly-list">
+          <button v-for="anomaly in anomalies" :key="`${anomaly.thscode}-${anomaly.tag_name}-${anomaly.analysis_content}`" type="button" class="anomaly-item" @click="loadOverview(anomaly.thscode)">
+            <span><strong>{{ anomaly.stock_name || anomaly.thscode }}</strong><small>{{ anomaly.thscode }}</small></span>
+            <p>{{ anomaly.analysis_content || anomaly.tag_name }}</p>
+            <em v-if="anomalyKeywords(anomaly)">{{ anomalyKeywords(anomaly) }}</em>
+          </button>
+        </div>
+        <div v-else class="anomaly-state">{{ $t('marketWorkbench.noAnomalies') }}</div>
+      </section>
     </section>
 
     <section v-if="error" class="workbench-error" role="alert"><ExclamationCircleOutlined /><div><strong>{{ $t('marketWorkbench.loadFailed') }}</strong><span>{{ error }}</span></div></section>
@@ -52,8 +72,10 @@
 
       <section class="market-panels">
         <article class="chart-card">
-          <div class="card-heading"><div><p>{{ $t('marketWorkbench.priceTrend') }}</p><small>{{ $t('marketWorkbench.chartHint') }}</small></div><div class="range-tabs" role="group" :aria-label="$t('marketWorkbench.range')"><button v-for="window in windows" :key="window.key" type="button" :class="{active: selectedWindow === window.key}" @click="selectWindow(window)">{{ window.label }}</button></div></div>
+          <div class="card-heading"><div><p>{{ $t(chartMode === 'intraday' ? 'marketWorkbench.intraday' : 'marketWorkbench.priceTrend') }}</p><small>{{ $t(chartMode === 'intraday' ? 'marketWorkbench.intradayHint' : 'marketWorkbench.chartHint') }}</small></div><div class="range-tabs" role="group" :aria-label="$t('marketWorkbench.range')"><button type="button" :class="{active: chartMode === 'intraday'}" @click="chartMode = 'intraday'">{{ $t('marketWorkbench.intraday') }}</button><button v-for="window in windows" :key="window.key" type="button" :class="{active: chartMode === 'daily' && selectedWindow === window.key}" @click="selectWindow(window)">{{ window.label }}</button></div></div>
+          <IntradayChart v-if="chartMode === 'intraday'" :thscode="overview.instrument.thscode" />
           <div
+            v-else
             ref="chartRoot"
             class="kline-chart"
             tabindex="0"
@@ -91,12 +113,22 @@
 import {computed, onBeforeUnmount, onMounted, ref} from 'vue'
 import {useI18n} from 'vue-i18n'
 import {ExclamationCircleOutlined, FundOutlined} from '@ant-design/icons-vue'
-import {getMarketWorkbenchHoldings, getMarketWorkbenchOverview, searchStocks} from '../api'
+import {getMarketWorkbenchAnomalies, getMarketWorkbenchHoldings, getMarketWorkbenchOverview, searchStocks} from '../api'
+
+import IntradayChart from '../components/IntradayChart.vue'
 
 const {t} = useI18n()
+const RECENT_SEARCHES_STORAGE_KEY = 'metrix:market-workbench:recent-searches'
+const MAX_RECENT_SEARCHES = 8
+const chartMode = ref('daily')
 const query = ref('')
 const overview = ref(null)
 const holdingSnapshot = ref([])
+const recentSearches = ref(readRecentSearches())
+const anomalies = ref([])
+const anomalyDataTime = ref('')
+const anomalyError = ref('')
+const anomalyLoading = ref(false)
 const error = ref('')
 const loading = ref(false)
 const stockOptions = ref([])
@@ -113,9 +145,11 @@ const rangeCount = computed(() => windows.value.find(window => window.key === se
 const visibleBars = computed(() => bars.value.slice(rangeStart.value, Math.min(bars.value.length, rangeStart.value + rangeCount.value)))
 const recentBars = computed(() => visibleBars.value.slice(-60).reverse().map((bar, index, rows) => ({...bar, changePct: percentChange(rows[index + 1]?.close, bar.close)})))
 
-const selectWindow = window => { selectedWindow.value = window.key; rangeStart.value = Math.max(0, bars.value.length - window.count); activeIndex.value = null }
+const selectWindow = (window, mode = 'daily') => { chartMode.value = mode; selectedWindow.value = window.key; rangeStart.value = Math.max(0, bars.value.length - window.count); activeIndex.value = null }
 const searchStocksDebounced = value => { clearTimeout(searchTimer); if (!value?.trim()) { stockOptions.value = []; return } searchTimer = setTimeout(async () => { try { const response = await searchStocks(value); stockOptions.value = (response.data || []).map(stock => ({value: stock.stockCode, label: `${stock.stockName} · ${stock.stockCode}`})) } catch { stockOptions.value = [] } }, 180) }
-const loadOverview = async value => { let thscode = String(value || query.value).trim().toUpperCase(); if (!thscode) return; loading.value = true; error.value = ''; try { if (!/^[0-9]{6}\.(SH|SZ|BJ)$/.test(thscode)) { const response = await searchStocks(thscode); const candidates = response.data || []; const match = candidates.find(stock => stock.stockName === thscode) || candidates[0]; if (!match) throw new Error(t('marketWorkbench.notFound')); thscode = match.stockCode } query.value = thscode; const response = await getMarketWorkbenchOverview(thscode); overview.value = response.data; selectWindow(windows.value.at(-1)); } catch (requestError) { overview.value = null; error.value = requestError.message || t('marketWorkbench.loadFailed') } finally { loading.value = false } }
+const loadOverview = async value => { let thscode = String(value || query.value).trim().toUpperCase(); if (!thscode) return; loading.value = true; error.value = ''; try { if (!/^[0-9]{6}\.(SH|SZ|BJ)$/.test(thscode)) { const response = await searchStocks(thscode); const candidates = response.data || []; const match = candidates.find(stock => stock.stockName === thscode) || candidates[0]; if (!match) throw new Error(t('marketWorkbench.notFound')); thscode = match.stockCode } query.value = thscode; const response = await getMarketWorkbenchOverview(thscode); overview.value = response.data; saveRecentSearch(response.data.instrument); selectWindow(windows.value.at(-1), chartMode.value); } catch (requestError) { overview.value = null; error.value = requestError.message || t('marketWorkbench.loadFailed') } finally { loading.value = false } }
+const anomalyKeywords = anomaly => Array.isArray(anomaly.keyword_list) ? anomaly.keyword_list.join(' · ') : ''
+const loadAnomalies = async () => { anomalyLoading.value = true; anomalyError.value = ''; try { const response = await getMarketWorkbenchAnomalies(); anomalies.value = response.data?.items || []; anomalyDataTime.value = response.data?.dataTime || '' } catch (requestError) { anomalies.value = []; anomalyError.value = requestError.message || t('marketWorkbench.anomalyLoadFailed') } finally { anomalyLoading.value = false } }
 const formatPrice = value => value == null ? '—' : Number(value).toFixed(2)
 const formatPercent = value => value == null ? '—' : `${Number(value).toFixed(2)}%`
 const signedPercent = value => value == null ? '—' : `${Number(value) >= 0 ? '+' : ''}${formatPercent(value)}`
@@ -138,7 +172,10 @@ const chartIndex = event => { if (!chartRoot.value || !chartModel.value.candles.
 const zoomChart = event => { const candidates = windows.value.map(window => window.count); const current = candidates.indexOf(rangeCount.value); const next = Math.max(0, Math.min(candidates.length - 1, current + (event.deltaY > 0 ? 1 : -1))); selectWindow(windows.value[next]) }
 const handleChartKey = event => { if (event.key === 'ArrowLeft') rangeStart.value = clampStart(rangeStart.value - 5); else if (event.key === 'ArrowRight') rangeStart.value = clampStart(rangeStart.value + 5); else if (event.key === '+' || event.key === '=') zoomChart({deltaY: -1}); else if (event.key === '-') zoomChart({deltaY: 1}); else return; event.preventDefault() }
 onBeforeUnmount(() => clearTimeout(searchTimer))
-onMounted(async () => { try { const response = await getMarketWorkbenchHoldings(); holdingSnapshot.value = (response.data || []).slice(0, 8) } catch { holdingSnapshot.value = [] } })
+onMounted(async () => { try { const response = await getMarketWorkbenchHoldings(); holdingSnapshot.value = (response.data || []).slice(0, 8) } catch { holdingSnapshot.value = [] } loadAnomalies() })
+
+function readRecentSearches() { try { const items = JSON.parse(localStorage.getItem(RECENT_SEARCHES_STORAGE_KEY) || '[]'); return Array.isArray(items) ? items.filter(item => item?.thscode && item?.name).slice(0, MAX_RECENT_SEARCHES) : [] } catch { return [] } }
+function saveRecentSearch(instrument) { if (!instrument?.thscode || !instrument?.name) return; const next = [{thscode: instrument.thscode, name: instrument.name}, ...recentSearches.value.filter(item => item.thscode !== instrument.thscode)].slice(0, MAX_RECENT_SEARCHES); recentSearches.value = next; try { localStorage.setItem(RECENT_SEARCHES_STORAGE_KEY, JSON.stringify(next)) } catch { /* 浏览器禁用本地存储时仅保留当前会话内容 */ } }
 </script>
 
 <style scoped>
@@ -150,4 +187,5 @@ onMounted(async () => { try { const response = await getMarketWorkbenchHoldings(
 .drawdown-period { display: grid; min-width: 0; }
 .drawdown-period strong { margin-top: 4px; font-size: 16px; }
 @media (max-width: 680px) { .drawdown-metrics { grid-column: span 2; } }
+.recent-searches { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: -6px 0 14px; }.recent-searches > span { color: var(--theme-muted, #7b8aa0); font-size: 11px; }.recent-searches button { padding: 3px 7px; color: var(--theme-blue, #476fa8); font-size: 11px; background: var(--theme-raised, #f3f6fa); border: 1px solid var(--theme-line, #e1e7f0); border-radius: 5px; cursor: pointer; }.anomaly-list { max-height: none; overflow-y: visible; }.anomaly-item p { overflow: visible; text-overflow: clip; white-space: normal; }
 </style>

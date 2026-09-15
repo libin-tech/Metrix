@@ -30,6 +30,8 @@ public interface MarketDataService {
 
     Map<String, Object> fetchMarketTurnoverData(Long userId);
 
+    Map<String, Object> fetchIntradayData(StockBasic stockBasic);
+
     Map<String, Object> fetchTickerData(Long userId);
 
     Map<String, Object> fetchAnomalyAnalysisData(Long userId);

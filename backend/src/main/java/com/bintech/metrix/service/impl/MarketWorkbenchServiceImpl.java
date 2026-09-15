@@ -4,6 +4,7 @@ import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.bintech.metrix.constants.ApiConstants;
+import com.bintech.metrix.constants.CacheConstants;
 import com.bintech.metrix.dto.response.MarketWorkbenchResponse;
 import com.bintech.metrix.dto.response.PortfolioHoldingVO;
 import com.bintech.metrix.repository.dao.StockBasicDao;
@@ -11,8 +12,10 @@ import com.bintech.metrix.repository.dao.PortfolioHoldingDao;
 import com.bintech.metrix.repository.entity.PortfolioHolding;
 import com.bintech.metrix.repository.entity.StockBasic;
 import com.bintech.metrix.service.MarketDataService;
+import com.bintech.metrix.service.MarketTradingSession;
 import com.bintech.metrix.service.MarketWorkbenchService;
 import com.bintech.metrix.service.PortfolioHoldingService;
+import com.bintech.metrix.service.RedisCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -54,16 +57,22 @@ public class MarketWorkbenchServiceImpl implements MarketWorkbenchService {
     private final PortfolioHoldingDao portfolioHoldingDao;
     private final MarketDataService marketDataService;
     private final PortfolioHoldingService portfolioHoldingService;
+    private final RedisCacheService redisCacheService;
+    private final MarketTradingSession marketTradingSession;
 
     @Override
     public MarketWorkbenchResponse load(String thscode, Long userId) {
         StockBasic stock = findStock(thscode);
-        Map<String, Object> quoteResponse = marketDataService.fetchRealTimeData(stock, userId);
-        Map<String, Object> klineResponse = marketDataService.fetchKlinesData(stock, HISTORY_COUNT, userId);
+        MarketSnapshot snapshot = loadSnapshot(stock, userId);
+        Map<String, Object> quoteResponse = snapshot.quoteResponse();
+        Map<String, Object> klineResponse = snapshot.klineResponse();
         JSONObject quote = firstQuote(quoteResponse);
         List<Map<String, Object>> bars = buildBars(klineResponse);
         if (bars.isEmpty()) {
             throw new IllegalStateException("同花顺金融数据 API 未返回有效前复权日K");
+        }
+        if (!snapshot.cached()) {
+            cacheSnapshot(stock.getTsCode(), snapshot);
         }
 
         Map<String, Object> instrument = Map.of("thscode", stock.getTsCode(), "symbol", stock.getSymbol(), "name", stock.getName());
@@ -73,6 +82,102 @@ public class MarketWorkbenchServiceImpl implements MarketWorkbenchService {
         List<PortfolioHoldingVO> holdings = holdings();
         return new MarketWorkbenchResponse(instrument, quoteData, metrics, bars, holdings,
                 "同花顺金融数据 API", "前复权", dataTime);
+    }
+
+    /** 盘中实时拉取并更新快照；非交易时段优先复用已成功的完整快照。 */
+    private MarketSnapshot loadSnapshot(StockBasic stock, Long userId) {
+        MarketSnapshot cached = readCachedSnapshotWhenMarketClosed(stock.getTsCode());
+        if (cached != null) {
+            return cached;
+        }
+        return new MarketSnapshot(
+                marketDataService.fetchRealTimeData(stock, userId),
+                marketDataService.fetchKlinesData(stock, HISTORY_COUNT, userId), false);
+    }
+
+    private MarketSnapshot readCachedSnapshotWhenMarketClosed(String thscode) {
+        return marketTradingSession.isTrading() ? null : readCachedSnapshot(thscode);
+    }
+
+    private MarketSnapshot readCachedSnapshot(String thscode) {
+        try {
+            String cachedValue = redisCacheService.get(snapshotCacheKey(thscode));
+            if (cachedValue == null || cachedValue.isBlank()) {
+                return null;
+            }
+            JSONObject cached = JSONUtil.parseObj(cachedValue);
+            JSONObject quote = cached.getJSONObject("quote");
+            JSONObject klines = cached.getJSONObject("klines");
+            if (quote == null || klines == null) {
+                return null;
+            }
+            return new MarketSnapshot(new LinkedHashMap<>(quote), new LinkedHashMap<>(klines), true);
+        } catch (RuntimeException error) {
+            log.warn("读取行情工作台缓存失败: stockCode={}, reason={}", thscode, error.getMessage());
+            return null;
+        }
+    }
+
+    private void cacheSnapshot(String thscode, MarketSnapshot snapshot) {
+        cachePayload(snapshotCacheKey(thscode), Map.of(
+                "quote", snapshot.quoteResponse(), "klines", snapshot.klineResponse()));
+    }
+
+    private JSONObject readCachedPayloadWhenMarketClosed(String cacheKey) {
+        if (marketTradingSession.isTrading()) {
+            return null;
+        }
+        try {
+            String cachedValue = redisCacheService.get(cacheKey);
+            return cachedValue == null || cachedValue.isBlank() ? null : JSONUtil.parseObj(cachedValue);
+        } catch (RuntimeException error) {
+            log.warn("读取行情工作台缓存失败: cacheKey={}, reason={}", cacheKey, error.getMessage());
+            return null;
+        }
+    }
+
+    private void cachePayload(String cacheKey, Object payload) {
+        try {
+            redisCacheService.setJson(cacheKey, payload);
+        } catch (RuntimeException error) {
+            log.warn("保存行情工作台缓存失败: cacheKey={}, reason={}", cacheKey, error.getMessage());
+        }
+    }
+
+    private String snapshotCacheKey(String thscode) {
+        return CacheConstants.MARKET_WORKBENCH_SNAPSHOT_KEY_PREFIX + thscode;
+    }
+
+    /** 分时独立查询，失败不会影响快照和历史日 K。 */
+    @Override
+    public Map<String, Object> intraday(String thscode) {
+        StockBasic stock = findStock(thscode);
+        CachedPayload payload = loadIntradayPayload(stock);
+        JSONObject data = validateIntradayPayload(payload.value());
+        if (!payload.cached()) {
+            cachePayload(CacheConstants.MARKET_WORKBENCH_INTRADAY_KEY_PREFIX + stock.getTsCode(), payload.value());
+        }
+        return data;
+    }
+
+    private CachedPayload loadIntradayPayload(StockBasic stock) {
+        String cacheKey = CacheConstants.MARKET_WORKBENCH_INTRADAY_KEY_PREFIX + stock.getTsCode();
+        JSONObject cached = readCachedPayloadWhenMarketClosed(cacheKey);
+        if (cached != null) {
+            return new CachedPayload(cached, true);
+        }
+        return new CachedPayload(JSONUtil.parseObj(marketDataService.fetchIntradayData(stock)), false);
+    }
+
+    private JSONObject validateIntradayPayload(JSONObject payload) {
+        if (!ApiConstants.STATUS_SUCCESS.equals(payload.getStr(ApiConstants.KEY_STATUS))) {
+            throw new IllegalStateException(payload.getStr(ApiConstants.KEY_MESSAGE, "当日分时获取失败"));
+        }
+        JSONObject data = payload.getJSONObject(ApiConstants.KEY_DATA);
+        if (data == null || data.getJSONArray("points") == null) {
+            throw new IllegalStateException("当日分时返回格式无效");
+        }
+        return data;
     }
 
     @Override
@@ -301,5 +406,12 @@ public class MarketWorkbenchServiceImpl implements MarketWorkbenchService {
             return null;
         }
         return Instant.ofEpochMilli(timestamp).atZone(MARKET_ZONE).toOffsetDateTime().toString();
+    }
+
+    private record MarketSnapshot(Map<String, Object> quoteResponse, Map<String, Object> klineResponse,
+                                  boolean cached) {
+    }
+
+    private record CachedPayload(JSONObject value, boolean cached) {
     }
 }

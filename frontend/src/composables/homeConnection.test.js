@@ -26,7 +26,7 @@ const mountHome = () => {
     useTheme, computed, ref, watch: () => {}, nextTick: callback => callback(),
     onMounted: callback => mounted.push(callback), onUnmounted: callback => unmounted.push(callback),
     useRouter: () => ({replace: path => redirects.push(path)}), useI18n: () => ({t: key => key}),
-    Empty: {}, use: () => {}, BarChart: {}, CanvasRenderer: {}, GridComponent: {}, TooltipComponent: {},
+    Empty: {}, use: () => {}, BarChart: {}, LineChart: {}, CanvasRenderer: {}, GridComponent: {}, LegendComponent: {}, TooltipComponent: {},
     localStorage: {getItem: () => token}, WebSocket: Socket,
     window: {
       location: {protocol: 'http:', host: 'localhost'},

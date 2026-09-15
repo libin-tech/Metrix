@@ -16,6 +16,8 @@ public final class CacheConstants {
     public static final String AUTH_EMAIL_SEND_COOLDOWN_KEY_PREFIX = "metrix:auth:email-cooldown:";
 
     public static final String CHIP_LAST_SUCCESS_KEY_PREFIX = "metrix:chip:akshare:qfq:last-success:";
+    public static final String MARKET_WORKBENCH_SNAPSHOT_KEY_PREFIX = "metrix:market:workbench:snapshot:";
+    public static final String MARKET_WORKBENCH_INTRADAY_KEY_PREFIX = "metrix:market:workbench:intraday:";
 
     public static final long PORTFOLIO_PRICE_REFRESH_TTL_SECONDS = 300L;
     public static final long MARKET_ACTIVITY_REFRESH_SECONDS = 120L;

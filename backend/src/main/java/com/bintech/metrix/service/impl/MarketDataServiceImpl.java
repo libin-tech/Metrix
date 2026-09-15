@@ -292,6 +292,12 @@ public class MarketDataServiceImpl implements MarketDataService {
                 "筹码上游暂不可用且无成功缓存，本次分析不使用筹码指标");
     }
 
+    /** 获取不复权的当日分钟价格及逐分钟成交量，沿用受超时保护的 AKShare 进程。 */
+    @Override
+    public Map<String, Object> fetchIntradayData(StockBasic stockBasic) {
+        return runAkShareScript("intraday", "--symbol", stockBasic.getTsCode());
+    }
+
     private Map<String, Object> runAkShareScript(String scriptName, String... scriptArgs) {
         String scriptPath = akshareScriptPath.replace("akshare.py", "akshare_" + scriptName + ".py");
 

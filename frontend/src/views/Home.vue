@@ -106,12 +106,12 @@ import {useI18n} from 'vue-i18n'
 import {Empty} from 'ant-design-vue'
 import {ArrowRightOutlined} from '@ant-design/icons-vue'
 import {init, use} from 'echarts/core'
-import {BarChart} from 'echarts/charts'
-import {GridComponent, TooltipComponent} from 'echarts/components'
+import {BarChart, LineChart} from 'echarts/charts'
+import {GridComponent, LegendComponent, TooltipComponent} from 'echarts/components'
 import {CanvasRenderer} from 'echarts/renderers'
-import {getLatestTurnoverItem, hasMarketTurnoverHistory, unwrapMarketTurnover} from '../composables/marketData'
+import {calculateMarketTurnoverAverage, getLatestTurnoverItem, hasMarketTurnoverHistory, MARKET_TURNOVER_THRESHOLD, unwrapMarketTurnover} from '../composables/marketData'
 
-use([BarChart, CanvasRenderer, GridComponent, TooltipComponent])
+use([BarChart, LineChart, CanvasRenderer, GridComponent, LegendComponent, TooltipComponent])
 
 const {isDark} = useTheme()
 const router = useRouter()
@@ -243,16 +243,26 @@ const renderMarketTurnoverChart = () => {
   if (!marketTurnoverChartRef.value || !marketTurnoverHistory.value.length) return
   if (!marketTurnoverChart) marketTurnoverChart = init(marketTurnoverChartRef.value)
   const history = marketTurnoverHistory.value
+  const marketTurnoverAverage = calculateMarketTurnoverAverage(history)
+  const referenceSeries = value => history.map(() => value)
   marketTurnoverChart.setOption({
     animation: false,
-    grid: {top: 8, right: 2, bottom: 18, left: 2},
+    grid: {top: 28, right: 2, bottom: 18, left: 2},
+    legend: {data: [t('homeDesk.turnoverThreshold'), t('homeDesk.turnoverAverage60')], top: 0, right: 0, itemWidth: 14, itemHeight: 2, textStyle: {color: isDark.value ? '#a3b0c4' : '#71809a', fontSize: 10}},
     tooltip: {trigger: 'axis', axisPointer: {type: 'shadow'}, backgroundColor: '#182336', borderWidth: 0, padding: [8, 10], textStyle: {color: '#ffffff', fontSize: 12}, formatter: params => {
-      const item = history[params[0]?.dataIndex]
-      return item ? `${formatTurnoverDate(item.date)}<br/>${t('homeDesk.marketTurnover')}：${formatTurnoverDetail(item.amount)}` : ''
+      const bar = params.find(param => param.seriesType === 'bar')
+      const item = history[bar?.dataIndex]
+      if (!item) return ''
+      const averageText = marketTurnoverAverage == null ? '--' : formatTurnoverDetail(marketTurnoverAverage)
+      return `${formatTurnoverDate(item.date)}<br/>${t('homeDesk.marketTurnover')}：${formatTurnoverDetail(item.amount)}<br/>${t('homeDesk.turnoverThreshold')}：${formatTurnoverDetail(MARKET_TURNOVER_THRESHOLD)}<br/>${t('homeDesk.turnoverAverage60')}：${averageText}`
     }},
     xAxis: {type: 'category', data: history.map(item => formatTurnoverDate(item.date).slice(5)), axisLine: {lineStyle: {color: isDark.value ? '#34445b' : '#dce2eb'}}, axisTick: {show: false}, axisLabel: {color: isDark.value ? '#a3b0c4' : '#8996aa', fontSize: 10, interval: Math.max(0, Math.ceil(history.length / 5) - 1)}},
     yAxis: {type: 'value', show: false},
-    series: [{type: 'bar', data: history.map(item => Number(item.amount) || 0), barMaxWidth: 12, itemStyle: {color: '#5d8fd8', borderRadius: [3, 3, 0, 0]}, emphasis: {itemStyle: {color: '#316bc0'}}}]
+    series: [
+      {type: 'bar', data: history.map(item => Number(item.amount) || 0), barMaxWidth: 12, itemStyle: {color: '#5d8fd8', borderRadius: [3, 3, 0, 0]}, emphasis: {itemStyle: {color: '#316bc0'}}},
+      {name: t('homeDesk.turnoverThreshold'), type: 'line', data: referenceSeries(MARKET_TURNOVER_THRESHOLD), showSymbol: false, silent: true, z: 3, lineStyle: {color: '#e8b04f', type: 'dashed', width: 1.5}},
+      {name: t('homeDesk.turnoverAverage60'), type: 'line', data: marketTurnoverAverage == null ? [] : referenceSeries(marketTurnoverAverage), showSymbol: false, silent: true, z: 3, lineStyle: {color: '#21b8b2', width: 1.5}}
+    ]
   }, {notMerge: true, lazyUpdate: true, silent: true})
 }
 const resizeMarketTurnoverChart = () => marketTurnoverChart?.resize()

@@ -34,6 +34,12 @@ public class MarketWorkbenchController {
         return ApiResponse.success(marketWorkbenchService.load(thscode, StpUtil.getLoginIdAsLong()));
     }
 
+    @GetMapping("/intraday")
+    @SaCheckPermission("market:workbench:view")
+    public ApiResponse<Map<String, Object>> intraday(@RequestParam String thscode) {
+        return ApiResponse.success(marketWorkbenchService.intraday(thscode));
+    }
+
     @GetMapping("/holdings")
     @SaCheckPermission("market:workbench:holdings")
     public ApiResponse<List<PortfolioHoldingVO>> holdings() {

@@ -11,6 +11,8 @@ public interface MarketWorkbenchService {
 
     MarketWorkbenchResponse load(String thscode, Long userId);
 
+    Map<String, Object> intraday(String thscode);
+
     List<PortfolioHoldingVO> holdings();
 
     Map<String, Object> anomalies(Long userId);
