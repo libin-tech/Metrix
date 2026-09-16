@@ -24,4 +24,5 @@ public class PortfolioHoldingVO {
     private BigDecimal profitLossAmount;
     private BigDecimal cachedPrice;
     private LocalDateTime cachedPriceTime;
+    private TakeProfitPlanVO takeProfitPlan;
 }

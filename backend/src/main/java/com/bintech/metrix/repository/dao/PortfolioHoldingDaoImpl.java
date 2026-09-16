@@ -2,6 +2,8 @@ package com.bintech.metrix.repository.dao;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.bintech.metrix.constants.BusinessConstants;
 import com.bintech.metrix.repository.entity.PortfolioHolding;
 import com.bintech.metrix.repository.mapper.PortfolioHoldingMapper;
 import lombok.RequiredArgsConstructor;
@@ -111,5 +113,32 @@ class PortfolioHoldingDaoImpl implements PortfolioHoldingDao {
         return baseMapper.selectCount(new LambdaQueryWrapper<PortfolioHolding>()
                 .eq(PortfolioHolding::getId, id)
                 .eq(PortfolioHolding::getUserId, userId));
+    }
+
+    @Override
+    public int initializeDefaultTakeProfitPlans(Long userId) {
+        if (userId == null) {
+            log.warn("initializeDefaultTakeProfitPlans: userId is null");
+            return 0;
+        }
+        return baseMapper.update(null, new LambdaUpdateWrapper<PortfolioHolding>()
+                .eq(PortfolioHolding::getUserId, userId)
+                .isNotNull(PortfolioHolding::getCost)
+                .isNull(PortfolioHolding::getTakeProfitFirstTargetPrice)
+                .isNull(PortfolioHolding::getTakeProfitSecondTargetPrice)
+                .isNull(PortfolioHolding::getTakeProfitTrailingDrawdownPercent)
+                .set(PortfolioHolding::getTakeProfitEnabled, true)
+                .setSql("take_profit_first_target_price = round(cost * "
+                        + BusinessConstants.TARGET_PRICE_FACTOR.toPlainString() + ", 3)")
+                .set(PortfolioHolding::getTakeProfitFirstTargetRatio,
+                        BusinessConstants.DEFAULT_TAKE_PROFIT_REDUCTION_RATIO)
+                .setSql("take_profit_second_target_price = round(cost * "
+                        + BusinessConstants.DEFAULT_RISK_REWARD_RATIO.toPlainString() + ", 3)")
+                .set(PortfolioHolding::getTakeProfitSecondTargetRatio,
+                        BusinessConstants.DEFAULT_TAKE_PROFIT_REDUCTION_RATIO)
+                .set(PortfolioHolding::getTakeProfitTrailingDrawdownPercent,
+                        BusinessConstants.DEFAULT_TRAILING_DRAWDOWN_PERCENT)
+                .set(PortfolioHolding::getTakeProfitTrailingPeakPrice, null)
+                .set(PortfolioHolding::getTakeProfitTrailingTriggered, false));
     }
 }

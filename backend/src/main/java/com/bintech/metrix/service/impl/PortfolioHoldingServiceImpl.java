@@ -6,9 +6,11 @@ import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import com.bintech.metrix.constants.CacheConstants;
 import com.bintech.metrix.dto.request.PortfolioHoldingRequest;
+import com.bintech.metrix.dto.request.TakeProfitPlanRequest;
 import com.bintech.metrix.dto.response.PortfolioHoldingListResponse;
 import com.bintech.metrix.dto.response.PortfolioHoldingVO;
 import com.bintech.metrix.dto.response.PortfolioSummary;
+import com.bintech.metrix.dto.response.TakeProfitPlanVO;
 import com.bintech.metrix.repository.dao.BrokerAccountDao;
 import com.bintech.metrix.repository.dao.PortfolioHoldingDao;
 import com.bintech.metrix.repository.entity.BrokerAccount;
@@ -18,6 +20,7 @@ import com.bintech.metrix.service.MarketDataService;
 import com.bintech.metrix.service.PortfolioHoldingService;
 import com.bintech.metrix.service.RedisCacheService;
 import com.bintech.metrix.service.StockBasicService;
+import com.bintech.metrix.service.TakeProfitPlanStatusResolver;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -138,7 +142,7 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
             refreshExecutor.submit(() -> {
                 try {
                     fetchCurrentPrice(vo, capturedUserId);
-                    persistCachedPrice(holdingId, vo.getCurrentPrice());
+                    persistCachedPrice(holdingId, vo);
                     cachePriceRefreshResult(capturedUserId, vo);
                 } catch (Exception e) {
                     log.warn("异步刷新 {} 行情失败: {}", vo.getStockCode(), e.getMessage());
@@ -200,6 +204,7 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
             vo.setProfitLossAmount(plAmount);
             calcProfitLossPercent(vo, costTotal, plAmount);
         }
+        vo.setTakeProfitPlan(buildTakeProfitPlan(h, vo.getCurrentPrice()));
 
         return vo;
     }
@@ -221,6 +226,7 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
             BigDecimal plAmount = currentTotal.subtract(costTotal);
             vo.setProfitLossAmount(plAmount);
             calcProfitLossPercent(vo, costTotal, plAmount);
+            refreshTakeProfitPlanStatus(vo.getTakeProfitPlan(), currentPrice);
         } catch (Exception e) {
             log.warn("获取 {} 实时行情失败: {}", vo.getStockCode(), e.getMessage());
         }
@@ -254,14 +260,18 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
         return null;
     }
 
-    private void persistCachedPrice(Long holdingId, BigDecimal currentPrice) {
-        if (holdingId == null || currentPrice == null) {
+    private void persistCachedPrice(Long holdingId, PortfolioHoldingVO vo) {
+        if (holdingId == null || vo.getCurrentPrice() == null) {
             return;
         }
         PortfolioHolding entity = new PortfolioHolding();
         entity.setId(holdingId);
-        entity.setCachedPrice(currentPrice);
+        entity.setCachedPrice(vo.getCurrentPrice());
         entity.setCachedPriceTime(LocalDateTime.now());
+        if (vo.getTakeProfitPlan() != null) {
+            entity.setTakeProfitTrailingPeakPrice(vo.getTakeProfitPlan().getTrailingPeakPrice());
+            entity.setTakeProfitTrailingTriggered(vo.getTakeProfitPlan().getTrailingStopTriggered());
+        }
         holdingDao.updateById(entity);
     }
 
@@ -366,6 +376,81 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
             throw new RuntimeException("持仓记录不存在");
         }
         holdingDao.deleteById(id);
+    }
+
+    /**
+     * 保存用户自己持仓的止盈计划；计划只用于提醒，交易仍由用户自行确认。
+     */
+    @Override
+    @Transactional
+    public void saveTakeProfitPlan(Long holdingId, TakeProfitPlanRequest request) {
+        Long userId = StpUtil.getLoginIdAsLong();
+        if (holdingDao.countByIdAndUserId(holdingId, userId) == 0) {
+            throw new RuntimeException("持仓记录不存在");
+        }
+        validateTakeProfitPlan(request);
+
+        PortfolioHolding holding = new PortfolioHolding();
+        holding.setId(holdingId);
+        holding.setTakeProfitEnabled(Boolean.TRUE.equals(request.getEnabled()));
+        holding.setTakeProfitFirstTargetPrice(scalePrice(request.getFirstTargetPrice()));
+        holding.setTakeProfitFirstTargetRatio(request.getFirstTargetRatio());
+        holding.setTakeProfitSecondTargetPrice(scalePrice(request.getSecondTargetPrice()));
+        holding.setTakeProfitSecondTargetRatio(request.getSecondTargetRatio());
+        holding.setTakeProfitTrailingDrawdownPercent(request.getTrailingDrawdownPercent());
+        holding.setTakeProfitTrailingPeakPrice(null);
+        holding.setTakeProfitTrailingTriggered(false);
+        holding.setTakeProfitExpiresOn(request.getExpiresOn());
+        holdingDao.updateById(holding);
+    }
+
+    /**
+     * 对未配置计划的持仓应用默认分批止盈方案，已有计划保持不变。
+     */
+    @Override
+    @Transactional
+    public int applyDefaultTakeProfitPlans() {
+        return holdingDao.initializeDefaultTakeProfitPlans(StpUtil.getLoginIdAsLong());
+    }
+
+    private void validateTakeProfitPlan(TakeProfitPlanRequest request) {
+        if (!Boolean.TRUE.equals(request.getEnabled())) {
+            return;
+        }
+        if (!request.hasValidTargetRatio()) {
+            throw new RuntimeException("前两档止盈累计减仓比例不能超过100%");
+        }
+        if (request.getFirstTargetPrice() == null && request.getSecondTargetPrice() == null
+                && request.getTrailingDrawdownPercent() == null) {
+            throw new RuntimeException("请至少设置一个目标价或跟踪止盈条件");
+        }
+        if (request.getFirstTargetPrice() != null && request.getSecondTargetPrice() != null
+                && request.getSecondTargetPrice().compareTo(request.getFirstTargetPrice()) <= 0) {
+            throw new RuntimeException("第二目标价必须高于第一目标价");
+        }
+    }
+
+    private BigDecimal scalePrice(BigDecimal price) {
+        return price == null ? null : price.setScale(PRICE_SCALE, RoundingMode.HALF_UP);
+    }
+
+    private TakeProfitPlanVO buildTakeProfitPlan(PortfolioHolding holding, BigDecimal currentPrice) {
+        TakeProfitPlanVO plan = new TakeProfitPlanVO();
+        plan.setEnabled(holding.getTakeProfitEnabled());
+        plan.setFirstTargetPrice(holding.getTakeProfitFirstTargetPrice());
+        plan.setFirstTargetRatio(holding.getTakeProfitFirstTargetRatio());
+        plan.setSecondTargetPrice(holding.getTakeProfitSecondTargetPrice());
+        plan.setSecondTargetRatio(holding.getTakeProfitSecondTargetRatio());
+        plan.setTrailingDrawdownPercent(holding.getTakeProfitTrailingDrawdownPercent());
+        plan.setTrailingPeakPrice(holding.getTakeProfitTrailingPeakPrice());
+        plan.setTrailingStopTriggered(holding.getTakeProfitTrailingTriggered());
+        plan.setExpiresOn(holding.getTakeProfitExpiresOn());
+        refreshTakeProfitPlanStatus(plan, currentPrice);
+        return plan;
+    }
+
+    private void refreshTakeProfitPlanStatus(TakeProfitPlanVO plan, BigDecimal currentPrice) {
+        TakeProfitPlanStatusResolver.resolve(plan, currentPrice, LocalDate.now());
     }
 
     /**

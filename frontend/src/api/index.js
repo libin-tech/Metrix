@@ -11,7 +11,7 @@ service.interceptors.request.use(
   config => {
     const token = localStorage.getItem('token')
     if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`
+      config.headers.satoken = token
     }
     return config
   },
@@ -104,6 +104,8 @@ export const getPortfolioHoldings = (keyword, accountId) => service.get('/portfo
 export const createPortfolioHolding = data => service.post('/portfolio/holdings', data)
 export const batchCreatePortfolioHolding = (accountId, items) => service.post('/portfolio/holdings/batch', items, { params: { accountId } })
 export const deletePortfolioHolding = id => service.delete(`/portfolio/holdings/${id}`)
+export const updateTakeProfitPlan = (id, data) => service.put(`/portfolio/holdings/${id}/take-profit-plan`, data)
+export const applyDefaultTakeProfitPlans = () => service.post('/portfolio/holdings/take-profit-plans/default')
 export const refreshPortfolioPrices = () => service.post('/portfolio/holdings/refresh-prices')
 export const pollRefreshedPrices = (ids) => service.post('/portfolio/holdings/poll-refreshed', ids)
 
@@ -122,7 +124,7 @@ export const sendChatMessage = async (sessionId, content, callbacks) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        satoken: token
       },
       body: JSON.stringify({ sessionId, content })
     })

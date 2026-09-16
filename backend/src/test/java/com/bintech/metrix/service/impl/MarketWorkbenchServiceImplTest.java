@@ -14,6 +14,8 @@ import com.bintech.metrix.service.RedisCacheService;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,6 +34,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class MarketWorkbenchServiceImplTest {
+
+    private static final ZoneId MARKET_ZONE = ZoneId.of("Asia/Shanghai");
+    private static final String CACHE_DATE_KEY = "cacheDate";
+    private static final String CACHE_PAYLOAD_KEY = "payload";
 
     @Test
     void shouldLoadIntradayIndependentlyAndRejectInvalidPayloads() {
@@ -98,7 +104,9 @@ class MarketWorkbenchServiceImplTest {
         when(stockDao.selectByTsCode(stock.getTsCode())).thenReturn(stock);
         when(session.isTrading()).thenReturn(false);
         when(cache.get(CacheConstants.MARKET_WORKBENCH_SNAPSHOT_KEY_PREFIX + stock.getTsCode()))
-                .thenReturn(JSONUtil.toJsonStr(Map.of("quote", quoteResponse(), "klines", klineResponse())));
+                .thenReturn(JSONUtil.toJsonStr(Map.of(
+                        CACHE_DATE_KEY, LocalDate.now(MARKET_ZONE).toString(),
+                        CACHE_PAYLOAD_KEY, Map.of("quote", quoteResponse(), "klines", klineResponse()))));
         when(holdings.getHoldings(null, null)).thenReturn(new PortfolioHoldingListResponse(List.of(), null));
 
         var result = new MarketWorkbenchServiceImpl(stockDao, mock(PortfolioHoldingDao.class), marketData, holdings, cache, session)

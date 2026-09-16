@@ -93,6 +93,12 @@ psql -h 127.0.0.1 -U postgres -d stock_analysis -f backend/.doc/db/V1.6.3_user_p
 psql -h 127.0.0.1 -U postgres -d stock_analysis -f backend/.doc/db/V1.6.4_remove_pdf_export.sql
 ```
 
+若数据库包含旧的 `market_review` 全局日期唯一索引，还需在发布新版后端前执行以下脚本。该迁移将唯一性调整为“同一用户同一复盘日期唯一”，并为 `user_id` 为 `NULL` 的系统复盘保留“同一日期唯一”：
+
+```bash
+psql -h 127.0.0.1 -U postgres -d stock_analysis -f backend/.doc/db/V1.6.5_fix_market_review_unique_index.sql
+```
+
 ### Docker 部署
 
 ```bash

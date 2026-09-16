@@ -18,7 +18,9 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
@@ -30,6 +32,16 @@ import java.util.function.Supplier;
 @Component
 @RequiredArgsConstructor
 public class MarketDashboardWebSocketHandler extends TextWebSocketHandler {
+
+    private static final String FUND_FLOW_KEY = "fundFlow";
+    private static final String POPULARITY_RANK_KEY = "popularityRank";
+    private static final String DRAGON_TIGER_KEY = "dragonTiger";
+    private static final String INDUSTRY_SECTORS_KEY = "industrySectors";
+    private static final String LIMIT_POOLS_KEY = "limitPools";
+    private static final List<String> INSIGHT_LIST_KEYS = List.of(
+            FUND_FLOW_KEY, POPULARITY_RANK_KEY, DRAGON_TIGER_KEY, INDUSTRY_SECTORS_KEY);
+    private static final List<String> LIMIT_POOL_LIST_KEYS = List.of(
+            "limitUp", "limitDown", "strong", "broken");
 
     private final MarketActivityService marketActivityService;
     private final MarketIndexService marketIndexService;
@@ -80,13 +92,59 @@ public class MarketDashboardWebSocketHandler extends TextWebSocketHandler {
         }
         lastInsightsAttemptMillis = System.currentTimeMillis();
         try {
-            Map<String, Object> insights = extractData(marketInsightService.getMarketInsights());
+            Map<String, Object> latestInsights = extractData(marketInsightService.getMarketInsights());
+            Map<String, Object> insights = mergeInsightsWithCache(latestInsights);
             cacheData(CacheConstants.MARKET_DASHBOARD_INSIGHTS_LAST_SUCCESS_KEY, insights);
             sessions.values().forEach(session -> send(session,
                     createMessage(SystemConstants.MARKET_DASHBOARD_INSIGHTS_MESSAGE_TYPE, insights)));
         } catch (RuntimeException exception) {
             log.warn("刷新市场工作台洞察数据失败: {}", exception.getMessage());
         }
+    }
+
+    /**
+     * 上游个别榜单短暂为空时保留最近一次有效数据，避免成功响应覆盖页面上的完整洞察。
+     *
+     * @param latestInsights 本次上游洞察结果
+     * @return 合并后的可展示洞察结果
+     */
+    private Map<String, Object> mergeInsightsWithCache(Map<String, Object> latestInsights) {
+        Map<String, Object> cachedInsights = getCachedData(CacheConstants.MARKET_DASHBOARD_INSIGHTS_LAST_SUCCESS_KEY);
+        if (cachedInsights == null) {
+            return latestInsights;
+        }
+        Map<String, Object> mergedInsights = new HashMap<>(latestInsights);
+        retainCachedListsWhenLatestEmpty(mergedInsights, cachedInsights, INSIGHT_LIST_KEYS);
+        retainCachedLimitPoolsWhenLatestEmpty(mergedInsights, cachedInsights);
+        return mergedInsights;
+    }
+
+    private void retainCachedListsWhenLatestEmpty(Map<String, Object> latestInsights,
+                                                  Map<String, Object> cachedInsights, List<String> insightKeys) {
+        insightKeys.forEach(insightKey -> retainCachedListWhenLatestEmpty(latestInsights, cachedInsights, insightKey));
+    }
+
+    private void retainCachedListWhenLatestEmpty(Map<String, Object> latestInsights,
+                                                 Map<String, Object> cachedInsights, String insightKey) {
+        if (!isEmptyList(latestInsights.get(insightKey)) || isEmptyList(cachedInsights.get(insightKey))) {
+            return;
+        }
+        latestInsights.put(insightKey, cachedInsights.get(insightKey));
+    }
+
+    private void retainCachedLimitPoolsWhenLatestEmpty(Map<String, Object> latestInsights,
+                                                       Map<String, Object> cachedInsights) {
+        if (!latestInsights.containsKey(LIMIT_POOLS_KEY) || !cachedInsights.containsKey(LIMIT_POOLS_KEY)) {
+            return;
+        }
+        JSONObject latestLimitPools = JSONUtil.parseObj(latestInsights.get(LIMIT_POOLS_KEY));
+        JSONObject cachedLimitPools = JSONUtil.parseObj(cachedInsights.get(LIMIT_POOLS_KEY));
+        LIMIT_POOL_LIST_KEYS.forEach(poolKey -> retainCachedListWhenLatestEmpty(latestLimitPools, cachedLimitPools, poolKey));
+        latestInsights.put(LIMIT_POOLS_KEY, latestLimitPools);
+    }
+
+    private boolean isEmptyList(Object value) {
+        return !(value instanceof Collection<?> collection) || collection.isEmpty();
     }
 
     private void pushInitialSnapshot(WebSocketSession session, Long userId) {

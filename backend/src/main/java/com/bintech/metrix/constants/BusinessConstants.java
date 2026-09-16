@@ -36,6 +36,8 @@ public final class BusinessConstants {
     public static final BigDecimal STOP_LOSS_FACTOR = BigDecimal.valueOf(0.97);
     public static final BigDecimal TARGET_PRICE_FACTOR = BigDecimal.valueOf(1.10);
     public static final BigDecimal DEFAULT_RISK_REWARD_RATIO = BigDecimal.valueOf(1.2);
+    public static final BigDecimal DEFAULT_TAKE_PROFIT_REDUCTION_RATIO = BigDecimal.valueOf(25);
+    public static final BigDecimal DEFAULT_TRAILING_DRAWDOWN_PERCENT = BigDecimal.valueOf(8);
 
     /* ==================== 入场/止损描述 ==================== */
     public static final String IDEAL_ENTRY_DESC = "回踩MA5支撑且乖离率修复至安全区";

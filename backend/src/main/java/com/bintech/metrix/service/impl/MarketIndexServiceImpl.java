@@ -66,7 +66,7 @@ public class MarketIndexServiceImpl implements MarketIndexService {
     @Override
     public synchronized Map<String, Object> getMarketTurnover(Long userId) {
         Map<String, Object> cachedTurnover = getCachedMarketTurnover(userId);
-        if (cachedTurnover != null && isMarketTurnoverFresh(userId)) {
+        if (cachedTurnover != null && isMarketTurnoverFresh(cachedTurnover, userId)) {
             return cachedTurnover;
         }
 
@@ -90,7 +90,10 @@ public class MarketIndexServiceImpl implements MarketIndexService {
         }
     }
 
-    private boolean isMarketTurnoverFresh(Long userId) {
+    private boolean isMarketTurnoverFresh(Map<String, Object> cachedTurnover, Long userId) {
+        if (!isCurrentDayTurnover(cachedTurnover)) {
+            return false;
+        }
         String refreshAt = redisCacheService.get(getMarketTurnoverRefreshAtKey(userId));
         if (refreshAt == null || refreshAt.isBlank()) {
             return false;
@@ -102,6 +105,16 @@ public class MarketIndexServiceImpl implements MarketIndexService {
             log.warn("市场成交额缓存刷新时间无效: {}", refreshAt);
             return false;
         }
+    }
+
+    private static boolean isCurrentDayTurnover(Map<String, Object> turnover) {
+        JSONObject data = JSONUtil.parseObj(turnover).getJSONObject(ApiConstants.KEY_DATA);
+        JSONArray history = data == null ? null : data.getJSONArray("history");
+        if (history == null || history.isEmpty()) {
+            return false;
+        }
+        JSONObject latestItem = history.getJSONObject(history.size() - 1);
+        return latestItem != null && isToday(latestItem.getStr("date"));
     }
 
     /**

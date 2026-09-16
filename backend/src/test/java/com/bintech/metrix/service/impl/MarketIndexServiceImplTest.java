@@ -3,20 +3,52 @@ package com.bintech.metrix.service.impl;
 import cn.hutool.json.JSONUtil;
 import cn.hutool.json.JSONObject;
 import com.bintech.metrix.constants.ApiConstants;
+import com.bintech.metrix.constants.CacheConstants;
 import com.bintech.metrix.constants.SystemConstants;
+import com.bintech.metrix.config.MarketTurnoverProperties;
+import com.bintech.metrix.service.MarketDataService;
+import com.bintech.metrix.service.RedisCacheService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.lang.reflect.Proxy;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MarketIndexServiceImplTest {
+
+    @Test
+    @DisplayName("跨交易日时不能因刷新时间较新而直接返回昨日成交额缓存")
+    void shouldRefreshTurnoverWhenCachedDataIsFromPreviousDay() {
+        Long userId = 1L;
+        String today = LocalDate.now(ZoneId.of(SystemConstants.MARKET_TIME_ZONE_ID)).toString();
+        String previousDay = LocalDate.now(ZoneId.of(SystemConstants.MARKET_TIME_ZONE_ID)).minusDays(1).toString();
+        Map<String, String> cache = new HashMap<>();
+        AtomicBoolean marketDataRequested = new AtomicBoolean();
+        RedisCacheService redisCacheService = createRedisCacheService(cache);
+        MarketDataService marketDataService = createMarketDataService(marketDataRequested, createTurnover(today, 200L));
+        MarketIndexServiceImpl service = new MarketIndexServiceImpl(redisCacheService,
+                new MarketTurnoverProperties(), marketDataService);
+
+        cache.put(CacheConstants.MARKET_TURNOVER_LAST_SUCCESS_KEY_PREFIX + userId,
+                JSONUtil.toJsonStr(createTurnover(previousDay, 100L)));
+        cache.put(CacheConstants.MARKET_TURNOVER_REFRESH_AT_KEY_PREFIX + userId,
+                String.valueOf(System.currentTimeMillis()));
+
+        Map<String, Object> turnover = service.getMarketTurnover(userId);
+
+        JSONObject data = JSONUtil.parseObj(turnover).getJSONObject(ApiConstants.KEY_DATA);
+        assertEquals(200L, data.getLong("amount"));
+        assertTrue(marketDataRequested.get());
+    }
 
     @Test
     @DisplayName("非当天交易日的上游数据不能覆写已缓存的历史成交额")
@@ -88,6 +120,31 @@ class MarketIndexServiceImplTest {
         result.put(ApiConstants.KEY_STATUS, ApiConstants.STATUS_SUCCESS);
         result.put(ApiConstants.KEY_DATA, data);
         return result;
+    }
+
+    private RedisCacheService createRedisCacheService(Map<String, String> cache) {
+        return RedisCacheService.class.cast(Proxy.newProxyInstance(getClass().getClassLoader(),
+                new Class[]{RedisCacheService.class}, (proxy, method, arguments) -> {
+                    if ("get".equals(method.getName())) {
+                        return cache.get(arguments[0]);
+                    }
+                    if ("setJson".equals(method.getName())) {
+                        cache.put((String) arguments[0], JSONUtil.toJsonStr(arguments[1]));
+                    }
+                    return null;
+                }));
+    }
+
+    private MarketDataService createMarketDataService(AtomicBoolean marketDataRequested,
+                                                       Map<String, Object> latestTurnover) {
+        return MarketDataService.class.cast(Proxy.newProxyInstance(getClass().getClassLoader(),
+                new Class[]{MarketDataService.class}, (proxy, method, arguments) -> {
+                    if ("fetchMarketTurnoverData".equals(method.getName())) {
+                        marketDataRequested.set(true);
+                        return latestTurnover;
+                    }
+                    return null;
+                }));
     }
 
 }

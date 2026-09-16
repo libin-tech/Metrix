@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -52,6 +53,8 @@ public class MarketWorkbenchServiceImpl implements MarketWorkbenchService {
     private static final int AVERAGE_AMOUNT_DAYS = 20;
     private static final ZoneId MARKET_ZONE = ZoneId.of("Asia/Shanghai");
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
+    private static final String CACHE_DATE_KEY = "cacheDate";
+    private static final String CACHE_PAYLOAD_KEY = "payload";
 
     private final StockBasicDao stockBasicDao;
     private final PortfolioHoldingDao portfolioHoldingDao;
@@ -105,7 +108,14 @@ public class MarketWorkbenchServiceImpl implements MarketWorkbenchService {
             if (cachedValue == null || cachedValue.isBlank()) {
                 return null;
             }
-            JSONObject cached = JSONUtil.parseObj(cachedValue);
+            JSONObject cacheEnvelope = JSONUtil.parseObj(cachedValue);
+            if (!isCachedToday(cacheEnvelope)) {
+                return null;
+            }
+            JSONObject cached = cacheEnvelope.getJSONObject(CACHE_PAYLOAD_KEY);
+            if (cached == null) {
+                return null;
+            }
             JSONObject quote = cached.getJSONObject("quote");
             JSONObject klines = cached.getJSONObject("klines");
             if (quote == null || klines == null) {
@@ -129,7 +139,11 @@ public class MarketWorkbenchServiceImpl implements MarketWorkbenchService {
         }
         try {
             String cachedValue = redisCacheService.get(cacheKey);
-            return cachedValue == null || cachedValue.isBlank() ? null : JSONUtil.parseObj(cachedValue);
+            if (cachedValue == null || cachedValue.isBlank()) {
+                return null;
+            }
+            JSONObject cacheEnvelope = JSONUtil.parseObj(cachedValue);
+            return isCachedToday(cacheEnvelope) ? cacheEnvelope.getJSONObject(CACHE_PAYLOAD_KEY) : null;
         } catch (RuntimeException error) {
             log.warn("读取行情工作台缓存失败: cacheKey={}, reason={}", cacheKey, error.getMessage());
             return null;
@@ -138,10 +152,20 @@ public class MarketWorkbenchServiceImpl implements MarketWorkbenchService {
 
     private void cachePayload(String cacheKey, Object payload) {
         try {
-            redisCacheService.setJson(cacheKey, payload);
+            redisCacheService.setJson(cacheKey, Map.of(
+                    CACHE_DATE_KEY, currentMarketDate(),
+                    CACHE_PAYLOAD_KEY, payload));
         } catch (RuntimeException error) {
             log.warn("保存行情工作台缓存失败: cacheKey={}, reason={}", cacheKey, error.getMessage());
         }
+    }
+
+    private boolean isCachedToday(JSONObject cacheEnvelope) {
+        return currentMarketDate().equals(cacheEnvelope.getStr(CACHE_DATE_KEY));
+    }
+
+    private String currentMarketDate() {
+        return LocalDate.now(MARKET_ZONE).format(DATE_FORMATTER);
     }
 
     private String snapshotCacheKey(String thscode) {

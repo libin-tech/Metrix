@@ -89,6 +89,12 @@ psql -h 127.0.0.1 -U postgres -d stock_analysis -f backend/.doc/db/V1.6.3_user_p
 psql -h 127.0.0.1 -U postgres -d stock_analysis -f backend/.doc/db/V1.6.4_remove_pdf_export.sql
 ```
 
+If the database still has the legacy global date-unique index on `market_review`, run the following script before deploying the updated backend. It makes reviews unique per user and review date, while retaining one per date for system-generated reviews where `user_id` is `NULL`:
+
+```bash
+psql -h 127.0.0.1 -U postgres -d stock_analysis -f backend/.doc/db/V1.6.5_fix_market_review_unique_index.sql
+```
+
 ### Docker Deployment
 
 ```bash

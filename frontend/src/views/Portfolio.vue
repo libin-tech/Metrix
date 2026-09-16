@@ -22,6 +22,15 @@
               <a-button class="hero-secondary-action" :loading="refreshing" @click="handleRefreshPrices">
                 <ReloadOutlined /> {{ $t('portfolio.refreshPrices') }}
               </a-button>
+              <a-popconfirm
+                :title="$t('portfolio.applyDefaultTakeProfitConfirm')"
+                :description="$t('portfolio.applyDefaultTakeProfitDescription')"
+                @confirm="handleApplyDefaultTakeProfitPlans"
+              >
+                <a-button class="hero-secondary-action" :loading="applyingDefaultTakeProfitPlans">
+                  {{ $t('portfolio.applyDefaultTakeProfit') }}
+                </a-button>
+              </a-popconfirm>
               <a-button type="primary" ghost class="batch-evaluate-button" :loading="batchEvaluating" @click="handleBatchEvaluate">
                 <PlayCircleOutlined /> {{ $t('portfolio.batchEvaluate') }}
               </a-button>
@@ -188,8 +197,17 @@
               <template v-if="column.key === 'breakEvenGain'">
                 <span :class="getBreakEvenClass(record)">{{ formatBreakEvenGain(record) }}</span>
               </template>
+              <template v-if="column.key === 'takeProfitPlan'">
+                <a-tag v-if="record.takeProfitPlan?.enabled" :color="getTakeProfitStatusColor(record.takeProfitPlan.status)">
+                  {{ getTakeProfitStatusText(record.takeProfitPlan.status) }}
+                </a-tag>
+                <span v-else class="price-na">--</span>
+              </template>
               <template v-if="column.key === 'action'">
                 <a-space>
+                  <a-button type="link" size="small" @click="openTakeProfitPlan(record)">
+                    {{ $t('portfolio.takeProfitPlan') }}
+                  </a-button>
                   <a-button type="link" size="small" :loading="evaluating.has(record.stockCode)" @click="handleEvaluate(record)">
                     <PlayCircleOutlined /> {{ $t('portfolio.evaluate') }}
                   </a-button>
@@ -298,6 +316,60 @@
         </a-button>
       </a-form>
     </a-modal>
+
+    <a-modal
+      v-model:open="showTakeProfitModal"
+      :title="$t('portfolio.takeProfitPlan')"
+      :confirm-loading="savingTakeProfitPlan"
+      @ok="saveTakeProfitPlan"
+      width="620px"
+    >
+      <a-alert :message="$t('portfolio.takeProfitPlanHint')" type="info" show-icon class="take-profit-hint" />
+      <a-form layout="vertical" class="take-profit-form">
+        <a-form-item :label="$t('portfolio.takeProfitEnabled')">
+          <a-switch v-model:checked="takeProfitForm.enabled" />
+        </a-form-item>
+        <template v-if="takeProfitForm.enabled">
+          <a-row :gutter="12">
+            <a-col :span="12">
+              <a-form-item :label="$t('portfolio.firstTargetPrice')">
+                <a-input-number v-model:value="takeProfitForm.firstTargetPrice" :min="0.001" :precision="3" style="width: 100%" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="12">
+              <a-form-item :label="$t('portfolio.firstTargetRatio')">
+                <a-input-number v-model:value="takeProfitForm.firstTargetRatio" :min="0" :max="100" :precision="2" addon-after="%" style="width: 100%" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="12">
+              <a-form-item :label="$t('portfolio.secondTargetPrice')">
+                <a-input-number v-model:value="takeProfitForm.secondTargetPrice" :min="0.001" :precision="3" style="width: 100%" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="12">
+              <a-form-item :label="$t('portfolio.secondTargetRatio')">
+                <a-input-number v-model:value="takeProfitForm.secondTargetRatio" :min="0" :max="100" :precision="2" addon-after="%" style="width: 100%" />
+              </a-form-item>
+            </a-col>
+          </a-row>
+          <a-row :gutter="12">
+            <a-col :span="12">
+              <a-form-item :label="$t('portfolio.trailingDrawdownPercent')">
+                <a-input-number v-model:value="takeProfitForm.trailingDrawdownPercent" :min="0.1" :max="100" :precision="2" addon-after="%" style="width: 100%" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="12">
+              <a-form-item :label="$t('portfolio.takeProfitExpiresOn')">
+                <a-date-picker v-model:value="takeProfitForm.expiresOn" value-format="YYYY-MM-DD" style="width: 100%" />
+              </a-form-item>
+            </a-col>
+          </a-row>
+          <p v-if="takeProfitPlanRecord?.takeProfitPlan?.nextTargetPrice" class="take-profit-next-target">
+            {{ $t('portfolio.nextTarget') }}：{{ formatPrice(takeProfitPlanRecord.takeProfitPlan.nextTargetPrice) }}
+          </p>
+        </template>
+      </a-form>
+    </a-modal>
   </div>
 </template>
 
@@ -328,6 +400,7 @@ import {
 } from '@ant-design/icons-vue'
 import {
   batchCreatePortfolioHolding,
+  applyDefaultTakeProfitPlans,
   createAnalysis,
   createPortfolioHolding,
   deletePortfolioHolding,
@@ -337,7 +410,8 @@ import {
   getPortfolioHoldings,
   pollRefreshedPrices,
   refreshPortfolioPrices,
-  searchStocks
+  searchStocks,
+  updateTakeProfitPlan
 } from '../api'
 
 use([LineChart, GridComponent, TooltipComponent, CanvasRenderer])
@@ -359,6 +433,11 @@ const refreshingIds = ref(new Set())
 let refreshPollTimer = null
 const submittingHolding = ref(false)
 const showAddHoldingModal = ref(false)
+const showTakeProfitModal = ref(false)
+const savingTakeProfitPlan = ref(false)
+const applyingDefaultTakeProfitPlans = ref(false)
+const takeProfitPlanRecord = ref(null)
+const takeProfitForm = ref({enabled: true})
 const evaluating = ref(new Set())
 const batchEvaluating = ref(false)
 const breakEvenChartRef = ref(null)
@@ -440,7 +519,8 @@ const columns = computed(() => [
     sorter: (a, b) => (parseFloat(a.profitLossAmount) || 0) - (parseFloat(b.profitLossAmount) || 0)
   },
   { title: t('portfolio.colBreakEvenGain'), key: 'breakEvenGain', width: 120, align: 'right' },
-  { title: t('portfolio.colAction'), key: 'action', width: 120, align: 'center' }
+  { title: t('portfolio.colTakeProfitPlan'), key: 'takeProfitPlan', width: 128, align: 'center' },
+  { title: t('portfolio.colAction'), key: 'action', width: 190, align: 'center' }
 ])
 
 const breakEvenDifficulty = computed(() => {
@@ -637,6 +717,65 @@ const getProfitClass = (val) => {
   if (num > 0) return 'profit-up'
   if (num < 0) return 'profit-down'
   return ''
+}
+
+const getTakeProfitStatusText = status => t(`portfolio.takeProfitStatus.${status || 'DISABLED'}`)
+
+const getTakeProfitStatusColor = status => ({
+  FIRST_TARGET_REACHED: 'gold',
+  SECOND_TARGET_REACHED: 'orange',
+  TRACKING: 'blue',
+  TRAILING_STOP_TRIGGERED: 'red',
+  EXPIRED: 'default',
+  WAITING: 'cyan'
+}[status] || 'default')
+
+const openTakeProfitPlan = record => {
+  takeProfitPlanRecord.value = record
+  const plan = record.takeProfitPlan || {}
+  takeProfitForm.value = {
+    enabled: plan.enabled ?? true,
+    firstTargetPrice: plan.firstTargetPrice ? Number(plan.firstTargetPrice) : undefined,
+    firstTargetRatio: plan.firstTargetRatio ? Number(plan.firstTargetRatio) : undefined,
+    secondTargetPrice: plan.secondTargetPrice ? Number(plan.secondTargetPrice) : undefined,
+    secondTargetRatio: plan.secondTargetRatio ? Number(plan.secondTargetRatio) : undefined,
+    trailingDrawdownPercent: plan.trailingDrawdownPercent ? Number(plan.trailingDrawdownPercent) : undefined,
+    expiresOn: plan.expiresOn || undefined
+  }
+  showTakeProfitModal.value = true
+}
+
+const saveTakeProfitPlan = async () => {
+  const firstRatio = Number(takeProfitForm.value.firstTargetRatio || 0)
+  const secondRatio = Number(takeProfitForm.value.secondTargetRatio || 0)
+  if (takeProfitForm.value.enabled && firstRatio + secondRatio > 100) {
+    message.warning(t('portfolio.takeProfitRatioInvalid'))
+    return
+  }
+  savingTakeProfitPlan.value = true
+  try {
+    await updateTakeProfitPlan(takeProfitPlanRecord.value.id, takeProfitForm.value)
+    message.success(t('portfolio.takeProfitSaved'))
+    showTakeProfitModal.value = false
+    await loadHoldings()
+  } catch (error) {
+    message.error(error.response?.data?.message || t('portfolio.takeProfitSaveFailed'))
+  } finally {
+    savingTakeProfitPlan.value = false
+  }
+}
+
+const handleApplyDefaultTakeProfitPlans = async () => {
+  applyingDefaultTakeProfitPlans.value = true
+  try {
+    const response = await applyDefaultTakeProfitPlans()
+    message.success(t('portfolio.applyDefaultTakeProfitSuccess', {count: response.data || 0}))
+    await loadHoldings()
+  } catch (error) {
+    message.error(error.response?.data?.message || t('portfolio.applyDefaultTakeProfitFailed'))
+  } finally {
+    applyingDefaultTakeProfitPlans.value = false
+  }
 }
 
 const handleStockSearch = (value, index) => {
@@ -924,7 +1063,7 @@ onMounted(async () => {
 
 <style scoped>
 .portfolio-page {
-  --workspace-content-width: 1750px;
+  --workspace-content-width: 1840px;
   padding: 0;
 }
 
@@ -1232,9 +1371,9 @@ onMounted(async () => {
 .portfolio-anomaly-card { min-width: 0; min-height: 115px; padding: 15px 17px; background: var(--theme-surface, rgba(255, 255, 255, .96)); border: 1px solid var(--theme-line, #d8e5f3); border-radius: 14px; box-shadow: 0 12px 28px rgba(30, 48, 77, .09); }.portfolio-anomaly-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-bottom: 9px; border-bottom: 1px solid var(--theme-line, #edf1f6); }.portfolio-anomaly-heading strong { display: block; color: var(--theme-text, #293d5b); font-size: 13px; }.portfolio-anomaly-heading small, .portfolio-anomaly-heading > span { display: block; margin-top: 3px; color: var(--theme-muted, #8c9aae); font-size: 10px; }.portfolio-anomaly-heading > span { margin-top: 0; color: var(--theme-blue, #6683b0); }.portfolio-anomaly-list { display: grid; max-height: calc(100vh - 180px); overflow-y: auto; }.portfolio-anomaly-item { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 16px 0; border-bottom: 1px solid var(--theme-line, #eef2f7); }.portfolio-anomaly-item:last-child { border-bottom: 0; }.portfolio-anomaly-item div { display: grid; gap: 2px; }.portfolio-anomaly-item strong { overflow: hidden; color: var(--theme-text, #314660); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }.portfolio-anomaly-item small, .portfolio-anomaly-item em { overflow: hidden; color: var(--theme-muted, #94a0b0); font-size: 10px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }.portfolio-anomaly-item p { overflow: hidden; margin: 0; color: var(--theme-muted, #61728a); font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }.portfolio-anomaly-item em { color: var(--theme-blue, #6683b0); white-space: normal; overflow-wrap: anywhere; }.portfolio-anomaly-state { display: flex; align-items: center; gap: 7px; min-height: 74px; color: var(--theme-muted, #92a0b1); font-size: 12px; }.portfolio-anomaly-error { color: var(--theme-red, #b86f78); line-height: 1.45; }
 .portfolio-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
   align-items: start;
-  gap: 20px;
+  gap: 16px;
 }
 .portfolio-main { min-width: 0; }
 .portfolio-anomaly-card { position: sticky; top: 20px; }

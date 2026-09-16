@@ -16,4 +16,5 @@ public interface PortfolioHoldingDao {
     long countByUserId(Long userId);
     long countByUserIdAndAccountIdAndStockCode(Long userId, Long accountId, String stockCode);
     long countByIdAndUserId(Long id, Long userId);
+    int initializeDefaultTakeProfitPlans(Long userId);
 }

@@ -72,12 +72,6 @@
             <artifactId>sa-token-spring-boot4-starter</artifactId>
             <version>${satoken.version}</version>
         </dependency>
-        <dependency>
-            <groupId>cn.dev33</groupId>
-            <artifactId>sa-token-jwt</artifactId>
-            <version>${satoken.version}</version>
-        </dependency>
-
         <!-- LangChain4j -->
 
         <dependency>

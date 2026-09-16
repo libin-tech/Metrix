@@ -587,8 +587,14 @@ comment on column market_review.create_time is '创建时间';
 alter table market_review
     owner to postgres;
 
-create unique index idx_market_review_date
-    on market_review (review_date);
+-- 用户复盘按用户和日期隔离；系统生成的复盘（user_id 为 NULL）每个日期仅保留一条。
+create unique index idx_market_review_user_date
+    on market_review (user_id, review_date)
+    where user_id is not null;
+
+create unique index idx_market_review_system_date
+    on market_review (review_date)
+    where user_id is null;
 
 create index idx_market_review_user_id
     on market_review (user_id);

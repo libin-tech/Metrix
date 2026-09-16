@@ -5,6 +5,7 @@ import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.bintech.metrix.annotation.CheckConfig;
 import com.bintech.metrix.dto.request.BrokerAccountRequest;
 import com.bintech.metrix.dto.request.PortfolioHoldingRequest;
+import com.bintech.metrix.dto.request.TakeProfitPlanRequest;
 import com.bintech.metrix.dto.response.ApiResponse;
 import com.bintech.metrix.dto.response.PortfolioHoldingListResponse;
 import com.bintech.metrix.dto.response.PortfolioHoldingVO;
@@ -166,5 +167,25 @@ public class PortfolioController {
     public ApiResponse<Void> deleteHolding(@PathVariable Long id) {
         portfolioHoldingService.deleteHolding(id);
         return ApiResponse.success("持仓删除成功", null);
+    }
+
+    /**
+     * 保存持仓的止盈计划，仅记录计划与提醒状态，不会自动提交交易委托。
+     */
+    @PutMapping("/holdings/{id}/take-profit-plan")
+    @SaCheckPermission("portfolio:holding:update")
+    public ApiResponse<Void> saveTakeProfitPlan(@PathVariable Long id,
+                                                @Valid @RequestBody TakeProfitPlanRequest request) {
+        portfolioHoldingService.saveTakeProfitPlan(id, request);
+        return ApiResponse.success("止盈计划保存成功", null);
+    }
+
+    /**
+     * 为未配置止盈计划的持仓批量生成默认方案。
+     */
+    @PostMapping("/holdings/take-profit-plans/default")
+    @SaCheckPermission("portfolio:holding:update")
+    public ApiResponse<Integer> applyDefaultTakeProfitPlans() {
+        return ApiResponse.success("默认止盈计划设置成功", portfolioHoldingService.applyDefaultTakeProfitPlans());
     }
 }

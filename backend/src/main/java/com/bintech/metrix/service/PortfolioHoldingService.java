@@ -1,6 +1,7 @@
 package com.bintech.metrix.service;
 
 import com.bintech.metrix.dto.request.PortfolioHoldingRequest;
+import com.bintech.metrix.dto.request.TakeProfitPlanRequest;
 import com.bintech.metrix.dto.response.PortfolioHoldingListResponse;
 import com.bintech.metrix.dto.response.PortfolioHoldingVO;
 
@@ -66,6 +67,21 @@ public interface PortfolioHoldingService {
      * @param id 持仓ID
      */
     void deleteHolding(Long id);
+
+    /**
+     * 保存指定持仓的分批止盈和跟踪止盈计划。
+     *
+     * @param holdingId 持仓ID
+     * @param request   止盈计划配置
+     */
+    void saveTakeProfitPlan(Long holdingId, TakeProfitPlanRequest request);
+
+    /**
+     * 为未配置止盈计划且具备成本价的持仓应用默认方案。
+     *
+     * @return 实际写入计划的持仓数量
+     */
+    int applyDefaultTakeProfitPlans();
 
     /**
      * 获取所有持仓标的的代码集合

@@ -8,6 +8,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -54,4 +55,40 @@ public class PortfolioHolding extends BaseEntity {
     /** 行情缓存时间 */
     @TableField(value = "cached_price_time")
     private LocalDateTime cachedPriceTime;
+
+    /** 是否启用止盈计划 */
+    @TableField(value = "take_profit_enabled")
+    private Boolean takeProfitEnabled;
+
+    /** 第一目标价 */
+    @TableField(value = "take_profit_first_target_price")
+    private BigDecimal takeProfitFirstTargetPrice;
+
+    /** 第一档减仓比例 */
+    @TableField(value = "take_profit_first_target_ratio")
+    private BigDecimal takeProfitFirstTargetRatio;
+
+    /** 第二目标价 */
+    @TableField(value = "take_profit_second_target_price")
+    private BigDecimal takeProfitSecondTargetPrice;
+
+    /** 第二档减仓比例 */
+    @TableField(value = "take_profit_second_target_ratio")
+    private BigDecimal takeProfitSecondTargetRatio;
+
+    /** 剩余仓位从阶段高点回撤的止盈比例 */
+    @TableField(value = "take_profit_trailing_drawdown_percent")
+    private BigDecimal takeProfitTrailingDrawdownPercent;
+
+    /** 跟踪止盈阶段最高价 */
+    @TableField(value = "take_profit_trailing_peak_price")
+    private BigDecimal takeProfitTrailingPeakPrice;
+
+    /** 是否已触发跟踪止盈提醒 */
+    @TableField(value = "take_profit_trailing_triggered")
+    private Boolean takeProfitTrailingTriggered;
+
+    /** 止盈计划有效期 */
+    @TableField(value = "take_profit_expires_on")
+    private LocalDate takeProfitExpiresOn;
 }

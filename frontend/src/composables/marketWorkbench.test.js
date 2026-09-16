@@ -9,6 +9,10 @@ test('行情工作台会请求并逐条展示当日异动', async () => {
 
   assert.match(view, /getMarketWorkbenchAnomalies/)
   assert.match(view, /v-for="anomaly in anomalies"/)
+  assert.match(view, /class="workbench-layout"/)
+  assert.match(view, /class="workbench-primary"/)
+  assert.match(view, /class="anomaly-column"/)
+  assert.match(view, /\.workbench-layout \{ display: grid; grid-template-columns: minmax\(0, 2fr\) minmax\(300px, \.8fr\);/)
   assert.match(view, /\.anomaly-list \{ max-height: none; overflow-y: visible; \}/)
   assert.match(view, /\.anomaly-item p \{ overflow: visible; text-overflow: clip; white-space: normal; \}/)
 })
