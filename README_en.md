@@ -50,27 +50,29 @@ Metrix = Metric + Matrix — an asset evaluation tool from the perspective of qu
 
 - JDK 21
 - Maven 3.9+
-- Node.js 18+
+- Node.js 22+
 - PostgreSQL 16
-- Python 3.10+ (optional, for chip analysis)
+- Redis 7+
+- Python 3.10+ (for market-data and analysis scripts)
 
 ### Local Development
 
 ```bash
-# 0. Install AKShare and Baostock
-pip install akshare --upgrade
-pip install baostock --upgrade
+# 0. Install script dependencies and start PostgreSQL and Redis
+pip install -r python-service/requirements.txt
 # 1. Configure database
-cp .env.example .env
-# Edit .env with your PostgreSQL connection info
+cp backend/.env.example backend/.env
+# Edit backend/.env with PostgreSQL, Redis and SMTP settings
 
 # 2. Initialize database
-psql -h 127.0.0.1 -U postgres -d stock_analysis -f .doc/db/ddl-init.sql
-psql -h 127.0.0.1 -U postgres -d stock_analysis -f .doc/db/dml-init.sql
+psql -h 127.0.0.1 -U postgres -d stock_analysis -f backend/.doc/db/ddl-init.sql
+psql -h 127.0.0.1 -U postgres -d stock_analysis -f backend/.doc/db/dml-init.sql
+psql -h 127.0.0.1 -U postgres -d stock_analysis -f backend/.doc/db/system_menu.sql
+psql -h 127.0.0.1 -U postgres -d stock_analysis -f backend/.doc/db/system_api.sql
 
 # 3. Start backend
-mvn clean package -DskipTests
-java -jar target/stock-analysis-1.6.0.jar
+mvn -f backend/pom.xml clean package -DskipTests
+java -jar backend/target/metrix-1.6.1.jar
 
 # 4. Start frontend (new terminal)
 cd frontend
@@ -82,36 +84,29 @@ Frontend runs at `http://localhost:5173`, backend API at `http://localhost:8080`
 
 ### Upgrading an existing database
 
-Before deploying an upgrade, apply the relevant incremental scripts. The account upgrade requires:
-
-```bash
-psql -h 127.0.0.1 -U postgres -d stock_analysis -f backend/.doc/db/V1.6.3_user_privacy_agreement.sql
-psql -h 127.0.0.1 -U postgres -d stock_analysis -f backend/.doc/db/V1.6.4_remove_pdf_export.sql
-```
-
-If the database still has the legacy global date-unique index on `market_review`, run the following script before deploying the updated backend. It makes reviews unique per user and review date, while retaining one per date for system-generated reviews where `user_id` is `NULL`:
-
-```bash
-psql -h 127.0.0.1 -U postgres -d stock_analysis -f backend/.doc/db/V1.6.5_fix_market_review_unique_index.sql
-```
+Back up the database and apply migration scripts supplied with the target release. Full initialization SQL lives in `backend/.doc/db/` and must only be used for new databases. See the [deployment guide](docs/public-deployment.md#升级与回滚).
 
 ### Docker Deployment
 
+Copy the root environment template and set separate database, Redis and administrator passwords:
+
 ```bash
-# Build and start all services (backend + frontend + database)
-docker compose up -d --build
-
-# Initialize database (first deployment only)
-docker compose exec -T postgres psql -U postgres -d stock_analysis < .doc/db/ddl-init.sql
-docker compose exec -T postgres psql -U postgres -d stock_analysis < .doc/db/dml-init.sql
-
-# View logs
-docker compose logs -f app
+cp .env.example .env
+chmod 600 .env
+# Set POSTGRES_PASSWORD, REDIS_PASSWORD and ADMIN_PASSWORD in .env.
+docker compose config --quiet
+docker compose up -d --build --wait --wait-timeout 300
 ```
 
-Access `http://localhost` to use the system.
+Open `http://127.0.0.1:8088`. A fresh database volume is initialized automatically with tables, accounts, menus and API permissions. Existing volumes are preserved. Compose includes Nginx, Java/Python, PostgreSQL and Redis; only the frontend loopback port is published.
 
-> **Architecture note**: In production, Nginx serves the Vue SPA static files and reverse-proxies `/api` requests to the Java backend, eliminating the need for CORS configuration.
+For public HTTPS, set `METRIX_DOMAIN` and `ACME_EMAIL` in `.env`, configure DNS and open TCP 80/443, then run:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.public.yml up -d --build --wait --wait-timeout 300
+```
+
+See the [public deployment guide (Chinese)](docs/public-deployment.md) for server setup, SMTP, HTTPS, verification, backups, upgrades and troubleshooting.
 
 ### Frontend Standalone Deployment (non-Docker)
 
@@ -137,31 +132,25 @@ Frontend runs at `http://localhost:4173` (preview) or your nginx-configured port
 
 ```
 Metrix/
-├── src/main/java/com/bintech/metrix/
-│   ├── controller/        # REST controllers
-│   │   └── admin/         # Admin console controllers
-│   ├── service/           # Business logic layer
-│   ├── repository/        # Persistence layer (Entity + Mapper)
-│   ├── dto/               # Data transfer objects
-│   ├── enums/             # Enumerations
-│   ├── config/            # Configuration classes (incl. Sa-Token auth)
-│   ├── constants/         # Constants
-│   └── exception/         # Global exception handler
-├── frontend/              # Vue 3 frontend
+├── backend/                 # Java Spring Boot backend
+│   ├── src/main/java/com/bintech/metrix/
+│   ├── src/main/resources/  # Application configuration
+│   ├── .doc/db/             # Schema and account/menu/API seed data
+│   └── Dockerfile
+├── frontend/                # Vue 3 frontend and Nginx configuration
 │   └── src/
-│       ├── views/         # Page components
-│       │   └── admin/     # Admin console pages
-│       ├── api/           # API client
-│       ├── router/        # Router configuration
-│       ├── composables/   # Vue composables (themes, state management, etc.)
-│       └── i18n/          # Internationalization
-├── python-service/        # Python sidecar services
-└── .doc/
-    ├── db/                # Database scripts (DDL + DML + seed data)
-    │   ├── ddl-init.sql   # Full table creation script
-    │   ├── dml-init.sql   # Initial data (roles, admin user)
-    │   └── system_api.sql # API registration data
-    └── images/            # Image assets
+│       ├── views/
+│       ├── components/
+│       ├── api/
+│       ├── router/
+│       ├── composables/
+│       └── i18n/
+├── python-service/          # Python scripts invoked by the backend
+├── deploy/                  # HTTPS and administrator initialization
+├── docs/public-deployment.md
+├── docker-compose.yml
+├── docker-compose.public.yml
+└── .env.example             # Docker environment template
 ```
 
 ## Configuration
@@ -198,7 +187,7 @@ Manage AI models through the frontend config page:
 
 ## API Overview
 
-All APIs are prefixed with `/api`. Some endpoints require authentication (Sa-Token JWT). 100+ API endpoints in total — see `.doc/db/system_api.sql` for the full list.
+All APIs are prefixed with `/api`. Some endpoints require authentication (Sa-Token JWT). 100+ API endpoints in total — see `backend/.doc/db/system_api.sql` for the full list.
 
 ### Business APIs
 

@@ -1,6 +1,19 @@
 server:
   port: 8080
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+  health:
+    # SMTP 是外部依赖，不作为容器启动的健康条件。
+    mail:
+      enabled: false
+
 spring:
   application:
     name: metrix-service

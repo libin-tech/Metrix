@@ -53,28 +53,30 @@ Metrix = Metric（指标） + Matrix（矩阵）
 
 - JDK 21
 - Maven 3.9+
-- Node.js 18+
+- Node.js 22+
 - PostgreSQL 16
-- Python 3.10+（可选，用于筹码分析）
+- Redis 7+
+- Python 3.10+（用于行情和分析脚本）
 
 ### 本地开发
 
 ```bash
-# 0. 安装 AKShare 和 Baostock
-pip install akshare --upgrade
-pip install baostock --upgrade
+# 0. 安装行情脚本依赖，并确保 PostgreSQL 和 Redis 已启动
+pip install -r python-service/requirements.txt
 
 # 1. 配置数据库
-cp .env.example .env
-# 编辑 .env 填入 PostgreSQL 连接信息
+cp backend/.env.example backend/.env
+# 编辑 backend/.env 填入 PostgreSQL、Redis 和 SMTP 配置
 
 # 2. 初始化数据库
-psql -h 127.0.0.1 -U postgres -d stock_analysis -f .doc/db/ddl-init.sql
-psql -h 127.0.0.1 -U postgres -d stock_analysis -f .doc/db/dml-init.sql
+psql -h 127.0.0.1 -U postgres -d stock_analysis -f backend/.doc/db/ddl-init.sql
+psql -h 127.0.0.1 -U postgres -d stock_analysis -f backend/.doc/db/dml-init.sql
+psql -h 127.0.0.1 -U postgres -d stock_analysis -f backend/.doc/db/system_menu.sql
+psql -h 127.0.0.1 -U postgres -d stock_analysis -f backend/.doc/db/system_api.sql
 
 # 3. 启动后端
-mvn clean package -DskipTests
-java -jar target/stock-analysis-1.6.0.jar
+mvn -f backend/pom.xml clean package -DskipTests
+java -jar backend/target/metrix-1.6.1.jar
 
 # 4. 启动前端（新终端）
 cd frontend
@@ -86,36 +88,29 @@ npm run dev
 
 ### 已有数据库升级
 
-从旧版本升级时，在发布应用前执行对应的增量脚本。账号体系升级需要执行：
-
-```bash
-psql -h 127.0.0.1 -U postgres -d stock_analysis -f backend/.doc/db/V1.6.3_user_privacy_agreement.sql
-psql -h 127.0.0.1 -U postgres -d stock_analysis -f backend/.doc/db/V1.6.4_remove_pdf_export.sql
-```
-
-若数据库包含旧的 `market_review` 全局日期唯一索引，还需在发布新版后端前执行以下脚本。该迁移将唯一性调整为“同一用户同一复盘日期唯一”，并为 `user_id` 为 `NULL` 的系统复盘保留“同一日期唯一”：
-
-```bash
-psql -h 127.0.0.1 -U postgres -d stock_analysis -f backend/.doc/db/V1.6.5_fix_market_review_unique_index.sql
-```
+先备份现有数据库，按待发布版本提供的实际迁移脚本升级。完整初始化 SQL 位于 `backend/.doc/db/`，仅用于新数据库，不应在已有数据库重复导入。详见 [公网部署指南中的升级与回滚](docs/public-deployment.md#升级与回滚)。
 
 ### Docker 部署
 
+复制根目录环境变量模板，设置独立的数据库、Redis 和管理员密码：
+
 ```bash
-# 构建并启动所有服务（后端 + 前端 + 数据库）
-docker compose up -d --build
-
-# 初始化数据库（首次部署）
-docker compose exec -T postgres psql -U postgres -d stock_analysis < .doc/db/ddl-init.sql
-docker compose exec -T postgres psql -U postgres -d stock_analysis < .doc/db/dml-init.sql
-
-# 查看日志
-docker compose logs -f app
+cp .env.example .env
+chmod 600 .env
+# 编辑 .env，填写 POSTGRES_PASSWORD、REDIS_PASSWORD、ADMIN_PASSWORD。
+docker compose config --quiet
+docker compose up -d --build --wait --wait-timeout 300
 ```
 
-访问 `http://localhost` 使用系统。
+访问 `http://127.0.0.1:8088`。首次空数据卷会自动初始化表、账号、菜单和接口权限；已有数据卷不会重复初始化。服务包括前端、Java/Python 后端、PostgreSQL 和 Redis，只有前端回环地址映射到宿主机。
 
-> **架构说明**：生产环境中，Nginx 容器提供前端静态资源（Vue SPA），同时将 `/api` 请求反向代理到 Java 后端，无需单独配置跨域。
+公网部署在 `.env` 中填写 `METRIX_DOMAIN` 和 `ACME_EMAIL`，配置 DNS 与 80/443 安全组后执行：
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.public.yml up -d --build --wait --wait-timeout 300
+```
+
+完整的服务器准备、SMTP、HTTPS、验证、备份、升级和故障排查步骤见 [公网部署指南](docs/public-deployment.md)。
 
 ### 前端单独部署（非 Docker）
 
@@ -141,31 +136,25 @@ npm run preview
 
 ```
 Metrix/
-├── src/main/java/com/bintech/metrix/
-│   ├── controller/        # REST 控制器
-│   │   └── admin/         # 管理后台控制器
-│   ├── service/           # 业务逻辑层
-│   ├── repository/        # 持久层（Entity + Mapper）
-│   ├── dto/               # 数据传输对象
-│   ├── enums/             # 枚举
-│   ├── config/            # 配置类（含 Sa-Token 鉴权）
-│   ├── constants/         # 常量定义
-│   └── exception/         # 全局异常处理
-├── frontend/              # Vue 3 前端
+├── backend/                 # Java Spring Boot 后端
+│   ├── src/main/java/com/bintech/metrix/
+│   ├── src/main/resources/  # 应用配置
+│   ├── .doc/db/             # 表结构、账号、菜单和接口种子数据
+│   └── Dockerfile
+├── frontend/                # Vue 3 前端与 Nginx 配置
 │   └── src/
-│       ├── views/         # 页面组件
-│       │   └── admin/     # 管理后台页面
-│       ├── api/           # API 客户端
-│       ├── router/        # 路由
-│       ├── composables/   # Vue 组合式函数（主题、状态管理等）
-│       └── i18n/          # 国际化
-├── python-service/        # Python 辅助服务
-└── .doc/
-    ├── db/                # 数据库脚本（DDL+DML+种子数据）
-    │   ├── ddl-init.sql   # 完整建表脚本
-    │   ├── dml-init.sql   # 初始数据（角色、管理员用户）
-    │   └── system_api.sql # 接口注册数据
-    └── images/            # 图片资源
+│       ├── views/
+│       ├── components/
+│       ├── api/
+│       ├── router/
+│       ├── composables/
+│       └── i18n/
+├── python-service/          # 后端调用的 Python 行情脚本
+├── deploy/                  # HTTPS 和管理员初始化配置
+├── docs/public-deployment.md
+├── docker-compose.yml
+├── docker-compose.public.yml
+└── .env.example             # Docker 环境变量模板
 ```
 
 ## 配置说明
@@ -202,7 +191,7 @@ Metrix/
 
 ## API 概览
 
-所有 API 以 `/api` 为前缀，部分接口需要登录认证（Sa-Token JWT）。共 100+ 个 API 端点，完整列表见 `.doc/db/system_api.sql`。
+所有 API 以 `/api` 为前缀，部分接口需要登录认证（Sa-Token JWT）。共 100+ 个 API 端点，完整列表见 `backend/.doc/db/system_api.sql`。
 
 ### 业务接口
 

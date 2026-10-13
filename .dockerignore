@@ -1,0 +1,13 @@
+# 后端构建上下文为仓库根目录；只传入实际需要的源码。
+**
+!backend/
+!backend/pom.xml
+!backend/src/
+!backend/src/**
+!python-service/
+!python-service/**
+python-service/tests/
+**/__pycache__/
+**/*.pyc
+**/.env
+**/.env.*

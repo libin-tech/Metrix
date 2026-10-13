@@ -1,57 +1,109 @@
+name: metrix
+
+x-logging: &defaultLogging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: metrix-postgres
     environment:
       POSTGRES_DB: stock_analysis
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5432:5432"
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in the root .env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./backend/.doc/db/ddl-init.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./backend/.doc/db/dml-init.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+      - ./backend/.doc/db/system_menu.sql:/docker-entrypoint-initdb.d/03-menus.sql:ro
+      - ./backend/.doc/db/system_api.sql:/docker-entrypoint-initdb.d/04-apis.sql:ro
+      - ./deploy/init-admin.sh:/docker-entrypoint-initdb.d/05-admin.sh:ro
     networks:
       - metrix-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d stock_analysis"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d stock_analysis"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    logging: *defaultLogging
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in the root .env}
+    command: ["sh", "-c", 'exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"']
+    volumes:
+      - redis_data:/data
+    networks:
+      - metrix-network
+    healthcheck:
+      test: ["CMD-SHELL", 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG']
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s
+    logging: *defaultLogging
     restart: unless-stopped
 
   app:
+    image: metrix-backend:${METRIX_IMAGE_TAG:-local}
+    mem_limit: ${APP_MEMORY_LIMIT:-2g}
     build:
-      dockerfile: Dockerfile
-    container_name: Metrix-Server
+      context: .
+      dockerfile: backend/Dockerfile
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/stock_analysis
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
-    ports:
-      - "8080:8080"
+      POSTGRES_URL: jdbc:postgresql://postgres:5432/stock_analysis
+      POSTGRES_USERNAME: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in the root .env}
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
+      MAIL_SMTP_STARTTLS_ENABLE: ${MAIL_SMTP_STARTTLS_ENABLE:-true}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_SSL_ENABLE: ${MAIL_SMTP_SSL_ENABLE:-false}
+      AUTH_MAIL_FROM: ${AUTH_MAIL_FROM:-}
+      AUTH_CAPTCHA_ENABLED: ${AUTH_CAPTCHA_ENABLED:-true}
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=70.0 -Djava.awt.headless=true}
+      SPRING_APPLICATION_JSON: '{"logging":{"level":{"com.baomidou.mybatisplus":"INFO"}}}'
+    volumes:
+      - app_logs:/app/logs
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - metrix-network
+    logging: *defaultLogging
     restart: unless-stopped
 
   frontend:
+    image: metrix-frontend:${METRIX_IMAGE_TAG:-local}
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: Metrix-Frontend
     ports:
-      - "80:80"
+      - "127.0.0.1:${FRONTEND_PORT:-8088}:80"
     depends_on:
-      - app
+      app:
+        condition: service_healthy
     networks:
       - metrix-network
+    logging: *defaultLogging
     restart: unless-stopped
 
 volumes:
   postgres_data:
+  redis_data:
+  app_logs:
 
 networks:
   metrix-network:

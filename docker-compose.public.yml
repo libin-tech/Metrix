@@ -1,0 +1,28 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    environment:
+      METRIX_DOMAIN: ${METRIX_DOMAIN:?Set METRIX_DOMAIN to your public domain in the root .env}
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL in the root .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      frontend:
+        condition: service_healthy
+    networks:
+      - metrix-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
