@@ -1,344 +1,305 @@
 package com.bintech.metrix.service.impl;
 
 import com.bintech.metrix.constants.ApiConstants;
-
 import com.bintech.metrix.constants.BusinessConstants;
+import com.bintech.metrix.constants.ChatAgentConstants;
+import com.bintech.metrix.core.analysis.ChatAgentIntentResolver;
+import com.bintech.metrix.core.analysis.ChatAgentIntentResolver.Plan;
+import com.bintech.metrix.core.analysis.ChatAnswerStream;
+import com.bintech.metrix.core.analysis.MarketReviewDataFetcher;
+import com.bintech.metrix.core.analysis.MarketReviewPromptBuilder;
 import com.bintech.metrix.core.analysis.StockAdvisorPromptBuilder;
-import com.bintech.metrix.dto.response.AnalysisResult;
 import com.bintech.metrix.dto.response.ChatMessageVO;
 import com.bintech.metrix.dto.response.ChatSessionVO;
 import com.bintech.metrix.enums.ChatRole;
 import com.bintech.metrix.repository.dao.ChatMessageDao;
-import com.bintech.metrix.repository.dao.StockBasicDao;
 import com.bintech.metrix.repository.entity.ChatMessage;
 import com.bintech.metrix.repository.entity.ChatSession;
 import com.bintech.metrix.repository.entity.StockBasic;
-import com.bintech.metrix.service.*;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.bintech.metrix.service.AiModelService;
+import com.bintech.metrix.service.ChatService;
+import com.bintech.metrix.service.ChatSessionService;
+import com.bintech.metrix.service.MarketDataService;
+import com.bintech.metrix.service.NewsService;
+import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CancellationException;
+import java.util.function.Supplier;
 
+/** 意图识别、范围校验和工具编排；分析继续由原问一问提示词构建器完成。 */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChatServiceImpl implements ChatService {
-
     private final ChatSessionService chatSessionService;
     private final ChatMessageDao messageDao;
     private final AiModelService aiModelService;
     private final StockAdvisorPromptBuilder promptBuilder;
-    private final StockBasicDao stockBasicDao;
+    private final ChatAgentIntentResolver intentResolver;
     private final MarketDataService marketDataService;
     private final NewsService newsService;
+    private final MarketReviewDataFetcher marketReviewDataFetcher;
+    private final MarketReviewPromptBuilder marketReviewPromptBuilder;
+    private final ObjectMapper objectMapper;
+    private final Map<Long, AgentRun> activeRuns = new ConcurrentHashMap<>();
 
-    private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+    @RequiredArgsConstructor
+    private static final class AgentRun {
+        final Long sessionId;
+        final Long userId;
+        final SseEmitter emitter;
+        final List<Map<String, Object>> steps = new ArrayList<>();
+        final ChatAnswerStream answer = new ChatAnswerStream();
+        volatile boolean finished;
+        volatile Thread worker;
+        String stockCode;
+        String stockName;
+        ChatMessage previousAnswer;
+    }
 
-    private static final String NO_STOCK_MSG = "很抱歉，暂时无法识别到您需要分析的股票。请更换问题后重试。";
+    private record ConversationInput(String content, List<ChatMessage> history, ChatMessage previousAnswer) {}
 
-    private static final String STOCK_IDENTIFY_PROMPT = """
-            你是一个A股股票识别专家。从用户的问题中，识别出用户想要查询的A股股票名称。
-
-            规则：
-            - 如果用户明确提到了某只A股股票的名称或代码，返回该股票的完整名称
-            - 如果用户只提到了股票简称（如"茅台"对应"贵州茅台"），返回完整的官方股票名称
-            - 如果无法识别到任何具体的A股股票，只返回null（不带引号）
-            - 如果用户提到了多只股票，返回最相关的一只
-            - 只返回股票名称，不要返回任何其他内容
-
-            用户：%s
-            返回：""";
+    private ConversationInput prepareInput(String content, List<ChatMessage> history, boolean regenerate) {
+        if (!regenerate) return new ConversationInput(content, history, null);
+        if (history.size() < 2) throw new IllegalStateException("暂无可重新生成的回复。");
+        ChatMessage previousAnswer = history.getLast();
+        ChatMessage previousUser = history.get(history.size() - 2);
+        if (previousAnswer.getRole() != ChatRole.ASSISTANT || previousUser.getRole() != ChatRole.USER) throw new IllegalStateException("请等待上一轮完成后重试。");
+        return new ConversationInput(previousUser.getContent(), history.subList(0, history.size() - 2), previousAnswer);
+    }
 
     @Override
     public SseEmitter sendMessage(Long sessionId, Long userId, String content) {
-        ChatSession session = chatSessionService.getSessionById(sessionId);
-        if (!session.getUserId().equals(userId)) {
-            throw new RuntimeException("无权访问此对话");
+        return startRun(sessionId, userId, content, false);
+    }
+
+    @Override
+    public SseEmitter regenerateMessage(Long sessionId, Long userId) {
+        return startRun(sessionId, userId, null, true);
+    }
+
+    private SseEmitter startRun(Long sessionId, Long userId, String content, boolean regenerate) {
+        chatSessionService.getSessionById(sessionId, userId);
+        ConversationInput input = prepareInput(content, messageDao.selectBySessionIdOrderByCreateTimeAsc(sessionId), regenerate);
+        long rounds = input.history().stream().filter(m -> m.getRole() == ChatRole.USER).count();
+        if (rounds >= BusinessConstants.MAX_MESSAGES_PER_SESSION) throw new IllegalStateException("对话消息数量已达上限，请新建会话。");
+        AgentRun run = new AgentRun(sessionId, userId, new SseEmitter(ChatAgentConstants.STREAM_TIMEOUT_MILLIS));
+        run.previousAnswer = input.previousAnswer();
+        if (activeRuns.putIfAbsent(sessionId, run) != null) throw new IllegalStateException("此会话正在生成，请先停止生成。");
+        try {
+            if (!regenerate) saveMessage(run, ChatRole.USER, input.content(), input.content().length() / 2);
+        } catch (RuntimeException error) {
+            activeRuns.remove(sessionId, run);
+            throw error;
         }
+        run.emitter.onTimeout(() -> finish(run, "error", "分析超时，请稍后重试。", 0));
+        run.emitter.onError(error -> finish(run, "stopped", run.answer.content(), 0));
+        run.emitter.onCompletion(() -> finish(run, "stopped", run.answer.content(), 0));
+        run.worker = Thread.ofVirtual().name("chat-agent-" + sessionId).start(() -> execute(run, input.content(), input.history()));
+        return run.emitter;
+    }
 
-        Long messageCount = messageDao.countBySessionId(sessionId);
-        if (messageCount >= BusinessConstants.MAX_MESSAGES_PER_SESSION * 2) {
-            throw new RuntimeException("对话消息数量已达上限（" + BusinessConstants.MAX_MESSAGES_PER_SESSION + "轮）");
-        }
+    @Override
+    public void stopGeneration(Long sessionId, Long userId) {
+        chatSessionService.getSessionById(sessionId, userId);
+        AgentRun run = activeRuns.get(sessionId);
+        if (run == null) return;
+        finish(run, "stopped", run.answer.content(), run.answer.content().length() / 2);
+        if (run.worker != null) run.worker.interrupt();
+    }
 
-        String modelType = aiModelService.getActiveModelType();
-        SseEmitter emitter = new SseEmitter(0L);
-
-        Thread.ofVirtual().name("chat-pipeline-" + sessionId).start(() -> {
-            List<Map<String, Object>> stepRecords = new ArrayList<>();
-            try {
-                ChatMessage userMsg = new ChatMessage();
-                userMsg.setSessionId(sessionId);
-                userMsg.setUserId(userId);
-                userMsg.setRole(ChatRole.USER);
-                userMsg.setContent(content);
-                userMsg.setTokens(content.length() / 2);
-                userMsg.setCreateTime(LocalDateTime.now());
-                messageDao.insert(userMsg);
-
-                long t1 = System.currentTimeMillis();
-                sendStep(emitter, "**Step 1/6** 🔍 解析股票名称...");
-                StockBasic stockBasic = identifyStock(content, userId);
-                long elapsed1 = System.currentTimeMillis() - t1;
-                if (stockBasic == null) {
-                    chatSessionService.updateSessionName(sessionId, "未知任务");
-                    addStepRecord(stepRecords, 1, "解析股票名称", elapsed1, "failed");
-                    sendStep(emitter, "❌ 未识别到A股股票");
-                    int tokens = NO_STOCK_MSG.length() / 2;
-                    String stepsJson = JSON_MAPPER.writeValueAsString(stepRecords);
-                    emitter.send(SseEmitter.event().name("done")
-                            .data("{\"sessionId\":" + sessionId
-                                    + ",\"content\":" + JSON_MAPPER.writeValueAsString(NO_STOCK_MSG)
-                                    + ",\"tokens\":" + tokens
-                                    + ",\"messageCount\":" + (messageCount / 2 + 1)
-                                    + ",\"steps\":" + stepsJson
-                                    + "}"));
-                    emitter.complete();
-                    saveAssistantMessage(sessionId, userId, NO_STOCK_MSG, tokens, null, null, stepsJson);
-                    chatSessionService.updateSessionTokenAndCount(sessionId, tokens);
-                    return;
+    private void execute(AgentRun run, String content, List<ChatMessage> history) {
+        try {
+            thinking(run, "intent", "正在识别分析意图与参数", "identifying");
+            Plan plan = intentResolver.resolve(content, history, run.userId);
+            checkRunning(run);
+            switch (plan.intent()) {
+                case REFUSE -> finish(run, "refused", ChatAgentConstants.REFUSAL, 0);
+                case CLARIFY -> {
+                    boolean alreadyAsked = !history.isEmpty() && history.getLast().getRole() == ChatRole.ASSISTANT
+                            && history.getLast().getContent().equals(ChatAgentConstants.CLARIFICATION);
+                    finish(run, alreadyAsked ? "refused" : "clarification",
+                            alreadyAsked ? ChatAgentConstants.REFUSAL : ChatAgentConstants.CLARIFICATION, 0);
                 }
-                String stockCode = stockBasic.getTsCode();
-                String stockName = stockBasic.getName();
-                addStepRecord(stepRecords, 1, "解析股票名称：" + stockName, elapsed1, "completed");
-
-                userMsg.setStockCode(stockCode);
-                userMsg.setStockName(stockName);
-                messageDao.updateById(userMsg);
-                chatSessionService.updateSessionName(sessionId, "帮我分析下 " + stockName);
-                sendStep(emitter, "✅ **Step 1/7** 🔍 解析股票名称：" + stockName);
-
-                Map<String, Object> marketData = null;
-                Map<String, Object> klinesData = null;
-                Map<String, Object> newsData = null;
-                Map<String, Object> chipData = null;
-                Map<String, Object> topFreeShareholdersData = null;
-
-                long t2 = System.currentTimeMillis();
-                sendStep(emitter, "**Step 2/7** 📊 获取实时行情...");
-                try {
-                    marketData = marketDataService.fetchRealTimeData(stockBasic, userId);
-                    sendStep(emitter, "✅ **Step 2/7** 📊 获取实时行情完成");
-                    addStepRecord(stepRecords, 2, "获取实时行情", System.currentTimeMillis() - t2, "completed");
-                } catch (Exception e) {
-                    log.warn("获取实时行情失败: {}", e.getMessage());
-                    sendStep(emitter, "⚠️ **Step 2/7** 📊 获取实时行情失败");
-                    addStepRecord(stepRecords, 2, "获取实时行情", System.currentTimeMillis() - t2, "failed");
-                }
-
-                long t4 = System.currentTimeMillis();
-                sendStep(emitter, "**Step 3/7** 📉 获取K线数据...");
-                try {
-                    klinesData = marketDataService.fetchKlinesData(stockBasic, 60, userId);
-                    sendStep(emitter, "✅ **Step 3/7** 📉 获取K线数据完成");
-                    addStepRecord(stepRecords, 3, "获取K线数据", System.currentTimeMillis() - t4, "completed");
-                } catch (Exception e) {
-                    log.warn("获取K线数据失败: {}", e.getMessage());
-                    sendStep(emitter, "⚠️ **Step 3/7** 📉 获取K线数据失败");
-                    addStepRecord(stepRecords, 3, "获取K线数据", System.currentTimeMillis() - t4, "failed");
-                }
-
-                long t5 = System.currentTimeMillis();
-                sendStep(emitter, "**Step 4/7** 📰 获取新闻舆情...");
-                try {
-                    newsData = newsService.fetchStockNews(stockBasic, userId);
-                    sendStep(emitter, "✅ **Step 4/7** 📰 获取新闻舆情完成");
-                    addStepRecord(stepRecords, 4, "获取新闻舆情", System.currentTimeMillis() - t5, "completed");
-                } catch (Exception e) {
-                    log.warn("获取新闻数据失败: {}", e.getMessage());
-                    sendStep(emitter, "⚠️ **Step 4/7** 📰 获取新闻舆情失败");
-                    addStepRecord(stepRecords, 4, "获取新闻舆情", System.currentTimeMillis() - t5, "failed");
-                }
-
-                long t6 = System.currentTimeMillis();
-                sendStep(emitter, "**Step 5/7** 📊 获取筹码分布...");
-                try {
-                    chipData = marketDataService.fetchChipData(stockBasic, userId);
-                    boolean chipAvailable = ApiConstants.STATUS_SUCCESS.equals(chipData.get(ApiConstants.KEY_STATUS));
-                    sendStep(emitter, "**Step 5/7** 📊 " + chipData.getOrDefault(ApiConstants.KEY_MESSAGE, "获取筹码分布完成"));
-                    addStepRecord(stepRecords, 5, "获取筹码分布", System.currentTimeMillis() - t6, chipAvailable ? "completed" : "failed");
-                } catch (Exception e) {
-                    log.warn("获取筹码分布失败: {}", e.getMessage());
-                    sendStep(emitter, "⚠️ **Step 5/7** 📊 获取筹码分布失败");
-                    addStepRecord(stepRecords, 5, "获取筹码分布", System.currentTimeMillis() - t6, "failed");
-                }
-
-                long t7 = System.currentTimeMillis();
-                sendStep(emitter, "**Step 6/7** 👤 获取股东数据...");
-                try {
-                    topFreeShareholdersData = marketDataService.fetchTopFreeShareholdersData(stockBasic, userId);
-                    sendStep(emitter, "✅ **Step 6/7** 👤 获取股东数据完成");
-                    addStepRecord(stepRecords, 6, "获取股东数据", System.currentTimeMillis() - t7, "completed");
-                } catch (Exception e) {
-                    log.warn("获取股东数据失败: {}", e.getMessage());
-                    sendStep(emitter, "⚠️ **Step 6/7** 👤 获取股东数据失败");
-                    addStepRecord(stepRecords, 6, "获取股东数据", System.currentTimeMillis() - t7, "failed");
-                }
-
-                long t8 = System.currentTimeMillis();
-                sendStep(emitter, "**Step 7/7** 🤖 AI总结分析中...");
-
-                String prompt = promptBuilder.build(content, stockBasic, marketData, newsData, klinesData, chipData, topFreeShareholdersData);
-
-                aiModelService.generateAnalysisStreaming(prompt, modelType, userId,
-                        partialResponse -> sendReport(emitter, partialResponse),
-                        result -> completeChatAnalysis(emitter, sessionId, userId, stockCode, stockName,
-                                messageCount, stepRecords, t8, result),
-                        error -> failChatAnalysis(emitter, sessionId, messageCount, stepRecords, t8, error));
-            } catch (Exception e) {
-                log.error("管道处理异常: {}", e.getMessage(), e);
-                try {
-                    emitter.send(SseEmitter.event()
-                            .name("error")
-                            .data("系统处理异常: " + e.getMessage()));
-                } catch (IOException ex) {
-                    log.error("发送异常事件失败", ex);
-                }
-                emitter.completeWithError(e);
+                case ANALYZE -> analyze(run, content, plan);
             }
-        });
-
-        return emitter;
-    }
-
-    private void sendStep(SseEmitter emitter, String text) {
-        try {
-            emitter.send(SseEmitter.event().name("step").data(text));
-        } catch (IOException e) {
-            log.warn("发送进度事件失败", e);
+        } catch (CancellationException error) {
+            log.info("问一问任务已停止: {}", run.sessionId);
+        } catch (Exception error) {
+            log.error("问一问Agent执行失败: sessionId={}", run.sessionId, error);
+            finish(run, "error", "分析服务暂不可用，请检查模型和数据源配置后重试。", 0);
         }
     }
 
-    private void sendReport(SseEmitter emitter, String partialResponse) {
+    /** 数据不足只报告缺失，不降级为无依据的通用聊天。 */
+    private void analyze(AgentRun run, String content, Plan plan) {
+        run.stockName = String.join("、", plan.targets());
+        run.stockCode = String.join(",", plan.stocks().stream().map(StockBasic::getTsCode).toList());
+        thinking(run, "scope", "已校验中国A股标的：" + run.stockName, "analyzing");
+        thinking(run, "plan", "时间范围：" + plan.timeRange() + "；分析维度：" + String.join("、", plan.dimensions())
+                + "。复用原问一问指标和研判方法；超出数据覆盖的维度将明确标注。", "analyzing");
+        chatSessionService.updateSessionName(run.sessionId, run.stockName);
+        String evidence = switch (plan.kind()) {
+            case STOCK -> buildStockEvidence(run, content, plan.stocks());
+            case SECTOR -> "板块研究仅覆盖本地行业分类中的样本：" + plan.targets()
+                    + "。以下是各行业按证券代码排序取样、合计最多3只的样本，不是板块指数或龙头推荐，不可将样本表现推及整个行业。\n"
+                    + buildStockEvidence(run, content, plan.stocks().stream().distinct().toList());
+            case INDEX -> buildIndexEvidence(run, plan);
+        };
+        checkRunning(run);
+        thinking(run, "generation", "公开数据获取完成，正在生成最终回复", "generating");
+        String prompt = ChatAgentConstants.OUTPUT_RULES + "\n用户请求的参数：" + plan.timeRange() + " / " + plan.dimensions()
+                + "\n" + evidence + "\n" + ChatAgentConstants.OUTPUT_RULES;
+        aiModelService.generateAnalysisStreaming(prompt, aiModelService.getActiveModelType(run.userId), run.userId,
+                chunk -> appendAnswer(run, chunk), result -> finish(run, "completed", run.answer.content(), result.getTotalTokens()),
+                error -> {
+                    log.error("问一问报告生成失败: {}", run.sessionId, error);
+                    finish(run, "error", run.answer.content(), 0);
+                }, () -> run.finished);
+    }
+
+    private String buildStockEvidence(AgentRun run, String content, List<StockBasic> stocks) {
+        StringBuilder evidence = new StringBuilder();
+        for (StockBasic stock : stocks) {
+            Map<String, Object> market = tool(run, stock.getName() + " · 实时行情", () -> marketDataService.fetchRealTimeData(stock, run.userId));
+            Map<String, Object> klines = tool(run, stock.getName() + " · 最近60条K线", () -> marketDataService.fetchKlinesData(stock, BusinessConstants.DEFAULT_KLINE_LIMIT, run.userId));
+            Map<String, Object> news = tool(run, stock.getName() + " · 新闻与公告", () -> newsService.fetchStockNews(stock, run.userId));
+            Map<String, Object> chip = tool(run, stock.getName() + " · 筹码分布", () -> marketDataService.fetchChipData(stock, run.userId));
+            Map<String, Object> holders = tool(run, stock.getName() + " · 十大流通股东", () -> marketDataService.fetchTopFreeShareholdersData(stock, run.userId));
+            evidence.append("已校验标的：").append(stock.getName()).append(" ").append(stock.getTsCode()).append("\n")
+                    .append(promptBuilder.build(content, stock, market, news, klines, chip, holders)).append("\n\n");
+        }
+        return evidence.toString();
+    }
+
+    private String buildIndexEvidence(AgentRun run, Plan plan) {
+        Map<String, String> selectedIndices = new LinkedHashMap<>();
+        List<String> names = plan.targets().contains("A股大盘") ? MarketReviewDataFetcher.INDEX_NAMES : plan.targets();
+        names.forEach(name -> selectedIndices.put(name, ChatAgentConstants.INDEX_SYMBOLS.get(name)));
+        Map<String, Object> indices = tool(run, "A股指数行情与K线", () -> marketReviewDataFetcher.fetchIndexData(null, selectedIndices));
+        Map<String, Object> turnover = tool(run, "沪深成交量与成交额", () -> marketReviewDataFetcher.fetchMarketTurnoverData(null));
+        if (indices == null || turnover == null || !indices.keySet().containsAll(names)) return "请求的指数或成交额数据缺失，请在最终模板中说明暂时无法分析。";
+        String dataDate = names.stream().map(name -> objectMapper.valueToTree(indices.get(name)).path("latest").path("date").asText())
+                .filter(date -> !date.isBlank()).min(String::compareTo).orElse("未知日期");
+        return "仅分析指定指数：" + plan.targets() + "；实际行情日期：" + dataDate + "\n"
+                + marketReviewPromptBuilder.build(indices, turnover, dataDate, names);
+    }
+
+    private Map<String, Object> tool(AgentRun run, String title, Supplier<Map<String, Object>> fetcher) {
+        thinking(run, "tool", "正在获取公开数据：" + title, "analyzing");
+        long start = System.currentTimeMillis();
         try {
-            emitter.send(SseEmitter.event().name("report").data(partialResponse));
-        } catch (IOException e) {
-            log.warn("发送流式回答失败: {}", e.getMessage());
+            Map<String, Object> data = fetcher.get();
+            checkRunning(run);
+            boolean failed = data == null || data.isEmpty() || "error".equals(data.get(ApiConstants.KEY_STATUS)) || "failed".equals(data.get(ApiConstants.KEY_STATUS));
+            toolResult(run, title, start, failed);
+            return failed ? null : data;
+        } catch (CancellationException error) {
+            throw error;
+        } catch (Exception error) {
+            log.warn("Agent数据工具失败: {}", title, error);
+            checkRunning(run);
+            toolResult(run, title, start, true);
+            return null;
         }
     }
 
-    private void completeChatAnalysis(SseEmitter emitter, Long sessionId, Long userId, String stockCode,
-                                      String stockName, Long messageCount, List<Map<String, Object>> stepRecords,
-                                      long startedAt, AnalysisResult result) {
-        try {
-            String content = result.getContent();
-            int tokens = result.getTotalTokens();
-            addStepRecord(stepRecords, 8, "AI总结分析", System.currentTimeMillis() - startedAt, "completed");
-            String stepsJson = JSON_MAPPER.writeValueAsString(stepRecords);
-            saveAssistantMessage(sessionId, userId, content, tokens, stockCode, stockName, stepsJson);
-            chatSessionService.updateSessionTokenAndCount(sessionId, tokens);
-            sendStep(emitter, "✅ **Step 8/8** 🤖 分析完成");
-            emitter.send(SseEmitter.event().name("done").data("{\"sessionId\":" + sessionId
-                    + ",\"content\":" + JSON_MAPPER.writeValueAsString(content)
-                    + ",\"tokens\":" + tokens
-                    + ",\"messageCount\":" + (messageCount / 2 + 1)
-                    + ",\"steps\":" + stepsJson + "}"));
-            emitter.complete();
-        } catch (Exception e) {
-            log.error("完成流式聊天分析失败", e);
-            emitter.completeWithError(e);
+    private void toolResult(AgentRun run, String title, long start, boolean failed) {
+        synchronized (run) {
+            checkRunning(run);
+            Map<String, Object> step = Map.of("stage", "tool", "content", title + (failed ? "：数据缺失" : "：获取完成"),
+                    "state", "analyzing", "status", failed ? "failed" : "completed", "elapsed", System.currentTimeMillis() - start);
+            run.steps.add(step);
+            send(run, "thinking", step);
         }
     }
 
-    private void failChatAnalysis(SseEmitter emitter, Long sessionId, Long messageCount,
-                                  List<Map<String, Object>> stepRecords, long startedAt, Throwable error) {
-        log.error("AI分析出错: {}", error.getMessage(), error);
-        addStepRecord(stepRecords, 8, "AI总结分析", System.currentTimeMillis() - startedAt, "failed");
-        try {
-            String stepsJson = JSON_MAPPER.writeValueAsString(stepRecords);
-            emitter.send(SseEmitter.event().name("error").data(error.getMessage() == null ? "AI分析出错" : error.getMessage()));
-            emitter.send(SseEmitter.event().name("done").data("{\"sessionId\":" + sessionId
-                    + ",\"content\":\"\",\"tokens\":0"
-                    + ",\"messageCount\":" + (messageCount / 2 + 1)
-                    + ",\"steps\":" + stepsJson + "}"));
-        } catch (IOException e) {
-            log.error("发送流式分析错误事件失败", e);
+    private void thinking(AgentRun run, String stage, String content, String state) {
+        synchronized (run) {
+            checkRunning(run);
+            Map<String, Object> step = Map.of("stage", stage, "content", content, "state", state);
+            run.steps.add(step);
+            send(run, "thinking", step);
         }
-        emitter.completeWithError(error);
     }
 
-    private void addStepRecord(List<Map<String, Object>> records, int stepNum, String title, long elapsed, String status) {
-        Map<String, Object> record = new HashMap<>();
-        record.put("step", stepNum);
-        record.put("title", title);
-        record.put("elapsed", elapsed);
-        record.put("status", status);
-        records.add(record);
+    private void appendAnswer(AgentRun run, String chunk) {
+        synchronized (run) {
+            if (run.finished) return;
+            String delta = run.answer.append(chunk);
+            if (!delta.isEmpty()) send(run, "final", Map.of("content", delta, "delta", true));
+        }
     }
 
+    /** 一次终止仅持久化一次；停止、断连、超时和模型回调共用同一终态。 */
+    private void finish(AgentRun run, String status, String content, int tokens) {
+        synchronized (run) {
+            if (run.finished) return;
+            run.finished = true;
+            String answer = content;
+            if ("completed".equals(status) && answer.isBlank()) {
+                status = "error";
+                answer = "模型未返回符合格式的分析报告，请重新生成。";
+            }
+            if (!"clarification".equals(status) && !answer.contains(ChatAgentConstants.DISCLAIMER)) {
+                answer += "\n\n> " + ChatAgentConstants.DISCLAIMER;
+            }
+            run.steps.add(Map.of("stage", "complete", "state", status, "content", status));
+            try {
+                saveMessage(run, ChatRole.ASSISTANT, answer, tokens);
+                if (run.previousAnswer == null) chatSessionService.updateSessionTokenAndCount(run.sessionId, tokens);
+                else chatSessionService.addSessionTokens(run.sessionId, tokens);
+                send(run, "final", Map.of("content", answer, "delta", false, "status", status));
+                send(run, "done", Map.of("status", status, "sessionId", run.sessionId, "tokens", tokens, "steps", run.steps));
+                run.emitter.complete();
+            } catch (Exception error) {
+                log.error("Agent终态保存失败: {}", run.sessionId, error);
+                run.emitter.completeWithError(error);
+            } finally {
+                activeRuns.remove(run.sessionId, run);
+            }
+        }
+    }
 
-    @Transactional
-    protected void saveAssistantMessage(Long sessionId, Long userId, String content, int tokens,
-                                         String stockCode, String stockName, String steps) {
-        ChatMessage msg = new ChatMessage();
-        msg.setSessionId(sessionId);
-        msg.setUserId(userId);
-        msg.setRole(ChatRole.ASSISTANT);
+    private void saveMessage(AgentRun run, ChatRole role, String content, int tokens) {
+        ChatMessage msg = role == ChatRole.ASSISTANT && run.previousAnswer != null ? run.previousAnswer : new ChatMessage();
+        msg.setSessionId(run.sessionId);
+        msg.setUserId(run.userId);
+        msg.setRole(role);
         msg.setContent(content);
         msg.setTokens(tokens);
-        msg.setStockCode(stockCode);
-        msg.setStockName(stockName);
-        msg.setSteps(steps);
-        msg.setCreateTime(LocalDateTime.now());
-        messageDao.insert(msg);
+        msg.setCreator(run.userId.toString());
+        msg.setModifier(run.userId.toString());
+        msg.setStockCode(run.stockCode);
+        msg.setStockName(run.stockName);
+        if (msg.getId() == null) msg.setCreateTime(LocalDateTime.now());
+        if (role == ChatRole.ASSISTANT) msg.setSteps(objectMapper.writeValueAsString(run.steps));
+        int affected = msg.getId() == null ? messageDao.insert(msg) : messageDao.updateById(msg);
+        if (affected == 0) throw new IllegalStateException("会话消息保存失败，请重新加载会话后重试。");
     }
 
-    private StockBasic identifyStock(String content, Long userId) {
-        if (content == null || content.isBlank()) return null;
-        String text = content.trim();
-
-        String tsCodePattern = "\\d{6}\\.(SZ|SH)";
-        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile(tsCodePattern).matcher(text);
-        if (matcher.find()) {
-            StockBasic stock = stockBasicDao.selectByTsCode(matcher.group().toUpperCase());
-            if (stock != null) return stock;
-        }
-
-        String symbolPattern = "\\b\\d{6}\\b";
-        matcher = java.util.regex.Pattern.compile(symbolPattern).matcher(text);
-        if (matcher.find()) {
-            log.info("识别股票代码: {}", matcher.group());
-            StockBasic stock = stockBasicDao.selectBySymbol(matcher.group());
-            if (stock != null) return stock;
-        }
-
-        StockBasic stock = identifyStockByAi(text, userId);
-        if (stock != null) return stock;
-
-        log.info("未找到股票: {}", text);
-        return null;
+    private void checkRunning(AgentRun run) {
+        if (run.finished || Thread.currentThread().isInterrupted()) throw new CancellationException();
     }
 
-    private StockBasic identifyStockByAi(String text, Long userId) {
-        String prompt = String.format(STOCK_IDENTIFY_PROMPT, text);
-        String aiResult;
+    private void send(AgentRun run, String event, Map<String, Object> data) {
         try {
-            aiResult = aiModelService.generateAnalysis(prompt, aiModelService.getActiveModelType(userId), userId);
-        } catch (Exception e) {
-            log.warn("AI识别股票失败: {}", e.getMessage());
-            return null;
+            run.emitter.send(SseEmitter.event().name(event).data(objectMapper.writeValueAsString(data)));
+        } catch (IOException | IllegalStateException error) {
+            log.debug("Agent连接已关闭: {}", run.sessionId, error);
+            if (!run.finished) finish(run, "stopped", run.answer.content(), 0);
         }
-        if (aiResult == null || aiResult.isBlank() || "null".equals(aiResult.trim())) {
-            log.info("AI未识别到股票，用户问题: {}", text);
-            return null;
-        }
-        String stockName = aiResult.trim();
-        log.info("AI识别股票名称: {}", stockName);
-        StockBasic stock = stockBasicDao.selectByName(stockName);
-        if (stock != null) return stock;
-        stock = stockBasicDao.selectByNameLike(stockName);
-        if (stock != null) return stock;
-        log.warn("AI识别到股票名称[{}]但数据库未匹配到", stockName);
-        return null;
     }
 
     @Override

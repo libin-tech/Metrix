@@ -3,13 +3,11 @@ package com.bintech.metrix.controller;
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.stp.StpUtil;
-import com.bintech.metrix.annotation.CheckConfig;
 import com.bintech.metrix.dto.request.ChatSendRequest;
 import com.bintech.metrix.dto.request.ChatSessionCreateRequest;
 import com.bintech.metrix.dto.response.ApiResponse;
 import com.bintech.metrix.dto.response.ChatMessageVO;
 import com.bintech.metrix.dto.response.ChatSessionVO;
-import com.bintech.metrix.enums.ConfigType;
 import com.bintech.metrix.service.ChatService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -71,9 +69,21 @@ public class ChatController {
 
     @PostMapping(value = "/send", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @SaCheckPermission("chat:message:send")
-    @CheckConfig(required = {ConfigType.AI_MODEL, ConfigType.MARKET_DATA, ConfigType.NEWS_SOURCE})
     public SseEmitter sendMessage(@Valid @RequestBody ChatSendRequest request) {
         long userId = StpUtil.getLoginIdAsLong();
         return chatService.sendMessage(request.getSessionId(), userId, request.getContent());
+    }
+
+    @PostMapping("/session/{id}/stop")
+    @SaCheckPermission("chat:message:send")
+    public ApiResponse<Void> stopGeneration(@PathVariable Long id) {
+        chatService.stopGeneration(id, StpUtil.getLoginIdAsLong());
+        return ApiResponse.success(null);
+    }
+
+    @PostMapping(value = "/session/{id}/regenerate", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @SaCheckPermission("chat:message:send")
+    public SseEmitter regenerateMessage(@PathVariable Long id) {
+        return chatService.regenerateMessage(id, StpUtil.getLoginIdAsLong());
     }
 }

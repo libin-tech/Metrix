@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -38,7 +39,14 @@ public class MarketReviewDataFetcher {
      * 通过调用 AKShare Python 脚本获取四大指数（上证/深证/创业板/科创50）的行情和K线数据
      */
     public Map<String, Object> fetchIndexData(String reviewDate) {
-        String symbols = String.join(",", INDEX_SYMBOLS);
+        Map<String, String> selectedIndices = new LinkedHashMap<>();
+        for (int i = 0; i < INDEX_NAMES.size(); i++) selectedIndices.put(INDEX_NAMES.get(i), INDEX_SYMBOLS.get(i));
+        return fetchIndexData(reviewDate, selectedIndices);
+    }
+
+    /** 复用指数采集脚本，允许 Agent 在已校验目录中按需选择指数。 */
+    public Map<String, Object> fetchIndexData(String reviewDate, Map<String, String> selectedIndices) {
+        String symbols = String.join(",", selectedIndices.values());
         String scriptPath = akshareScriptPath.replace("akshare.py", "akshare_index.py");
 
         List<String> command = new ArrayList<>();
@@ -54,11 +62,11 @@ public class MarketReviewDataFetcher {
 
         JSONObject data = executeScript(command, "AKShare指数");
         Map<String, Object> result = new HashMap<>();
-        for (int i = 0; i < INDEX_SYMBOLS.size(); i++) {
-            String sym = INDEX_SYMBOLS.get(i);
-            String name = INDEX_NAMES.get(i);
+        for (Map.Entry<String, String> entry : selectedIndices.entrySet()) {
+            String sym = entry.getValue();
+            String name = entry.getKey();
             JSONObject idxData = data.getJSONObject(sym);
-            if (idxData != null) {
+            if (idxData != null && idxData.getJSONObject("latest") != null && idxData.getJSONArray("records") != null) {
                 Map<String, Object> idxMap = new HashMap<>();
                 idxMap.put("name", name);
                 idxMap.put("changePct", idxData.getDouble("changePct", 0.0));

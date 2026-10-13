@@ -8,6 +8,7 @@ import com.bintech.metrix.repository.entity.AiModelConfig;
 
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.BooleanSupplier;
 
 /**
  * AI模型配置服务接口
@@ -60,6 +61,10 @@ public interface AiModelService {
                                     Consumer<Throwable> onError);
 
     boolean hasActiveConfig(Long userId);
+
+    void generateAnalysisStreaming(String prompt, String modelType, Long userId,
+                                   Consumer<String> onNext, Consumer<AnalysisResult> onComplete,
+                                   Consumer<Throwable> onError, BooleanSupplier cancelled);
 
     AiModelTestResponse testConnection(AiModelTestRequest request);
 }

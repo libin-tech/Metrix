@@ -12,6 +12,12 @@ import com.bintech.metrix.repository.entity.AiModelConfig;
 import com.bintech.metrix.service.AiModelService;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.response.PartialResponse;
+import dev.langchain4j.model.chat.response.PartialResponseContext;
+import dev.langchain4j.model.chat.response.PartialThinking;
+import dev.langchain4j.model.chat.response.PartialThinkingContext;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
@@ -27,6 +33,8 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.BooleanSupplier;
 
 @Slf4j
 @Service
@@ -225,18 +233,28 @@ public class AiModelServiceImpl implements AiModelService {
 
     @Override
     public void generateAnalysisStreaming(String prompt, String modelType,
-                                          java.util.function.Consumer<String> onNext,
-                                          java.util.function.Consumer<AnalysisResult> onComplete,
-                                          java.util.function.Consumer<Throwable> onError) {
+                                          Consumer<String> onNext,
+                                          Consumer<AnalysisResult> onComplete,
+                                          Consumer<Throwable> onError) {
         Long userId = StpUtil.getLoginIdAsLong();
         generateAnalysisStreaming(prompt, modelType, userId, onNext, onComplete, onError);
     }
 
     @Override
     public void generateAnalysisStreaming(String prompt, String modelType, Long userId,
-                                          java.util.function.Consumer<String> onNext,
-                                          java.util.function.Consumer<AnalysisResult> onComplete,
-                                          java.util.function.Consumer<Throwable> onError) {
+                                          Consumer<String> onNext,
+                                          Consumer<AnalysisResult> onComplete,
+                                          Consumer<Throwable> onError) {
+        generateAnalysisStreaming(prompt, modelType, userId, onNext, onComplete, onError, () -> false);
+    }
+
+    @Override
+    public void generateAnalysisStreaming(String prompt, String modelType, Long userId,
+                                          Consumer<String> onNext,
+                                          Consumer<AnalysisResult> onComplete,
+                                          Consumer<Throwable> onError,
+                                          BooleanSupplier cancelled) {
+        if (cancelled.getAsBoolean()) return;
         AiModelConfig config = getActiveConfigByType(modelType, userId);
         String modelName = config.getModelName();
         log.info("===== AI流式分析开始 =====");
@@ -246,15 +264,33 @@ public class AiModelServiceImpl implements AiModelService {
         StringBuilder fullContent = new StringBuilder();
         StreamingChatModel model = buildStreamingModel(config, modelType);
 
-        model.chat(prompt, new dev.langchain4j.model.chat.response.StreamingChatResponseHandler() {
+        if (cancelled.getAsBoolean()) return;
+        model.chat(prompt, new StreamingChatResponseHandler() {
             @Override
             public void onPartialResponse(String partialResponse) {
+                if (cancelled.getAsBoolean()) return;
                 fullContent.append(partialResponse);
                 onNext.accept(partialResponse);
             }
 
             @Override
-            public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse completeResponse) {
+            public void onPartialResponse(PartialResponse partialResponse,
+                                          PartialResponseContext context) {
+                if (cancelled.getAsBoolean()) {
+                    context.streamingHandle().cancel();
+                    return;
+                }
+                onPartialResponse(partialResponse.text());
+            }
+
+            @Override
+            public void onPartialThinking(PartialThinking thinking, PartialThinkingContext context) {
+                if (cancelled.getAsBoolean()) context.streamingHandle().cancel();
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                if (cancelled.getAsBoolean()) return;
                 long duration = System.currentTimeMillis() - startTime;
                 String content = fullContent.toString();
                 int totalTokens = 0;
@@ -278,6 +314,7 @@ public class AiModelServiceImpl implements AiModelService {
 
             @Override
             public void onError(Throwable error) {
+                if (cancelled.getAsBoolean()) return;
                 log.error("AI流式分析出错: {}", error.getMessage(), error);
                 onError.accept(error);
             }
@@ -308,7 +345,9 @@ public class AiModelServiceImpl implements AiModelService {
                 .baseUrl(config.getApiBaseUrl())
                 .apiKey(config.getApiKey())
                 .modelName(config.getModelName())
-                .temperature(config.getTemperature());
+                .temperature(config.getTemperature())
+                // Parse reasoning chunks only to receive cancellation handles; never publish them.
+                .returnThinking(true);
         if (config.getTimeout() != null) {
             builder.timeout(java.time.Duration.ofSeconds(config.getTimeout()));
         }

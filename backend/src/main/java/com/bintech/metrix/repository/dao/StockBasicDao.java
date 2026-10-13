@@ -19,5 +19,7 @@ public interface StockBasicDao {
     StockBasic selectByNameLike(String name);
     List<StockBasic> selectByTsCodeIn(List<String> tsCodes);
     List<StockBasic> selectLikeNameOrTsCode(String keyword);
+    List<StockBasic> selectByIndustries(List<String> industries);
+    List<StockBasic> selectByNamesOrCodes(List<String> targets);
     IPage<StockBasic> selectStockPage(Page<StockBasic> page, String keyword);
 }

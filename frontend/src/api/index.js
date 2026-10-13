@@ -1,6 +1,7 @@
 import axios from 'axios'
 import {message, Modal} from 'ant-design-vue'
 import i18n from '../i18n'
+import {readAgentStream} from '../composables/agentStream.js'
 
 const service = axios.create({
   baseURL: '/api',
@@ -22,6 +23,7 @@ service.interceptors.request.use(
 
 service.interceptors.response.use(
   response => {
+    if (response.config.responseType === 'stream') return response
     const body = response.data
     if (body && body.code != null && body.code !== 200) {
       if (body.code === 1001) {
@@ -116,64 +118,23 @@ export const getChatSessionMessages = id => service.get(`/chat/session/${id}/mes
 
 export const deleteChatSessions = (ids) => service.post('/chat/sessions/delete', ids)
 
-export const sendChatMessage = async (sessionId, content, callbacks) => {
-  const token = localStorage.getItem('token')
-  const { onThinking, onReport, onDone, onError, onStep } = callbacks
+export const stopChatGeneration = id => service.post(`/chat/session/${id}/stop`)
+
+export const sendChatMessage = async (sessionId, content, callbacks, signal, regenerate = false) => {
   try {
-    const response = await fetch('/api/chat/send', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        satoken: token
-      },
-      body: JSON.stringify({ sessionId, content })
+    const endpoint = regenerate ? `/chat/session/${sessionId}/regenerate` : '/chat/send'
+    const response = await service.post(endpoint, regenerate ? null : { sessionId, content }, {
+      adapter: 'fetch', responseType: 'stream', timeout: 0, signal
     })
-    if (!response.ok) {
-      const err = await response.text()
-      onError && onError(err)
-      return
+    if (!response.headers['content-type']?.includes('text/event-stream')) {
+      const body = await new Response(response.data).json()
+      throw new Error(body.message || i18n.global.t('chat.streamError'))
     }
-    const reader = response.body.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ''
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      buffer += decoder.decode(value, { stream: true })
-
-      const parts = buffer.split('\n\n')
-      buffer = parts.pop() || ''
-
-      for (const part of parts) {
-        const lines = part.split('\n')
-        let eventType = 'report'
-        const dataLines = []
-        for (const line of lines) {
-          if (line.startsWith('id:')) {
-            // ignore id field
-          } else if (line.startsWith('event:')) {
-            eventType = line.slice(6).trim()
-          } else if (line.startsWith('data:')) {
-            dataLines.push(line.slice(5).replace(/^ /, ''))
-          }
-        }
-        const data = dataLines.join('\n')
-        if (eventType === 'done') {
-          onDone && onDone(data ? JSON.parse(data) : {})
-        } else if (eventType === 'error') {
-          onError && onError(data)
-        } else if (eventType === 'step') {
-          onStep && onStep(data)
-        } else if (eventType === 'thinking') {
-          onThinking && onThinking(data)
-        } else if (eventType === 'report' || eventType === 'message' || eventType === '') {
-          onReport && onReport(data)
-        }
-      }
-    }
-  } catch (err) {
-    onError && onError(err.message || '连接失败')
+    return await readAgentStream(response.data, callbacks, signal)
+  } catch (error) {
+    if (signal?.aborted || axios.isCancel(error)) return { aborted: true }
+    callbacks.onError?.(error)
+    return { completed: false }
   }
 }
 

@@ -108,10 +108,20 @@ public class ChatSessionServiceImpl implements ChatSessionService {
     @Override
     @Transactional
     public void updateSessionTokenAndCount(Long sessionId, int tokens) {
+        updateUsage(sessionId, tokens, true);
+    }
+
+    @Override
+    @Transactional
+    public void addSessionTokens(Long sessionId, int tokens) {
+        updateUsage(sessionId, tokens, false);
+    }
+
+    private void updateUsage(Long sessionId, int tokens, boolean newRound) {
         ChatSession session = sessionDao.selectById(sessionId);
         if (session != null) {
             session.setTotalTokens(session.getTotalTokens() + tokens);
-            session.setMessageCount(session.getMessageCount() + 1);
+            session.setMessageCount(session.getMessageCount() + (newRound ? 1 : 0));
             session.setUpdateTime(LocalDateTime.now());
             sessionDao.updateById(session);
         }

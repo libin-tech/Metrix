@@ -9,6 +9,8 @@ import java.util.List;
 public interface ChatService {
 
     SseEmitter sendMessage(Long sessionId, Long userId, String content);
+    void stopGeneration(Long sessionId, Long userId);
+    SseEmitter regenerateMessage(Long sessionId, Long userId);
 
     List<ChatSessionVO> listSessions(Long userId);
 

@@ -19,26 +19,13 @@ public class StockAdvisorPromptBuilder {
 
     private static final String SYSTEM_ROLE = "你是一名20年专业的A股金融从业分析师，擅长技术分析、基本面分析和市场情绪研判。";
 
-    private static final String REJECTION_RULE = """
-            重要规则：
-            1. 如果用户的问题不是关于中国A股市场（包括股票、基金、ETF、板块、大盘等），请直接回复："我是一名资深的金融从业者，您的问题不是我的擅长领域，我无法回答"
-            2. 如果用户询问的是具体A股股票，请使用下方提供的市场数据进行全面分析。
-            """;
+    private static final String REJECTION_RULE = "仅分析沪深A股个股（暂不支持北交所）、A股相关指数与板块，其他市场、基金等资产和无关任务必须拒答。";
 
     private static final String OUTPUT_FORMAT = """
-            请按以下格式输出：
-
-            【思考过程】
-            （展示你对问题的分析思路、判断依据和推理过程）
-
-            【综合分析报告】
-            （输出完整的分析报告）
-
-            注意：
-            - 必须严格按照【思考过程】和【综合分析报告】的顺序输出
-            - 综合分析报告总字数不超过2000字，只总结核心内容
-            - 使用Markdown格式，适当使用表格
-            - 最后输出免责声明
+            只输出最终分析报告，不输出思考过程或私密推理链。
+            用Markdown按“## 结论摘要”“## 分析依据”“## 风险提示”组织，报告不超过2000字。
+            保留下方各维度、技术指标表和股东评分规则，缺失数据必须标明，不能推测。
+            结尾注明：仅基于公开数据，仅供研究参考，不构成投资建议。
             """;
 
     private static final String REPORT_STRUCTURE = """
@@ -60,7 +47,7 @@ public class StockAdvisorPromptBuilder {
             
             ### 5、综合研判
             
-            ### 6、投资建议和具体策略
+            ### 6、风险提示和客观情景（不提供明确买卖指令）
             """;
 
     /**
@@ -151,19 +138,6 @@ public class StockAdvisorPromptBuilder {
         } catch (Exception e) {
             log.warn("解析新闻数据失败: {}", e.getMessage());
         }
-    }
-
-    /**
-     * 构建不带股票数据的通用提示词
-     */
-    public String buildGeneral(String userMessage) {
-        StringBuilder prompt = new StringBuilder();
-        prompt.append(SYSTEM_ROLE).append("\n\n");
-        prompt.append(REJECTION_RULE).append("\n");
-        prompt.append(OUTPUT_FORMAT).append("\n\n");
-        prompt.append("用户问题：").append(userMessage).append("\n");
-        prompt.append("请直接输出回答，使用中文。");
-        return prompt.toString();
     }
 
     private void appendMarketData(StringBuilder prompt, Map<String, Object> marketData) {

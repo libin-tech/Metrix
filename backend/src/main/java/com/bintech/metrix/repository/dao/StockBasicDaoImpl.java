@@ -124,6 +124,28 @@ class StockBasicDaoImpl implements StockBasicDao {
     }
 
     @Override
+    public List<StockBasic> selectByIndustries(List<String> industries) {
+        if (CollUtil.isEmpty(industries) || industries.stream().anyMatch(StrUtil::isBlank)) {
+            log.warn("selectByIndustries: industries is empty");
+            return List.of();
+        }
+        return baseMapper.selectList(new LambdaQueryWrapper<StockBasic>()
+                .in(StockBasic::getIndustry, industries).orderByAsc(StockBasic::getTsCode));
+    }
+
+    @Override
+    public List<StockBasic> selectByNamesOrCodes(List<String> targets) {
+        if (CollUtil.isEmpty(targets) || targets.stream().anyMatch(StrUtil::isBlank)) {
+            log.warn("selectByNamesOrCodes: targets is empty");
+            return List.of();
+        }
+        List<String> codes = targets.stream().map(String::toUpperCase).toList();
+        return baseMapper.selectList(new LambdaQueryWrapper<StockBasic>()
+                .in(StockBasic::getName, targets).or().in(StockBasic::getSymbol, targets)
+                .or().in(StockBasic::getTsCode, codes));
+    }
+
+    @Override
     public IPage<StockBasic> selectStockPage(Page<StockBasic> page, String keyword) {
         LambdaQueryWrapper<StockBasic> wrapper = new LambdaQueryWrapper<>();
         if (StrUtil.isNotBlank(keyword)) {

@@ -16,11 +16,16 @@ public class MarketReviewPromptBuilder {
      * 构建大盘复盘 AI 提示词，包含四大指数行情、近30日K线和市场近60日量能数据
      */
     public String build(Map<String, Object> indexData, Map<String, Object> marketTurnoverData, String reviewDate) {
+        return build(indexData, marketTurnoverData, reviewDate, INDEX_NAMES);
+    }
+
+    /** 使用原大盘研判方法分析选定的A股指数。 */
+    public String build(Map<String, Object> indexData, Map<String, Object> marketTurnoverData, String reviewDate, List<String> indexNames) {
         StringBuilder prompt = new StringBuilder();
         prompt.append("你是一名20年专业的金融从业分析师。请对").append(reviewDate).append("的A股市场进行大盘复盘分析。\n\n");
 
         prompt.append("【各大指数今日表现】\n");
-        for (String name : INDEX_NAMES) {
+        for (String name : indexNames) {
             Map<String, Object> idx = (Map<String, Object>) indexData.get(name);
             if (idx == null) continue;
             prompt.append(name).append("：");
@@ -34,7 +39,7 @@ public class MarketReviewPromptBuilder {
             }
         }
         prompt.append("\n【各大指数近期K线数据】\n");
-        for (String name : INDEX_NAMES) {
+        for (String name : indexNames) {
             Map<String, Object> idx = (Map<String, Object>) indexData.get(name);
             if (idx == null) continue;
             prompt.append(name).append("（最近30个交易日）：\n");

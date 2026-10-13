@@ -20,6 +20,7 @@ public interface ChatSessionService {
     void deleteSessions(List<Long> ids, Long userId);
 
     void updateSessionTokenAndCount(Long sessionId, int tokens);
+    void addSessionTokens(Long sessionId, int tokens);
 
     void updateSessionName(Long sessionId, String sessionName);
 
