@@ -1,9 +1,27 @@
 package com.bintech.metrix.core.analysis;
 
 import org.junit.jupiter.api.Test;
+import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ChatAnswerStreamTest {
+    @Test
+    void acceptsMarkdownHeadingVariantsWithoutExposingReasoningAcrossTokenBoundaries() {
+        for (String heading : List.of("# 结论摘要", "### 结论摘要", "## 一、结论摘要", "## 1. 结论摘要", "## **结论摘要**")) {
+            String expected = heading + "\n公开报告";
+            String response = "<think>## 结论摘要\n私密推理</think>" + expected;
+            for (int size = 1; size <= response.length(); size++) {
+                ChatAnswerStream stream = new ChatAnswerStream();
+                StringBuilder emitted = new StringBuilder();
+                for (int i = 0; i < response.length(); i += size) {
+                    emitted.append(stream.append(response.substring(i, Math.min(i + size, response.length()))));
+                }
+                assertEquals(expected, emitted.toString(), heading + " chunk size " + size);
+                assertEquals(expected, stream.content());
+            }
+        }
+    }
+
     @Test
     void hidesReasoningAcrossEveryPossibleTokenBoundary() {
         String response = "<think>私密内容## 结论摘要不能展示</think>【思考过程】其他私密内容\n## 结论摘要\n公开报告<think>隐藏推理</think>\n## 风险提示\n风险";

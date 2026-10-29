@@ -247,11 +247,10 @@ public class ChatServiceImpl implements ChatService {
         synchronized (run) {
             if (run.finished) return;
             run.finished = true;
-            String answer = content;
-            if ("completed".equals(status) && answer.isBlank()) {
-                status = "error";
-                answer = "模型未返回符合格式的分析报告，请重新生成。";
-            }
+            boolean emptyAnswer = content.isBlank();
+            String answer = emptyAnswer ? ChatAgentConstants.EMPTY_ANSWER_MESSAGES.getOrDefault(status,
+                    ChatAgentConstants.EMPTY_ANSWER_MESSAGES.get("error")) : content;
+            if ("completed".equals(status) && emptyAnswer) status = "error";
             if (!"clarification".equals(status) && !answer.contains(ChatAgentConstants.DISCLAIMER)) {
                 answer += "\n\n> " + ChatAgentConstants.DISCLAIMER;
             }

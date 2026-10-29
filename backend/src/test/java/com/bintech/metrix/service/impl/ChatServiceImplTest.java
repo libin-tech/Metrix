@@ -119,6 +119,66 @@ class ChatServiceImplTest {
     }
 
     @Test
+    void stoppingBeforeTheFirstAnswerDoesNotPersistOnlyADisclaimer() throws Exception {
+        prepareAnalysis();
+        CountDownLatch started = new CountDownLatch(1);
+        doAnswer(call -> { started.countDown(); return null; }).when(ai)
+                .generateAnalysisStreaming(anyString(), any(), eq(1L), any(), any(), any(), any());
+        service.sendMessage(1L, 1L, "分析贵州茅台");
+        assertTrue(started.await(3, TimeUnit.SECONDS));
+        service.stopGeneration(1L, 1L);
+        ChatMessage reply = awaitReply();
+        assertFalse(reply.getContent().replace(ChatAgentConstants.DISCLAIMER, "").replace(">", "").isBlank(),
+                "An interrupted analysis must explain that no report was generated");
+    }
+
+    @Test
+    void preservesAReportWithANumberedSummaryHeading() throws Exception {
+        prepareAnalysis();
+        doAnswer(call -> {
+            Consumer<String> next = call.getArgument(3);
+            Consumer<AnalysisResult> complete = call.getArgument(4);
+            String report = "## 一、结论摘要\n公开分析\n## 分析依据\n公开数据\n## 风险提示\n风险";
+            next.accept(report);
+            complete.accept(new AnalysisResult(report, 42));
+            return null;
+        }).when(ai).generateAnalysisStreaming(anyString(), any(), eq(1L), any(), any(), any(), any());
+        service.sendMessage(1L, 1L, "分析贵州茅台");
+        assertTrue(awaitReply().getContent().contains("公开分析"));
+    }
+
+    @Test
+    void modelFailureBeforeTheFirstAnswerExplainsTheFailure() throws Exception {
+        prepareAnalysis();
+        doAnswer(call -> {
+            Consumer<Throwable> error = call.getArgument(5);
+            error.accept(new IllegalStateException("fixture model failure"));
+            return null;
+        }).when(ai).generateAnalysisStreaming(anyString(), any(), eq(1L), any(), any(), any(), any());
+        service.sendMessage(1L, 1L, "分析贵州茅台");
+        ChatMessage reply = awaitReply();
+        assertTrue(reply.getContent().contains("分析报告生成失败"));
+        assertTrue(reply.getSteps().contains("\"state\":\"error\""));
+    }
+
+    @Test
+    void completionWithoutAPublishableReportIsAnError() throws Exception {
+        prepareAnalysis();
+        doAnswer(call -> {
+            Consumer<String> next = call.getArgument(3);
+            Consumer<AnalysisResult> complete = call.getArgument(4);
+            next.accept("<think>私密推理</think>");
+            complete.accept(new AnalysisResult("<think>私密推理</think>", 42));
+            return null;
+        }).when(ai).generateAnalysisStreaming(anyString(), any(), eq(1L), any(), any(), any(), any());
+        service.sendMessage(1L, 1L, "分析贵州茅台");
+        ChatMessage reply = awaitReply();
+        assertTrue(reply.getContent().contains("模型未返回符合格式的分析报告"));
+        assertFalse(reply.getContent().contains("私密推理"));
+        assertTrue(reply.getSteps().contains("\"state\":\"error\""));
+    }
+
+    @Test
     void stopPersistsOnceAndLateModelCallbacksCannotOverwriteIt() throws Exception {
         prepareAnalysis();
         AtomicReference<Consumer<String>> next = new AtomicReference<>();

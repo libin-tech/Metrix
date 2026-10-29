@@ -11,6 +11,10 @@ public final class ChatAgentConstants {
     public static final int MAX_TARGETS = 3;
     public static final int MAX_INPUT_LENGTH = 2000;
     public static final String DISCLAIMER = "仅基于公开数据，仅供研究参考，不构成投资建议。";
+    public static final Map<String, String> EMPTY_ANSWER_MESSAGES = Map.of(
+            "completed", "模型未返回符合格式的分析报告，请重新生成。",
+            "error", "分析报告生成失败，请检查模型配置或稍后重新生成。",
+            "stopped", "分析已停止，尚未生成分析报告，请重新生成。");
     public static final String CLARIFICATION = "请提供A股名称或6位代码，例如 贵州茅台 600519。";
     public static final String REFUSAL = "抱歉，我仅支持沪深A股股票、A股相关指数及板块的分析，暂不支持北交所。您的问题涉及其他市场或资产、非投资意图、未确认标的或超出研究范围的请求，不在服务范围。请提供沪深A股名称或6位代码，例如“宁德时代 300750”。";
     public static final Pattern A_SHARE_CODE = Pattern.compile("(?:(?:600|601|603|605|688)\\d{3}\\.SH|(?:000|001|002|003|300|301)\\d{3}\\.SZ)");
