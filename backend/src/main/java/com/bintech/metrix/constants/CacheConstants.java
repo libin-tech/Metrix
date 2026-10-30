@@ -8,6 +8,8 @@ public final class CacheConstants {
     public static final String MARKET_TURNOVER_REFRESH_AT_KEY_PREFIX = "metrix:market:turnover:refresh-at:";
     public static final String MARKET_TURNOVER_LEGACY_LAST_SUCCESS_KEY = "metrix:market:turnover:last-success";
     public static final String MARKET_DASHBOARD_ACTIVITY_LAST_SUCCESS_KEY = "metrix:market:dashboard:activity:last-success";
+    public static final String MARKET_RESEARCH_QUOTES_KEY = "metrix:market:research:quotes";
+    public static final String MARKET_RESEARCH_HISTORY_KEY = "metrix:market:research:history";
     public static final String MARKET_DASHBOARD_INDEX_LAST_SUCCESS_KEY = "metrix:market:dashboard:index:last-success";
     public static final String MARKET_DASHBOARD_INSIGHTS_LAST_SUCCESS_KEY = "metrix:market:dashboard:insights:last-success";
     public static final String PORTFOLIO_PRICE_REFRESH_KEY_PREFIX = "metrix:portfolio:price-refresh:";

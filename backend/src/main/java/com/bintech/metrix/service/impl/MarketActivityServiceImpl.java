@@ -49,14 +49,24 @@ public class MarketActivityServiceImpl implements MarketActivityService {
         try {
             Map<String, Object> response = fetchMarketActivity();
             JSONObject data = JSONUtil.parseObj(response).getJSONObject(ApiConstants.KEY_DATA);
+            cacheResearchQuotes(data);
             redisCacheService.setJson(CacheConstants.MARKET_DASHBOARD_ACTIVITY_LAST_SUCCESS_KEY, data);
             lastRefreshFailed = false;
-            return response;
+            return Map.of(ApiConstants.KEY_STATUS, ApiConstants.STATUS_SUCCESS, ApiConstants.KEY_DATA, data);
         } catch (RuntimeException error) {
             lastRefreshFailed = true;
             log.warn("刷新市场涨跌统计失败，保留最近成功快照: {}", error.getMessage());
             return cachedResponse(cached);
         }
+    }
+
+    /** 全市场报价只写内部研究缓存，避免随首页 WebSocket 广播数千条报价。 */
+    private void cacheResearchQuotes(JSONObject data) {
+        Object quotes = data.remove("quotes");
+        if (quotes == null) return;
+        Map<String, Object> snapshot = new HashMap<>(data);
+        snapshot.put("quotes", quotes);
+        redisCacheService.setJson(CacheConstants.MARKET_RESEARCH_QUOTES_KEY, snapshot);
     }
 
     /** 缓存保存原始采集时间，失败不能写入零值或更新成功时间。 */
@@ -128,7 +138,7 @@ public class MarketActivityServiceImpl implements MarketActivityService {
                 throw new RuntimeException(sourceName + "数据获取失败: 脚本输出为空");
             }
 
-            log.info("{}脚本输出: {}", sourceName, output);
+            log.debug("{}脚本返回 {} 字符", sourceName, output.length());
 
             JSONObject json = JSONUtil.parseObj(output);
 

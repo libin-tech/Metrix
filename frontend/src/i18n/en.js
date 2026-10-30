@@ -1,4 +1,7 @@
+import dailyMarket from './dailyMarket.en.js'
+
 export default {
+  dailyMarket,
   landing: {
     navigation: 'Website navigation', navigationFeatures: 'Features', navigationAdvantages: 'Why Metrix', navigationGuide: 'Getting started', login: 'Log in', startNow: 'Get started', exploreFeatures: 'Explore features',
     eyebrow: 'AI-powered research workspace', titleStart: 'Make every', titleEmphasis: 'investment decision', titleEnd: 'more informed', description: 'Metrix brings market data, AI insight, and your research process into one workspace—so information becomes a decision you can act on.', trustLine: 'Your research process stays in your hands', signal: 'Trend confirming',

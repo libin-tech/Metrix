@@ -1,4 +1,7 @@
+import dailyMarket from './dailyMarket.zh-CN.js'
+
 export default {
+  dailyMarket,
   landing: {
     navigation: '官网导航', navigationFeatures: '功能', navigationAdvantages: '优势', navigationGuide: '使用教程', login: '登录', startNow: '开始使用', exploreFeatures: '探索功能',
     eyebrow: 'AI 驱动的投研工作台', titleStart: '把每一次', titleEmphasis: '投资判断', titleEnd: '变得更笃定', description: 'Metrix 将市场数据、AI 洞察和你的研究过程放在同一个工作台，让信息沉淀为可执行的判断。', trustLine: '你的研究过程，始终由你掌控', signal: '趋势确认中',

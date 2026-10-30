@@ -61,6 +61,48 @@ class MarketActivityTest(unittest.TestCase):
         self.assertEqual(data["limitScope"], "SH_SZ_A")
         self.assertEqual((data["limitUp"], data["limitDown"]), (1, 0))
 
+    def testQuotesAndTurnoverUseTheSameSnapshotWithoutDuplicates(self):
+        frame = pd.DataFrame({"代码": ["sh600001", "600001", "bj920001", "sh900001"],
+            "最新价": [12, 12, 9, 1], "昨收": [10, 10, 10, 1], "成交量": [100, 100, 100, 1],
+            "成交额": [1200, 1200, 900, 1]})
+        quotes, turnover = activity.quoteSnapshot(frame)
+        self.assertEqual(turnover, 2100)
+        self.assertEqual(set(quotes), {"600001.SH", "920001.BJ"})
+        self.assertEqual(quotes["600001.SH"], {"price": 12, "prevClose": 10})
+        frame.loc[2, "成交额"] = float("nan")
+        self.assertIsNone(activity.quoteSnapshot(frame)[1])
+
+    def testMissingTurnoverIsNotZero(self):
+        frame = pd.DataFrame({"代码": ["sh600001"], "最新价": [12], "昨收": [10], "成交量": [100]})
+        self.assertIsNone(activity.quoteSnapshot(frame)[1])
+
+    def testOptionalSentimentUsesFullPoolsAndDoesNotBlockQuotes(self):
+        ak = Mock()
+        up = pd.DataFrame({"代码": ["600001", "600002"], "连板数": [1, 3]})
+        ak.stock_zt_pool_zbgc_em.return_value = pd.DataFrame({"代码": ["600003", "600003", "920001"]})
+        details = activity.sentimentDetails(ak, "20260904", up)
+        self.assertEqual(details["streakHeight"], 3)
+        self.assertEqual(details["brokenRate"], 33.33)
+        ak.stock_zt_pool_zbgc_em.side_effect = RuntimeError("unavailable")
+        details = activity.sentimentDetails(ak, "20260904", up)
+        self.assertIsNone(details["brokenRate"])
+        self.assertEqual(details["streakHeight"], 3)
+        self.assertEqual(details["optionalFailures"], ["brokenPool: RuntimeError"])
+
+    def testSnapshotUsesOneCalendarAndDistinguishesIntraday(self):
+        ak = Mock()
+        ak.tool_trade_date_hist_sina.return_value = pd.DataFrame({"trade_date": ["2026-09-10", "2026-09-11"]})
+        ak.stock_zh_a_spot.return_value = pd.DataFrame({"代码": ["sh600001"], "最新价": [10],
+            "昨收": [9], "成交量": [100], "涨跌额": [1], "成交额": [1000]})
+        ak.stock_zt_pool_em.return_value = pd.DataFrame()
+        ak.stock_zt_pool_dtgc_em.return_value = pd.DataFrame()
+        ak.stock_zt_pool_zbgc_em.return_value = pd.DataFrame()
+        data = activity.fetchActivity(ak, datetime(2026, 9, 11, 14))
+        self.assertEqual(data["sessionPhase"], "INTRADAY")
+        self.assertEqual(data["previousTradeDate"], "20260910")
+        self.assertEqual(data["totalTurnover"], 1000)
+        ak.tool_trade_date_hist_sina.assert_called_once()
+
     def testUpstreamErrorDoesNotProducePartialSuccess(self):
         ak = Mock()
         ak.tool_trade_date_hist_sina.return_value = pd.DataFrame({"trade_date": ["2026-09-04"]})

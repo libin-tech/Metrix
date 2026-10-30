@@ -2,34 +2,51 @@
   <main class="research-desk">
     <section class="market-pulse" :aria-label="$t('homeDesk.marketPulse')">
       <div class="pulse-heading"><div><p class="eyebrow">{{ $t('homeDesk.marketPulse') }}</p><h2>{{ $t('homeDesk.marketPulseTitle') }}</h2></div><div class="pulse-actions"><span role="status" class="connection-status" :class="marketDashboardConnectionState">{{ $t(`homeDesk.connection${marketDashboardConnectionState}`) }}</span><a-button type="link" @click="goToMarketReview">{{ $t('homeDesk.readReview') }} <ArrowRightOutlined /></a-button></div></div>
-      <div class="dashboard-grid overview-grid">
-        <article class="pulse-card turnover-card">
-          <div class="card-heading"><div><p>{{ $t('homeDesk.marketTurnover') }}</p><small>{{ marketTurnoverAsOf ? $t('homeDesk.asOf', {date: formatTurnoverDate(marketTurnoverAsOf)}) : $t('homeDesk.marketTurnoverHint') }}</small></div><div v-if="marketTurnoverHistory.length" class="turnover-summary"><strong>{{ formatTurnover(marketTurnover?.amount) }}</strong><small>{{ $t('homeDesk.turnoverComparedPrevious') }}<span :class="{'positive': marketTurnoverDifference > 0, 'negative': marketTurnoverDifference < 0}">{{ turnoverDifferenceText }}</span></small></div></div>
-          <div v-if="marketTurnoverHistory.length" ref="marketTurnoverChartRef" class="market-turnover-chart" />
-          <a-skeleton v-else :paragraph="{rows: 5}" active />
-        </article>
-        <article class="pulse-card index-card">
-          <div class="card-heading"><div><p>{{ $t('homeDesk.marketSnapshot') }}</p><small>{{ $t('homeDesk.indexesHint') }}</small></div></div>
-          <div v-if="marketIndexList.length" class="quick-index-list">
-            <div v-for="index in marketIndexList" :key="index.symbol" class="index-quote" :class="{'index-quote-up': index.changePct > 0, 'index-quote-down': index.changePct < 0}">
-              <span class="index-quote-name" :title="index.name">{{ index.name }}</span>
-              <strong class="index-quote-value">{{ index.value }}</strong>
-              <em class="index-quote-change"><span aria-hidden="true" class="index-quote-direction" />{{ formatChange(index.changePct) }}</em>
+      <div class="market-dashboard">
+        <div class="dashboard-grid overview-grid">
+          <article class="pulse-card turnover-card">
+            <div class="card-heading"><div><p>{{ $t('homeDesk.marketTurnover') }}</p><small>{{ marketTurnoverAsOf ? $t('homeDesk.asOf', {date: formatTurnoverDate(marketTurnoverAsOf)}) : $t('homeDesk.marketTurnoverHint') }}</small></div><div v-if="marketTurnoverHistory.length" class="turnover-summary"><strong>{{ formatTurnover(marketTurnover?.amount) }}</strong><small>{{ $t('homeDesk.turnoverComparedPrevious') }}<span :class="{'positive': marketTurnoverDifference > 0, 'negative': marketTurnoverDifference < 0}">{{ turnoverDifferenceText }}</span></small></div></div>
+            <div v-if="marketTurnoverHistory.length" ref="marketTurnoverChartRef" class="market-turnover-chart" />
+            <a-skeleton v-else :paragraph="{rows: 5}" active />
+          </article>
+          <article class="pulse-card index-card">
+            <div class="card-heading"><div><p>{{ $t('homeDesk.marketSnapshot') }}</p><small>{{ $t('homeDesk.indexesHint') }}</small></div></div>
+            <div v-if="marketIndexList.length" class="quick-index-list">
+              <div v-for="index in marketIndexList" :key="index.symbol" class="index-quote" :class="{'index-quote-up': index.changePct > 0, 'index-quote-down': index.changePct < 0}">
+                <span class="index-quote-name" :title="index.name">{{ index.name }}</span>
+                <strong class="index-quote-value">{{ index.value }}</strong>
+                <em class="index-quote-change"><span aria-hidden="true" class="index-quote-direction" />{{ formatChange(index.changePct) }}</em>
+              </div>
             </div>
-          </div>
-          <a-skeleton v-else :paragraph="{rows: 3}" active />
-        </article>
-        <article class="pulse-card breadth-card">
-          <div class="card-heading"><div><p>{{ $t('homeDesk.marketBreadth') }}</p><small>{{ $t('homeDesk.marketActivityHint') }}</small></div></div>
-          <div class="breadth-values">
-            <div class="breadth-metric breadth-positive"><span>{{ $t('home.up') }}</span><strong>{{ marketActivity?.up ?? '--' }}</strong></div>
-            <div class="breadth-metric breadth-negative"><span>{{ $t('home.down') }}</span><strong>{{ marketActivity?.down ?? '--' }}</strong></div>
-            <div class="breadth-metric breadth-positive breadth-limit"><span>{{ $t('home.limitUp') }}</span><strong>{{ marketActivity?.limitUp ?? '--' }}</strong></div>
-            <div class="breadth-metric breadth-negative breadth-limit"><span>{{ $t('home.limitDown') }}</span><strong>{{ marketActivity?.limitDown ?? '--' }}</strong></div>
-          </div>
-          <div class="market-breadth-bar" :aria-label="$t('homeDesk.marketBreadth')"><i class="breadth-up" :style="{width: `${marketUpRatio}%`}" /><i class="breadth-down" :style="{width: `${marketDownRatio}%`}" /></div>
-          <small v-if="marketActivity?.stale" class="breadth-cache-note">{{ $t('homeDesk.marketBreadthCached') }}</small>
-        </article>
+            <a-skeleton v-else :paragraph="{rows: 3}" active />
+          </article>
+          <article class="pulse-card breadth-card">
+            <div class="card-heading"><div><p>{{ $t('homeDesk.marketBreadth') }}</p><small>{{ $t('homeDesk.marketActivityHint') }}</small></div></div>
+            <div class="breadth-values">
+              <div class="breadth-metric breadth-positive"><span>{{ $t('home.up') }}</span><strong>{{ marketActivity?.up ?? '--' }}</strong></div>
+              <div class="breadth-metric breadth-negative"><span>{{ $t('home.down') }}</span><strong>{{ marketActivity?.down ?? '--' }}</strong></div>
+              <div class="breadth-metric breadth-positive breadth-limit"><span>{{ $t('home.limitUp') }}</span><strong>{{ marketActivity?.limitUp ?? '--' }}</strong></div>
+              <div class="breadth-metric breadth-negative breadth-limit"><span>{{ $t('home.limitDown') }}</span><strong>{{ marketActivity?.limitDown ?? '--' }}</strong></div>
+            </div>
+            <div class="market-breadth-bar" :aria-label="$t('homeDesk.marketBreadth')"><i class="breadth-up" :style="{width: `${marketUpRatio}%`}" /><i class="breadth-down" :style="{width: `${marketDownRatio}%`}" /></div>
+            <small v-if="marketActivity?.stale" class="breadth-cache-note">{{ $t('homeDesk.marketBreadthCached') }}</small>
+          </article>
+        </div>
+        <aside class="intelligence-column" :aria-label="$t('dailyMarket.title')">
+          <DailyMarketIntelligenceCard />
+        </aside>
+        <div class="dashboard-grid industry-grid">
+          <article class="pulse-card sector-card">
+            <div class="card-heading"><div><p>{{ $t('homeDesk.industrySectors') }}</p><small>{{ $t('homeDesk.industrySectorsHint') }}</small></div><span class="sector-sort-label">{{ $t('homeDesk.industrySortByChange') }}</span></div>
+            <div v-if="sectorPulse.length" class="sector-grid" tabindex="0" role="region" :aria-label="$t('homeDesk.industrySectors')">
+              <div v-for="sector in sectorPulse" :key="sector.name" :title="`${sector.name} · ${formatChange(sector.changePct)}`" class="sector-tile" :class="{'sector-up': sector.changePct > 0, 'sector-down': sector.changePct < 0}">
+                <strong>{{ sector.name }}</strong>
+                <span class="sector-change">{{ formatChange(sector.changePct) }}</span>
+              </div>
+            </div>
+            <a-empty v-else :description="$t('homeDesk.noMarketData')" :image="aEmptyImage" />
+          </article>
+        </div>
       </div>
       <div class="dashboard-grid signals-grid">
         <article class="market-data-card">
@@ -82,23 +99,12 @@
           <a-empty v-if="!brokenPoolList.length && !isLoadingMarketInsights" :description="$t('homeDesk.noMarketData')" :image="aEmptyImage" />
         </article>
       </div>
-      <div class="dashboard-grid industry-grid">
-        <article class="pulse-card sector-card">
-          <div class="card-heading"><div><p>{{ $t('homeDesk.industrySectors') }}</p><small>{{ $t('homeDesk.industrySectorsHint') }}</small></div><span class="sector-sort-label">{{ $t('homeDesk.industrySortByChange') }}</span></div>
-          <div v-if="sectorPulse.length" class="sector-grid" tabindex="0" role="region" :aria-label="$t('homeDesk.industrySectors')">
-            <div v-for="sector in sectorPulse" :key="sector.name" :title="`${sector.name} · ${formatChange(sector.changePct)}`" class="sector-tile" :class="{'sector-up': sector.changePct > 0, 'sector-down': sector.changePct < 0}">
-              <strong>{{ sector.name }}</strong>
-              <span class="sector-change">{{ formatChange(sector.changePct) }}</span>
-            </div>
-          </div>
-          <a-empty v-else :description="$t('homeDesk.noMarketData')" :image="aEmptyImage" />
-        </article>
-      </div>
     </section>
   </main>
 </template>
 
 <script setup>
+import DailyMarketIntelligenceCard from '../components/DailyMarketIntelligenceCard.vue'
 import {useTheme} from '../composables/useTheme'
 import {computed, nextTick, onMounted, onUnmounted, ref, watch} from 'vue'
 import {useRouter} from 'vue-router'
@@ -313,7 +319,7 @@ onUnmounted(() => {
 .index-quote-up { --quote-color: var(--theme-red, #c74452); --quote-tint: var(--theme-raised, #fff7f7); --quote-border: var(--theme-line, #f5e4e6); }
 .index-quote-down { --quote-color: var(--theme-green, #087043); --quote-tint: var(--theme-raised, #f2faf6); --quote-border: var(--theme-line, #dfeee6); }
 .index-quote-name { grid-column: 1 / -1; overflow: hidden; color: var(--theme-text, #526178); font-size: 12px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
-.index-quote-value { grid-column: 1 / -1; color: var(--theme-text, #263957); font-size: clamp(18px, 1.5vw, 23px); font-weight: 700; line-height: 1.1; letter-spacing: -.025em; font-variant-numeric: tabular-nums; }
+.index-quote-value { grid-column: 1 / -1; color: var(--theme-text, #263957); font-size: clamp(16px, 1.2vw, 23px); font-weight: 700; line-height: 1.1; letter-spacing: -.025em; font-variant-numeric: tabular-nums; }
 .index-quote-change { display: inline-flex; align-items: center; gap: 4px; color: var(--quote-color); font-size: 12px; font-style: normal; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
 .index-quote-direction { width: 6px; height: 2px; background: currentColor; }
 .index-quote-up .index-quote-direction, .index-quote-down .index-quote-direction { width: 0; height: 0; border-right: 3px solid transparent; border-left: 3px solid transparent; background: transparent; }
@@ -339,9 +345,12 @@ onUnmounted(() => {
 .pulse-heading, .card-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
 .eyebrow { margin: 0 0 7px; color: var(--theme-muted, #72809a); font-size: 11px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
 .dashboard-grid { display: grid; gap: 16px; margin-bottom: 16px; }
-.overview-grid { grid-template-columns: minmax(0, 5fr) minmax(0, 3fr) minmax(0, 2fr); }
+.market-dashboard { display: grid; grid-template-columns: minmax(0, 2.65fr) minmax(320px, 1.4fr); grid-template-rows: auto 1fr; grid-template-areas: 'overview intelligence' 'industry intelligence'; align-items: start; gap: 16px; margin-bottom: 16px; }
+.market-dashboard > .dashboard-grid { min-width: 0; margin-bottom: 0; }
+.overview-grid { grid-area: overview; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, .7fr); }
+.intelligence-column { grid-area: intelligence; min-width: 0; }
 .signals-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
-.industry-grid { grid-template-columns: minmax(0, 1fr); }
+.industry-grid { grid-area: industry; grid-template-columns: minmax(0, 1fr); }
 .pulse-card { min-width: 0; background: var(--theme-surface, #fff); border: 1px solid var(--theme-line, #e1e7f0); border-radius: 14px; }
 .signals-grid > article { padding: 12px; }
 .signals-grid .card-heading { flex-wrap: wrap; gap: 4px; }
@@ -351,10 +360,16 @@ onUnmounted(() => {
 .signals-grid .popularity-row { grid-template-columns: 23px minmax(0, 1fr); }
 .signals-grid .popularity-row > div { grid-column: 2; }
 .signals-grid .popularity-row > b { grid-column: 2; }
+@media (max-width: 1600px) {
+  .signals-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .index-quote { padding: 8px; }
+}
 @media (max-width: 1200px) {
+  .market-dashboard { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; grid-template-areas: 'overview' 'intelligence' 'industry'; }
+  .overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .turnover-card { grid-column: 1 / -1; }
   .signals-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .overview-grid .quick-index-list { gap: 6px; }
-  .index-quote { padding: 8px; }
 }
 @media (max-width: 720px) {
   .overview-grid { grid-template-columns: 1fr; }

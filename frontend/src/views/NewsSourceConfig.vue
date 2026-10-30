@@ -5,7 +5,7 @@
       <a-button type="primary" @click="showAddModal = true">{{ $t('config.add') }}</a-button>
     </div>
 
-    <a-table :dataSource="configs" :columns="columns" row-key="id" bordered>
+    <a-table :dataSource="configs" :columns="columns" :scroll="scroll" table-layout="fixed" row-key="id" bordered>
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'sourceName'">
           <a-tag color="blue">{{ record.sourceName }}</a-tag>
@@ -77,23 +77,12 @@
 </template>
 
 <script setup>
-import {computed, onMounted, reactive, ref} from 'vue'
+import {onMounted, reactive, ref} from 'vue'
 import {useI18n} from 'vue-i18n'
 import {createNewsSourceConfig, deleteNewsSourceConfig, getNewsSourceConfigs, updateNewsSourceConfig} from '../api'
 import {message, Modal} from 'ant-design-vue'
 import {EyeInvisibleOutlined, EyeOutlined} from '@ant-design/icons-vue'
-
-const columns = computed(() => [
-  { title: t('config.id'), dataIndex: 'id', key: 'id', width: 80 },
-  { title: t('newsSource.sourceType'), key: 'sourceName', width: 120 },
-  { title: t('newsSource.apiUrl'), dataIndex: 'apiUrl', key: 'apiUrl' },
-  { title: t('newsSource.apiKey'), key: 'apiKey', width: 260 },
-  { title: t('newsSource.interval'), dataIndex: 'requestInterval', key: 'requestInterval', width: 130 },
-  { title: t('newsSource.timeout'), dataIndex: 'timeout', key: 'timeout', width: 130 },
-  { title: t('newsSource.remark'), dataIndex: 'remark', key: 'remark', ellipsis: true },
-  { title: t('config.status'), key: 'isActive', width: 80 },
-  { title: t('config.action'), key: 'action', width: 200 }
-])
+import {useDataSourceTable} from '../composables/useDataSourceTable'
 
 const configs = ref([])
 const showAddModal = ref(false)
@@ -102,6 +91,7 @@ const editingId = ref(null)
 const visibleKeys = reactive({})
 
 const {t} = useI18n()
+const {columns, scroll} = useDataSourceTable(t, 'newsSource')
 
 const form = reactive({
   sourceName: 'BOCHA',

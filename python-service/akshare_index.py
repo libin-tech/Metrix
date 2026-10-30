@@ -51,11 +51,20 @@ def with_timeout(func):
     return wrapper
 
 
+def selectHistory(frame, targetDate, count):
+    """先按日期截断，再保留足够交易日，避免历史复盘取到未来或只有 30 日。"""
+    selected = frame.sort_values("date").drop_duplicates("date", keep="last")
+    if targetDate:
+        selected = selected[selected["date"].astype(str) <= targetDate]
+    return selected.tail(max(2, min(count, 250)))
+
+
 @with_timeout
 def main():
     parser = argparse.ArgumentParser(description="AKShare 大盘指数数据")
     parser.add_argument("--symbols", required=True, help="指数代码，多个用逗号分隔，如 sh000001,sz399001")
     parser.add_argument("--date", default=None, help="目标日期，格式 yyyy-MM-dd，用于指定复盘日期")
+    parser.add_argument("--count", type=int, default=30, help="返回的交易日数量")
     args = parser.parse_args()
 
     os.environ["TQDM_DISABLE"] = "1"
@@ -68,6 +77,14 @@ def main():
     target_date = args.date
     symbols = args.symbols.split(",")
 
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    spot_df = None
+    spot_error = None
+    if target_date == today_str:
+        try:
+            spot_df = ak.stock_zh_index_spot_sina()
+        except Exception as error:
+            spot_error = type(error).__name__
     result = {}
     for sym in symbols:
         sym = sym.strip()
@@ -78,7 +95,10 @@ def main():
             if df.empty:
                 result[sym] = {"error": "未获取到数据"}
                 continue
-            df = df.tail(30)
+            df = selectHistory(df, target_date, args.count)
+            if df.empty:
+                result[sym] = {"error": "截止目标日无指数历史"}
+                continue
             records = []
             for _, row in df.iterrows():
                 records.append({
@@ -90,10 +110,8 @@ def main():
                     "volume": float(row["volume"]),
                 })
 
-            today_str = datetime.now().strftime("%Y-%m-%d")
-            if target_date and target_date == today_str:
+            if spot_df is not None:
                 try:
-                    spot_df = ak.stock_zh_index_spot_sina()
                     spot_match = spot_df[spot_df["代码"] == sym]
                     if not spot_match.empty:
                         sr = spot_match.iloc[0]
@@ -113,8 +131,8 @@ def main():
                                 break
                         if not found:
                             records.append(today_record)
-                except Exception:
-                    pass
+                except Exception as error:
+                    spot_error = type(error).__name__
 
             if target_date:
                 matched = [r for r in records if r["date"] == target_date]
@@ -132,6 +150,7 @@ def main():
             if prev.get("close") and prev["close"] != 0:
                 change_pct = round((latest["close"] - prev["close"]) / prev["close"] * 100, 2)
             result[sym] = {
+                "spotError": spot_error,
                 "records": records,
                 "latest": latest,
                 "changePct": change_pct,

@@ -1,6 +1,7 @@
 package com.bintech.metrix.core.analysis;
 
 import cn.hutool.json.JSONObject;
+import com.bintech.metrix.constants.MarketIntelligenceConstants;
 import com.bintech.metrix.constants.SystemConstants;
 import com.bintech.metrix.config.MarketTurnoverProperties;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +47,11 @@ public class MarketReviewDataFetcher {
 
     /** 复用指数采集脚本，允许 Agent 在已校验目录中按需选择指数。 */
     public Map<String, Object> fetchIndexData(String reviewDate, Map<String, String> selectedIndices) {
+        return fetchIndexData(reviewDate, selectedIndices, MarketIntelligenceConstants.DEFAULT_INDEX_HISTORY_COUNT);
+    }
+
+    /** 指数历史统一复用现有采集链路，研究模块可请求覆盖 120 日均线的历史。 */
+    public Map<String, Object> fetchIndexData(String reviewDate, Map<String, String> selectedIndices, int count) {
         String symbols = String.join(",", selectedIndices.values());
         String scriptPath = akshareScriptPath.replace("akshare.py", "akshare_index.py");
 
@@ -54,6 +60,8 @@ public class MarketReviewDataFetcher {
         command.add(scriptPath);
         command.add("--symbols");
         command.add(symbols);
+        command.add("--count");
+        command.add(String.valueOf(count));
 
         if (reviewDate != null && !reviewDate.isBlank()) {
             command.add("--date");
@@ -132,7 +140,7 @@ public class MarketReviewDataFetcher {
                 throw new RuntimeException(sourceName + "脚本输出为空");
             }
 
-            log.info("{}脚本输出: {}", sourceName, output);
+            log.debug("{}脚本返回 {} 字符", sourceName, output.length());
             JSONObject json = new JSONObject(output);
             if (!"success".equals(json.getStr("status"))) {
                 throw new RuntimeException(sourceName + "数据获取失败: " + json.getStr("message"));

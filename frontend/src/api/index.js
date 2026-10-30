@@ -42,7 +42,7 @@ service.interceptors.response.use(
       localStorage.removeItem('token')
       window.location.href = '/login'
     }
-    if (!error.notified) {
+    if (!error.notified && !error.config?.silent && !axios.isCancel(error)) {
       message.error(error.response?.data?.message || error.message || i18n.global.t('common.requestFailed'))
       error.notified = true
     }
@@ -185,3 +185,5 @@ export const getCurrentUser = () => service.get('/auth/me')
 
 export const getAuditLogs = (page, size, userId, action, startTime, endTime) =>
   service.get('/admin/audit-logs', { params: { page, size, userId, action, startTime, endTime } })
+
+export const getDailyMarketIntelligence = signal => service.get('/market-intelligence', { signal, silent: true })

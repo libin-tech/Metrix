@@ -5,7 +5,7 @@
       <a-button type="primary" @click="resetForm(); showAddModal = true">{{ $t('config.add') }}</a-button>
     </div>
 
-    <a-table :dataSource="configs" :columns="columns" row-key="id" bordered>
+    <a-table :dataSource="configs" :columns="columns" :scroll="scroll" table-layout="fixed" row-key="id" bordered>
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'sourceName'">
           <a-tag color="blue">{{ record.sourceName === 'FUYAO' ? $t('marketData.fuyaoName') : record.sourceName }}</a-tag>
@@ -84,24 +84,12 @@
 </template>
 
 <script setup>
-import {computed, onMounted, reactive, ref} from 'vue'
+import {onMounted, reactive, ref} from 'vue'
 import {useI18n} from 'vue-i18n'
 import {createMarketDataConfig, deleteMarketDataConfig, getMarketDataConfigs, updateMarketDataConfig} from '../api'
 import {message, Modal} from 'ant-design-vue'
 import {EyeInvisibleOutlined, EyeOutlined} from '@ant-design/icons-vue'
-
-const columns = computed(() => [
-  { title: t('config.id'), dataIndex: 'id', key: 'id', width: 80 },
-  { title: t('marketData.sourceType'), key: 'sourceName', width: 120 },
-  { title: t('marketData.apiUrl'), dataIndex: 'apiUrl', key: 'apiUrl' },
-  { title: t('marketData.apiKey'), key: 'apiKey', width: 260 },
-  { title: t('marketData.dataType'), dataIndex: 'dataType', key: 'dataType' },
-  { title: t('marketData.interval'), dataIndex: 'requestInterval', key: 'requestInterval', width: 130 },
-  { title: t('marketData.timeout'), dataIndex: 'timeout', key: 'timeout', width: 130 },
-  { title: t('marketData.remark'), dataIndex: 'remark', key: 'remark', ellipsis: true },
-  { title: t('config.status'), key: 'isActive', width: 80 },
-  { title: t('config.action'), key: 'action', width: 200 }
-])
+import {useDataSourceTable} from '../composables/useDataSourceTable'
 
 const configs = ref([])
 const showAddModal = ref(false)
@@ -109,6 +97,7 @@ const editing = ref(false)
 const editingId = ref(null)
 const visibleKeys = reactive({})
 const {t} = useI18n()
+const {columns, scroll} = useDataSourceTable(t, 'marketData', {withDataType: true})
 
 const form = reactive({
   sourceName: 'FUYAO',
