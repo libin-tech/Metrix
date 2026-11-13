@@ -1,6 +1,7 @@
 package com.bintech.metrix.service;
 
 import com.bintech.metrix.dto.response.MarketWorkbenchResponse;
+import com.bintech.metrix.dto.response.PortfolioAccountSummary;
 import com.bintech.metrix.dto.response.PortfolioHoldingVO;
 
 import java.util.List;
@@ -14,6 +15,8 @@ public interface MarketWorkbenchService {
     Map<String, Object> intraday(String thscode);
 
     List<PortfolioHoldingVO> holdings();
+
+    PortfolioAccountSummary accountSummary();
 
     Map<String, Object> anomalies(Long userId);
 }

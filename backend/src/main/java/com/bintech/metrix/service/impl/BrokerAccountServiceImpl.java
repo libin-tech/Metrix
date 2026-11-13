@@ -11,8 +11,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 @Slf4j
 @Service
@@ -33,9 +35,9 @@ public class BrokerAccountServiceImpl implements BrokerAccountService {
     public BrokerAccount createAccount(BrokerAccountRequest request) {
         Long userId = StpUtil.getLoginIdAsLong();
         BrokerAccount account = new BrokerAccount();
-        account.setBrokerName(request.getBrokerName());
-        account.setAccountNumber(request.getAccountNumber());
-        account.setRemark(request.getRemark());
+        account.setTotalPrincipal(BigDecimal.ZERO);
+        account.setRealizedProfitLoss(BigDecimal.ZERO);
+        applyAccountDetails(account, request);
         account.setUserId(userId);
         account.setCreateTime(LocalDateTime.now());
         account.setUpdateTime(LocalDateTime.now());
@@ -51,12 +53,20 @@ public class BrokerAccountServiceImpl implements BrokerAccountService {
         if (account == null) {
             throw new RuntimeException("券商账户不存在");
         }
+        applyAccountDetails(account, request);
+        account.setUpdateTime(LocalDateTime.now());
+        if (brokerAccountDao.updateById(account) == 0) {
+            throw new IllegalStateException("券商账户已变更，请重新打开编辑后重试");
+        }
+        return account;
+    }
+
+    private void applyAccountDetails(BrokerAccount account, BrokerAccountRequest request) {
         account.setBrokerName(request.getBrokerName());
         account.setAccountNumber(request.getAccountNumber());
         account.setRemark(request.getRemark());
-        account.setUpdateTime(LocalDateTime.now());
-        brokerAccountDao.updateById(account);
-        return account;
+        account.setTotalPrincipal(Objects.requireNonNullElse(request.getTotalPrincipal(), account.getTotalPrincipal()));
+        account.setRealizedProfitLoss(Objects.requireNonNullElse(request.getRealizedProfitLoss(), account.getRealizedProfitLoss()));
     }
 
     @Override

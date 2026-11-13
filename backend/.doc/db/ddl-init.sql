@@ -441,6 +441,8 @@ create table broker_account
         primary key,
     broker_name    varchar(10)             not null,
     account_number varchar(30),
+    total_principal numeric(15, 2) default 0 not null,
+    realized_profit_loss numeric(15, 2) default 0 not null,
     remark         varchar(50),
     user_id        bigint                  not null default 0,
     create_time    timestamp default now() not null,
@@ -457,6 +459,10 @@ comment on column broker_account.id is '主键ID';
 comment on column broker_account.broker_name is '券商名称';
 
 comment on column broker_account.account_number is '券商账号';
+
+comment on column broker_account.total_principal is '总本金';
+
+comment on column broker_account.realized_profit_loss is '清仓盈亏，亏损为负数';
 
 comment on column broker_account.remark is '备注';
 

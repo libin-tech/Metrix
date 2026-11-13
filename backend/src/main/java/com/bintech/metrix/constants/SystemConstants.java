@@ -25,6 +25,8 @@ public final class SystemConstants {
     public static final int MAX_MODEL_NAME_LENGTH = 100;
     public static final int MAX_BROKER_NAME_LENGTH = 10;
     public static final int MAX_ACCOUNT_NUMBER_LENGTH = 30;
+    public static final int ACCOUNT_AMOUNT_INTEGER_DIGITS = 13;
+    public static final int ACCOUNT_AMOUNT_FRACTION_DIGITS = 2;
     public static final int MAX_REMARK_LENGTH = 50;
     public static final int MAX_REMARK_LENGTH_100 = 100;
     public static final int PROMPT_PREVIEW_MAX_LENGTH = 50;

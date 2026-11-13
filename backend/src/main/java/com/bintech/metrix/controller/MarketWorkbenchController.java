@@ -6,6 +6,7 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.bintech.metrix.annotation.CheckConfig;
 import com.bintech.metrix.dto.response.ApiResponse;
 import com.bintech.metrix.dto.response.MarketWorkbenchResponse;
+import com.bintech.metrix.dto.response.PortfolioAccountSummary;
 import com.bintech.metrix.dto.response.PortfolioHoldingVO;
 import com.bintech.metrix.enums.ConfigType;
 import com.bintech.metrix.service.MarketWorkbenchService;
@@ -44,6 +45,12 @@ public class MarketWorkbenchController {
     @SaCheckPermission("market:workbench:holdings")
     public ApiResponse<List<PortfolioHoldingVO>> holdings() {
         return ApiResponse.success(marketWorkbenchService.holdings());
+    }
+
+    @GetMapping("/account-summary")
+    @SaCheckPermission("market:workbench:holdings")
+    public ApiResponse<PortfolioAccountSummary> accountSummary() {
+        return ApiResponse.success(marketWorkbenchService.accountSummary());
     }
 
     @GetMapping("/anomalies")

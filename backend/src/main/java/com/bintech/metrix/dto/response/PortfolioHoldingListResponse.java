@@ -12,4 +12,5 @@ import java.util.List;
 public class PortfolioHoldingListResponse {
     private List<PortfolioHoldingVO> holdings;
     private PortfolioSummary summary;
+    private PortfolioAccountSummary accountSummary;
 }

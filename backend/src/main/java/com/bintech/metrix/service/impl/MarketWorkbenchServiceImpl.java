@@ -6,6 +6,7 @@ import cn.hutool.json.JSONUtil;
 import com.bintech.metrix.constants.ApiConstants;
 import com.bintech.metrix.constants.CacheConstants;
 import com.bintech.metrix.dto.response.MarketWorkbenchResponse;
+import com.bintech.metrix.dto.response.PortfolioAccountSummary;
 import com.bintech.metrix.dto.response.PortfolioHoldingVO;
 import com.bintech.metrix.repository.dao.StockBasicDao;
 import com.bintech.metrix.repository.dao.PortfolioHoldingDao;
@@ -209,6 +210,11 @@ public class MarketWorkbenchServiceImpl implements MarketWorkbenchService {
         return portfolioHoldingService.getHoldings(null, null).getHoldings().stream()
                 .limit(HOLDING_LIMIT)
                 .toList();
+    }
+
+    @Override
+    public PortfolioAccountSummary accountSummary() {
+        return portfolioHoldingService.getAccountSummary();
     }
 
     /** 按当前用户全部账户的持仓过滤异动，无持仓时不请求上游。 */

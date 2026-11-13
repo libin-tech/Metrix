@@ -17,6 +17,20 @@
       </a-auto-complete>
     </header>
 
+    <section class="account-summary" :aria-label="$t('marketWorkbench.accountSummary')">
+      <dl class="account-summary-metrics">
+        <div v-for="metric in accountMetrics" :key="metric.key" class="account-summary-metric">
+          <dt>{{ $t(metric.label) }}</dt>
+          <dd :class="metric.profitLoss ? changeClass(accountSummary?.[metric.key]) : null">
+            {{ formatAccountAmount(accountSummary?.[metric.key]) }}
+          </dd>
+        </div>
+      </dl>
+      <p v-if="accountSummaryError" class="account-summary-error" role="status">
+        {{ $t('marketWorkbench.accountSummaryLoadFailed') }}
+      </p>
+    </section>
+
     <section v-if="recentSearches.length" class="recent-searches" :aria-label="$t('marketWorkbench.recentSearches')">
       <span>{{ $t('marketWorkbench.recentSearches') }}</span>
       <button v-for="stock in recentSearches" :key="stock.thscode" type="button" @click="loadOverview(stock.thscode)">{{ stock.name }} · {{ stock.thscode }}</button>
@@ -117,17 +131,21 @@
 import {computed, onBeforeUnmount, onMounted, ref} from 'vue'
 import {useI18n} from 'vue-i18n'
 import {ExclamationCircleOutlined, FundOutlined} from '@ant-design/icons-vue'
-import {getMarketWorkbenchAnomalies, getMarketWorkbenchHoldings, getMarketWorkbenchOverview, searchStocks} from '../api'
+import {getMarketWorkbenchAccountSummary, getMarketWorkbenchAnomalies, getMarketWorkbenchHoldings, getMarketWorkbenchOverview, searchStocks} from '../api'
+import {accountMetrics, useAccountAmountFormatter} from '../composables/usePortfolioAccountSummary'
 
 import IntradayChart from '../components/IntradayChart.vue'
 
 const {t} = useI18n()
+const formatAccountAmount = useAccountAmountFormatter()
 const RECENT_SEARCHES_STORAGE_KEY = 'metrix:market-workbench:recent-searches'
 const MAX_RECENT_SEARCHES = 8
 const chartMode = ref('daily')
 const query = ref('')
 const overview = ref(null)
 const holdingSnapshot = ref([])
+const accountSummary = ref(null)
+const accountSummaryError = ref(false)
 const recentSearches = ref(readRecentSearches())
 const anomalies = ref([])
 const anomalyDataTime = ref('')
@@ -176,13 +194,68 @@ const chartIndex = event => { if (!chartRoot.value || !chartModel.value.candles.
 const zoomChart = event => { const candidates = windows.value.map(window => window.count); const current = candidates.indexOf(rangeCount.value); const next = Math.max(0, Math.min(candidates.length - 1, current + (event.deltaY > 0 ? 1 : -1))); selectWindow(windows.value[next]) }
 const handleChartKey = event => { if (event.key === 'ArrowLeft') rangeStart.value = clampStart(rangeStart.value - 5); else if (event.key === 'ArrowRight') rangeStart.value = clampStart(rangeStart.value + 5); else if (event.key === '+' || event.key === '=') zoomChart({deltaY: -1}); else if (event.key === '-') zoomChart({deltaY: 1}); else return; event.preventDefault() }
 onBeforeUnmount(() => clearTimeout(searchTimer))
-onMounted(async () => { try { const response = await getMarketWorkbenchHoldings(); holdingSnapshot.value = (response.data || []).slice(0, 8) } catch { holdingSnapshot.value = [] } loadAnomalies() })
+const loadHoldings = async () => {
+  try {
+    const response = await getMarketWorkbenchHoldings()
+    holdingSnapshot.value = (response.data || []).slice(0, 8)
+  } catch {
+    holdingSnapshot.value = []
+  }
+}
+const loadAccountSummary = async () => {
+  try {
+    const response = await getMarketWorkbenchAccountSummary()
+    accountSummary.value = response.data
+  } catch {
+    accountSummaryError.value = true
+  }
+}
+onMounted(() => {
+  loadHoldings()
+  loadAccountSummary()
+  loadAnomalies()
+})
 
 function readRecentSearches() { try { const items = JSON.parse(localStorage.getItem(RECENT_SEARCHES_STORAGE_KEY) || '[]'); return Array.isArray(items) ? items.filter(item => item?.thscode && item?.name).slice(0, MAX_RECENT_SEARCHES) : [] } catch { return [] } }
 function saveRecentSearch(instrument) { if (!instrument?.thscode || !instrument?.name) return; const next = [{thscode: instrument.thscode, name: instrument.name}, ...recentSearches.value.filter(item => item.thscode !== instrument.thscode)].slice(0, MAX_RECENT_SEARCHES); recentSearches.value = next; try { localStorage.setItem(RECENT_SEARCHES_STORAGE_KEY, JSON.stringify(next)) } catch { /* 浏览器禁用本地存储时仅保留当前会话内容 */ } }
 </script>
 
 <style scoped>
+.account-summary {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  background: var(--theme-surface, #fff);
+  border: 1px solid var(--theme-line, #e1e7f0);
+  border-radius: 12px;
+}
+.account-summary-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 148px), 1fr));
+  gap: 8px;
+  margin: 0;
+}
+.account-summary-metric {
+  min-width: 0;
+  padding: 8px 10px;
+  background: var(--theme-raised, #f8fafc);
+  border-radius: 7px;
+}
+.account-summary-metric dt {
+  color: var(--theme-muted, #7f8da1);
+  font-size: 12px;
+}
+.account-summary-metric dd {
+  margin: 4px 0 0;
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.account-summary-error {
+  margin: 8px 0 0;
+  color: var(--theme-muted, #7f8da1);
+  font-size: 12px;
+}
 .market-workbench { width: 100%; max-width: 1440px; margin: 0 auto; padding: 28px 32px 44px; color: var(--theme-text, #20304a); }.workbench-header { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 18px; }.eyebrow { margin: 0 0 6px; color: var(--theme-muted, #7b8aa0); font-size: 11px; font-weight: 700; letter-spacing: .12em; }.workbench-header h1 { margin: 0; font-size: 25px; letter-spacing: -.04em; }.instrument-search { width: min(420px, 100%); }.instrument-search :deep(.ant-input-affix-wrapper), .instrument-search :deep(.ant-input-search-button) { height: 40px; border-radius: 8px; }.workbench-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(300px, .8fr); align-items: start; gap: 16px; }.workbench-primary { display: grid; min-width: 0; gap: 16px; }.holding-strip { display: flex; align-items: center; gap: 13px; min-height: 118px; padding: 11px 14px; background: var(--theme-surface, #fff); border: 1px solid var(--theme-line, #e1e7f0); border-radius: 12px; }.holding-strip-title { display: grid; gap: 1px; min-width: 68px; color: var(--theme-text, #53647d); font-size: 12px; }.holding-strip-title > :first-child { color: var(--theme-blue, #637fc0); font-size: 17px; }.holding-strip-title small { color: var(--theme-muted, #9aa6b7); font-size: 10px; }.holding-list { display: flex; min-width: 0; gap: 7px; overflow-x: auto; }.holding-chip { display: grid; grid-template-columns: auto auto; align-items: center; gap: 1px 8px; min-width: 118px; padding: 8px 10px; color: var(--theme-text, #32435e); text-align: left; background: var(--theme-raised, #f8fafc); border: 1px solid var(--theme-line, #eef2f6); border-radius: 7px; cursor: pointer; }.holding-chip span { overflow: hidden; font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }.holding-chip small { color: var(--theme-muted, #9aa6b7); font-size: 10px; }.holding-chip strong { grid-column: 2; grid-row: 1 / 3; justify-self: end; font-size: 11px; }.holding-empty { color: var(--theme-muted, #8996a8); font-size: 12px; }.anomaly-card { min-width: 0; padding: 12px 14px; overflow: hidden; background: var(--theme-surface, #fff); border: 1px solid var(--theme-line, #e1e7f0); border-radius: 12px; }.anomaly-heading { display: flex; align-items: start; justify-content: space-between; gap: 8px; padding-bottom: 7px; border-bottom: 1px solid var(--theme-line, #edf0f5); }.anomaly-heading p { margin: 0; color: var(--theme-text, #2a3d59); font-size: 12px; font-weight: 700; }.anomaly-heading small, .anomaly-heading > span { display: block; margin-top: 2px; color: var(--theme-muted, #8996a9); font-size: 10px; }.anomaly-heading > span { margin-top: 0; color: var(--theme-blue, #6883af); }.anomaly-list { display: grid; max-height: 88px; overflow-y: auto; }.anomaly-item { display: grid; grid-template-columns: minmax(78px, auto) minmax(0, 1fr); align-items: center; gap: 2px 9px; width: 100%; padding: 7px 0; color: var(--theme-text, #50617a); text-align: left; background: transparent; border: 0; border-bottom: 1px solid var(--theme-line, #f0f3f7); cursor: pointer; }.anomaly-item:last-child { border-bottom: 0; }.anomaly-item span { display: grid; gap: 1px; }.anomaly-item strong { color: var(--theme-text, #31435f); font-size: 11px; }.anomaly-item small, .anomaly-item em { overflow: hidden; color: var(--theme-muted, #96a2b3); font-size: 9px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }.anomaly-item p { overflow: hidden; margin: 0; color: var(--theme-muted, #62738a); font-size: 10px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }.anomaly-item em { grid-column: 2; color: var(--theme-muted, #6c85ad); }.anomaly-state { display: flex; align-items: center; gap: 6px; min-height: 70px; color: var(--theme-muted, #96a2b3); font-size: 11px; }.anomaly-error { color: var(--theme-red, #b56b72); line-height: 1.45; }.workbench-error { display: flex; gap: 12px; max-width: 780px; margin: 80px auto; padding: 18px; color: var(--theme-red, #a3414b); background: var(--theme-surface, #fff8f8); border: 1px solid var(--theme-line, #f0dfe1); border-radius: 10px; }.workbench-error span { display: block; margin-top: 4px; color: var(--theme-muted, #7d6870); font-size: 13px; }.workbench-loading { padding: 30px; background: var(--theme-surface, #fff); border: 1px solid var(--theme-line, #e1e7f0); border-radius: 12px; }.dashboard { display: grid; gap: 16px; }.quote-overview { display: grid; grid-template-columns: minmax(190px, 1.35fr) repeat(2, minmax(0, 1fr)) minmax(220px, 1.6fr) minmax(0, 1fr); gap: 0; overflow: hidden; background: var(--theme-surface, #fff); border: 1px solid var(--theme-line, #e1e7f0); border-radius: 12px; }.instrument-identity, .latest-price, .metric-item { display: grid; align-content: center; min-height: 108px; padding: 19px; border-right: 1px solid var(--theme-line, #edf0f5); }.instrument-identity p { margin: 0; color: var(--theme-text, #263957); font-size: 17px; font-weight: 700; }.instrument-identity span { margin-top: 4px; color: var(--theme-muted, #76869e); font-size: 12px; }.instrument-identity small { margin-top: 8px; color: var(--theme-muted, #a0abba); font-size: 10px; }.latest-price span, .metric-item span { color: var(--theme-muted, #7f8da1); font-size: 11px; }.latest-price strong { margin: 5px 0 1px; color: var(--theme-text, #263957); font-size: 29px; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }.latest-price em { font-size: 12px; font-style: normal; font-weight: 600; }.metric-item strong { margin-top: 8px; color: var(--theme-text, #263957); font-size: 18px; letter-spacing: -.025em; font-variant-numeric: tabular-nums; }.positive { color: var(--theme-red, #c64652) !important; }.negative { color: var(--theme-green, #087043) !important; }.market-panels { display: grid; grid-template-columns: minmax(0, 1.9fr) minmax(270px, .7fr); gap: 16px; }.chart-card, .structure-card, .data-card { min-width: 0; padding: 18px; background: var(--theme-surface, #fff); border: 1px solid var(--theme-line, #e1e7f0); border-radius: 12px; }.card-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; padding-bottom: 13px; border-bottom: 1px solid var(--theme-line, #edf0f5); }.card-heading p { margin: 0; color: var(--theme-text, #2a3d59); font-size: 14px; font-weight: 700; }.card-heading small, .card-heading > span { display: block; margin-top: 3px; color: var(--theme-muted, #8996a9); font-size: 11px; }.range-tabs { display: flex; gap: 3px; padding: 3px; background: var(--theme-raised, #f3f6fa); border-radius: 7px; }.range-tabs button { padding: 4px 7px; color: var(--theme-muted, #7a899f); font-size: 10px; background: transparent; border: 0; border-radius: 5px; cursor: pointer; }.range-tabs button.active { color: var(--theme-blue, #3565a8); font-weight: 700; background: var(--theme-surface, #fff); box-shadow: 0 1px 3px #26395718; }.kline-chart { position: relative; height: 400px; margin-top: 12px; overflow: hidden; touch-action: none; outline: none; user-select: none; }.kline-chart:focus-visible { outline: 2px solid var(--theme-line, #6d93ca); outline-offset: 3px; }.kline-chart svg { width: 100%; height: 100%; }.chart-grid line { stroke: var(--theme-text, #edf1f6); stroke-width: 1; }.candle line { stroke-width: 1.5; }.candle rect { opacity: .88; }.candle.up, .volume-bars .up { fill: var(--theme-red, #d55761); stroke: var(--theme-red, #d55761); }.candle.down, .volume-bars .down { fill: var(--theme-green, #189464); stroke: var(--theme-green, #189464); }.volume-bars rect { opacity: .45; }.ma-line polyline { fill: none; stroke-width: 1.8; vector-effect: non-scaling-stroke; }.ma5 polyline { stroke: var(--theme-blue, #4f83c7); }.ma20 polyline { stroke: var(--theme-amber, #e59546); }.ma30 polyline { stroke: var(--theme-purple, #8b68bb); }.ma60 polyline { stroke: var(--theme-green, #32856e); }.crosshair line { stroke: var(--theme-muted, #7d8fa8); stroke-width: 1; stroke-dasharray: 3 4; opacity: .75; }.chart-tooltip { position: absolute; top: 12px; z-index: 1; display: grid; gap: 3px; min-width: 112px; padding: 8px; color: var(--theme-text, #586980); font-size: 10px; pointer-events: none; background: var(--theme-surface, #fffffff2); border: 1px solid var(--theme-line, #dce4ef); border-radius: 6px; box-shadow: 0 4px 12px #26395712; transform: translateX(-50%); }.chart-tooltip strong { color: var(--theme-text, #2c3d57); }.chart-legend { position: absolute; bottom: 4px; left: 2px; display: flex; flex-wrap: wrap; gap: 9px; font-size: 10px; }.chart-legend span { font-variant-numeric: tabular-nums; }.chart-legend .ma5 { color: var(--theme-blue, #4f83c7); }.chart-legend .ma20 { color: var(--theme-amber, #e59546); }.chart-legend .ma30 { color: var(--theme-purple, #8b68bb); }.chart-legend .ma60 { color: var(--theme-green, #32856e); }.structure-card dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin: 13px 0 0; }.structure-card dl div { padding: 12px 9px; background: var(--theme-raised, #f8fafc); }.structure-card dt { color: var(--theme-muted, #8593a7); font-size: 10px; }.structure-card dd { margin: 6px 0 0; color: var(--theme-text, #32445f); font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }.data-table-wrap { overflow-x: auto; margin-top: 3px; }.data-card table { width: 100%; min-width: 760px; border-collapse: collapse; }.data-card th { padding: 11px 9px; color: var(--theme-muted, #7e8ca1); font-size: 11px; font-weight: 600; text-align: right; background: var(--theme-raised, #f7f9fc); }.data-card th:first-child, .data-card td:first-child { text-align: left; }.data-card td { padding: 10px 9px; color: var(--theme-text, #42536c); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; border-bottom: 1px solid var(--theme-line, #edf0f5); }.data-card tbody tr:last-child td { border-bottom: 0; }.data-disclaimer { display: flex; flex-wrap: wrap; gap: 10px 18px; padding: 1px 2px; color: var(--theme-muted, #8996a8); font-size: 10px; }.data-disclaimer span:last-child { color: var(--theme-muted, #a0767b); }.workbench-empty { display: grid; place-items: center; min-height: 420px; color: var(--theme-muted, #92a0b3); text-align: center; }.workbench-empty :deep(svg) { color: var(--theme-muted, #91a8d2); font-size: 31px; }.workbench-empty h2 { margin: 12px 0 5px; color: var(--theme-text, #53657e); font-size: 17px; }.workbench-empty p { font-size: 12px; }
 .workbench-header { align-items: center; }.instrument-search :deep(.ant-input-group-wrapper), .instrument-search :deep(.ant-input-group), .instrument-search :deep(.ant-input-affix-wrapper), .instrument-search :deep(.ant-input-search-button) { height: 40px; }.instrument-search :deep(.ant-input-affix-wrapper) { display: flex; align-items: center; border-radius: 8px 0 0 8px; }.instrument-search :deep(.ant-input-search-button) { display: inline-flex; align-items: center; justify-content: center; border-radius: 0 8px 8px 0; }.holding-strip { gap: 0; }.holding-strip-title { display: none; }
 @media (max-width: 980px) { .workbench-layout { grid-template-columns: 1fr; }.quote-overview { grid-template-columns: repeat(3, minmax(0, 1fr)); }.instrument-identity { grid-column: span 2; }.market-panels { grid-template-columns: 1fr; }.structure-card { display: none; } }

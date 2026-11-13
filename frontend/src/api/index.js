@@ -96,6 +96,7 @@ export const syncStockBasic = () => service.post('/stock-basic/sync', null, { ti
 export const getMarketWorkbenchOverview = thscode => service.get('/market-workbench/overview', { params: { thscode }, timeout: 90000 })
 export const getMarketWorkbenchIntraday = thscode => service.get('/market-workbench/intraday', { params: { thscode }, timeout: 90000 })
 export const getMarketWorkbenchHoldings = () => service.get('/market-workbench/holdings')
+export const getMarketWorkbenchAccountSummary = () => service.get('/market-workbench/account-summary')
 export const getMarketWorkbenchAnomalies = () => service.get('/market-workbench/anomalies', { timeout: 90000 })
 export const getBrokerAccounts = () => service.get('/portfolio/accounts')
 export const createBrokerAccount = data => service.post('/portfolio/accounts', data)

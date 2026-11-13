@@ -7,6 +7,8 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 /**
  * 券商账户实体
  *
@@ -27,6 +29,14 @@ public class BrokerAccount extends BaseEntity {
     /** 账号（展示时仅显示后四位） */
     @TableField(value = "account_number")
     private String accountNumber;
+
+    /** 总本金 */
+    @TableField(value = "total_principal")
+    private BigDecimal totalPrincipal;
+
+    /** 清仓盈亏，亏损为负数 */
+    @TableField(value = "realized_profit_loss")
+    private BigDecimal realizedProfitLoss;
 
     /** 备注 */
     @TableField(value = "remark")

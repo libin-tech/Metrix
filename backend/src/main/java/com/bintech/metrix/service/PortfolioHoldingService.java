@@ -2,6 +2,7 @@ package com.bintech.metrix.service;
 
 import com.bintech.metrix.dto.request.PortfolioHoldingRequest;
 import com.bintech.metrix.dto.request.TakeProfitPlanRequest;
+import com.bintech.metrix.dto.response.PortfolioAccountSummary;
 import com.bintech.metrix.dto.response.PortfolioHoldingListResponse;
 import com.bintech.metrix.dto.response.PortfolioHoldingVO;
 
@@ -24,6 +25,9 @@ public interface PortfolioHoldingService {
      * @return 持仓列表响应（含持仓VO列表和汇总信息）
      */
     PortfolioHoldingListResponse getHoldings(String keyword, Long accountId);
+
+    /** 汇总当前用户所有账户的本金、市值及盈亏。 */
+    PortfolioAccountSummary getAccountSummary();
 
     /**
      * 刷新实时行情（异步）

@@ -72,7 +72,7 @@ class MarketWorkbenchServiceImplTest {
         when(stockDao.selectByTsCode("600519.SH")).thenReturn(stock);
         when(marketData.fetchRealTimeData(stock, 1L)).thenReturn(quoteResponse());
         when(marketData.fetchKlinesData(stock, 252, 1L)).thenReturn(klineResponse());
-        when(holdings.getHoldings(null, null)).thenReturn(new PortfolioHoldingListResponse(List.of(), null));
+        when(holdings.getHoldings(null, null)).thenReturn(new PortfolioHoldingListResponse(List.of(), null, null));
 
         var result = workbenchService(stockDao, holdingDao, marketData, holdings).load("600519.SH", 1L);
 
@@ -107,7 +107,7 @@ class MarketWorkbenchServiceImplTest {
                 .thenReturn(JSONUtil.toJsonStr(Map.of(
                         CACHE_DATE_KEY, LocalDate.now(MARKET_ZONE).toString(),
                         CACHE_PAYLOAD_KEY, Map.of("quote", quoteResponse(), "klines", klineResponse()))));
-        when(holdings.getHoldings(null, null)).thenReturn(new PortfolioHoldingListResponse(List.of(), null));
+        when(holdings.getHoldings(null, null)).thenReturn(new PortfolioHoldingListResponse(List.of(), null, null));
 
         var result = new MarketWorkbenchServiceImpl(stockDao, mock(PortfolioHoldingDao.class), marketData, holdings, cache, session)
                 .load(stock.getTsCode(), 1L);
@@ -133,7 +133,7 @@ class MarketWorkbenchServiceImplTest {
         when(session.isTrading()).thenReturn(true);
         when(marketData.fetchRealTimeData(stock, 1L)).thenReturn(quoteResponse());
         when(marketData.fetchKlinesData(stock, 252, 1L)).thenReturn(klineResponse());
-        when(holdings.getHoldings(null, null)).thenReturn(new PortfolioHoldingListResponse(List.of(), null));
+        when(holdings.getHoldings(null, null)).thenReturn(new PortfolioHoldingListResponse(List.of(), null, null));
 
         new MarketWorkbenchServiceImpl(stockDao, mock(PortfolioHoldingDao.class), marketData, holdings, cache, session)
                 .load(stock.getTsCode(), 1L);
@@ -253,7 +253,7 @@ class MarketWorkbenchServiceImplTest {
         when(marketData.fetchKlinesData(stock, 252, 1L)).thenReturn(Map.of("status", "success", "data", Map.of(
                 "timestamp", timestamps, "open", closes, "high", closes, "low", closes,
                 "close", closes, "volume", closes, "amount", closes)));
-        when(holdings.getHoldings(null, null)).thenReturn(new PortfolioHoldingListResponse(List.of(), null));
+        when(holdings.getHoldings(null, null)).thenReturn(new PortfolioHoldingListResponse(List.of(), null, null));
         return workbenchService(stockDao, mock(PortfolioHoldingDao.class), marketData, holdings)
                 .load(stock.getTsCode(), 1L).metrics();
     }

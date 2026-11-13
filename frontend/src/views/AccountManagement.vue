@@ -75,6 +75,26 @@
             show-count
           />
         </a-form-item>
+        <a-form-item name="totalPrincipal" :label="$t('accountManagement.totalPrincipal')">
+          <a-input-number
+            v-model:value="form.totalPrincipal"
+            class="account-amount-input"
+            string-mode
+            :min="0"
+            :max="maxAccountAmount"
+            :precision="2"
+          />
+        </a-form-item>
+        <a-form-item name="realizedProfitLoss" :label="$t('accountManagement.realizedProfitLoss')">
+          <a-input-number
+            v-model:value="form.realizedProfitLoss"
+            class="account-amount-input"
+            string-mode
+            :min="-maxAccountAmount"
+            :max="maxAccountAmount"
+            :precision="2"
+          />
+        </a-form-item>
         <a-form-item :label="$t('accountManagement.remark')">
           <a-input
             v-model:value="form.remark"
@@ -103,10 +123,13 @@ const showModal = ref(false)
 const submitting = ref(false)
 const isEditing = ref(false)
 const editingId = ref(null)
+const maxAccountAmount = 9_999_999_999_999.99
 
 const form = reactive({
   brokerName: '',
   accountNumber: '',
+  totalPrincipal: '0',
+  realizedProfitLoss: '0',
   remark: ''
 })
 
@@ -143,6 +166,8 @@ const loadAccounts = async () => {
 const resetForm = () => {
   form.brokerName = ''
   form.accountNumber = ''
+  form.totalPrincipal = '0'
+  form.realizedProfitLoss = '0'
   form.remark = ''
   isEditing.value = false
   editingId.value = null
@@ -158,6 +183,8 @@ const openEditModal = (record) => {
   editingId.value = record.id
   form.brokerName = record.brokerName || ''
   form.accountNumber = record.accountNumber || ''
+  form.totalPrincipal = String(record.totalPrincipal ?? 0)
+  form.realizedProfitLoss = String(record.realizedProfitLoss ?? 0)
   form.remark = record.remark || ''
   showModal.value = true
 }
@@ -172,6 +199,8 @@ const handleSubmit = async () => {
     const payload = {
       brokerName: form.brokerName.trim(),
       accountNumber: form.accountNumber.trim() || null,
+      totalPrincipal: form.totalPrincipal || '0',
+      realizedProfitLoss: form.realizedProfitLoss || '0',
       remark: form.remark.trim() || null
     }
     if (isEditing.value) {
@@ -208,6 +237,10 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.account-amount-input {
+  width: 100%;
+}
+
 .account-management-page {
   padding: 0;
 }

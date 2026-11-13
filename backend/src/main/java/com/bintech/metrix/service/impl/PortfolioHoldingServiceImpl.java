@@ -7,6 +7,7 @@ import cn.hutool.json.JSONObject;
 import com.bintech.metrix.constants.CacheConstants;
 import com.bintech.metrix.dto.request.PortfolioHoldingRequest;
 import com.bintech.metrix.dto.request.TakeProfitPlanRequest;
+import com.bintech.metrix.dto.response.PortfolioAccountSummary;
 import com.bintech.metrix.dto.response.PortfolioHoldingListResponse;
 import com.bintech.metrix.dto.response.PortfolioHoldingVO;
 import com.bintech.metrix.dto.response.PortfolioSummary;
@@ -25,6 +26,7 @@ import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -35,6 +37,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -69,19 +72,49 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
      * 查询持仓列表，支持按券商名称/标的代码/名称模糊搜索
      */
     @Override
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public PortfolioHoldingListResponse getHoldings(String keyword, Long accountId) {
-        Long userId = StpUtil.getLoginIdAsLong();
+        return loadHoldingList(StpUtil.getLoginIdAsLong(), keyword, accountId);
+    }
+
+    /** 使用已有持仓估值口径，合并所有账户的本金和清仓盈亏。 */
+    @Override
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public PortfolioAccountSummary getAccountSummary() {
+        return loadHoldingList(StpUtil.getLoginIdAsLong(), null, null).getAccountSummary();
+    }
+
+    private PortfolioHoldingListResponse loadHoldingList(Long userId, String keyword, Long accountId) {
         List<PortfolioHolding> holdings = holdingDao.selectByUserId(userId);
+        List<BrokerAccount> accounts = accountDao.selectByUserId(userId);
         if (accountId != null) {
             holdings = holdings.stream()
                     .filter(h -> accountId.equals(h.getAccountId()))
-                    .collect(Collectors.toList());
+                    .toList();
+            accounts = accounts.stream()
+                    .filter(account -> accountId.equals(account.getId()))
+                    .toList();
         }
-        if (holdings.isEmpty()) {
-            return new PortfolioHoldingListResponse(List.of(), new PortfolioSummary(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, null));
-        }
+        return buildHoldingList(holdings, accounts, keyword);
+    }
 
-        List<BrokerAccount> accounts = accountDao.selectByUserId(userId);
+    /** 按账户汇总资金，总资产按当前持仓市值计算。 */
+    private PortfolioAccountSummary calculateAccountSummary(List<BrokerAccount> accounts, PortfolioSummary holdings) {
+        BigDecimal totalPrincipal = sumAccountAmounts(accounts, BrokerAccount::getTotalPrincipal);
+        BigDecimal realizedProfitLoss = sumAccountAmounts(accounts, BrokerAccount::getRealizedProfitLoss);
+        BigDecimal totalProfitLoss = holdings.getTotalProfitLossAmount();
+        BigDecimal cumulativeProfitLoss = realizedProfitLoss.add(totalProfitLoss);
+        BigDecimal totalMarketValue = holdings.getTotalMarketValue();
+        return new PortfolioAccountSummary(totalPrincipal, totalMarketValue, totalMarketValue,
+                totalProfitLoss, realizedProfitLoss, cumulativeProfitLoss);
+    }
+
+    private BigDecimal sumAccountAmounts(List<BrokerAccount> accounts, Function<BrokerAccount, BigDecimal> amount) {
+        return accounts.stream().map(amount).reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private PortfolioHoldingListResponse buildHoldingList(List<PortfolioHolding> holdings, List<BrokerAccount> accounts,
+                                                          String keyword) {
         Map<Long, BrokerAccount> accountMap = accounts.stream()
                 .collect(Collectors.toMap(BrokerAccount::getId, a -> a));
 
@@ -101,6 +134,8 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
             }
         }
 
+        PortfolioSummary summary = calculateSummary(vos, latestRefresh);
+        PortfolioAccountSummary accountSummary = calculateAccountSummary(accounts, summary);
         if (StrUtil.isNotBlank(keyword)) {
             String kw = keyword.trim();
             vos = vos.stream()
@@ -108,10 +143,10 @@ public class PortfolioHoldingServiceImpl implements PortfolioHoldingService {
                             || (v.getStockCode() != null && v.getStockCode().contains(kw))
                             || (v.getStockName() != null && v.getStockName().contains(kw)))
                     .collect(Collectors.toList());
+            summary = calculateSummary(vos, latestRefresh);
         }
 
-        PortfolioSummary summary = calculateSummary(vos, latestRefresh);
-        return new PortfolioHoldingListResponse(vos, summary);
+        return new PortfolioHoldingListResponse(vos, summary, accountSummary);
     }
 
     /**
