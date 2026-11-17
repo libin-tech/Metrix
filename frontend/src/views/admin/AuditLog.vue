@@ -139,18 +139,6 @@ onMounted(() => loadData())
 </script>
 
 <style scoped>
-.page-container { padding: 0; }
-.page-header {
-  display: flex; justify-content: space-between; align-items: center;
-  background: var(--theme-surface, #fff); border-radius: 12px; padding: 20px 24px;
-  margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-}
-.page-title { margin: 0; font-size: 18px; font-weight: 600; color: var(--theme-text, #1a1a2e); }
-.page-title .anticon { margin-right: 8px; color: var(--theme-blue, #1890ff); }
-.table-container {
-  background: var(--theme-surface, #fff); border-radius: 12px; padding: 16px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-}
 .toolbar {
   margin-bottom: 16px; display: flex; align-items: center;
 }

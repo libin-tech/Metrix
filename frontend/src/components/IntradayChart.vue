@@ -21,11 +21,13 @@ import {GridComponent, TooltipComponent, AxisPointerComponent} from 'echarts/com
 import {CanvasRenderer} from 'echarts/renderers'
 import {getMarketWorkbenchIntraday} from '../api'
 import {buildIntradaySeries} from '../composables/intradayChart'
+import {useTheme} from '../composables/useTheme'
 
 echarts.use([LineChart, BarChart, GridComponent, TooltipComponent, AxisPointerComponent, CanvasRenderer])
 
 const props = defineProps({thscode: {type: String, default: ''}})
 const {t, locale} = useI18n()
+const {isDark} = useTheme()
 const chartRoot = ref(null)
 const snapshot = ref(null)
 const loading = ref(false)
@@ -49,7 +51,11 @@ const renderChart = async () => {
     axisLine: {lineStyle: {color: line}}, axisTick: {show: false}})
   chart.setOption({
     animation: false,
-    tooltip: {trigger: 'axis', axisPointer: {type: 'cross'}, confine: true},
+    tooltip: {
+      trigger: 'axis', axisPointer: {type: 'cross'}, confine: true,
+      backgroundColor: color('--workspace-surface'), borderColor: line,
+      textStyle: {color: color('--workspace-ink')}
+    },
     axisPointer: {link: [{xAxisIndex: 'all'}]},
     grid: [{left: 68, right: 20, top: 30, height: '54%'}, {left: 68, right: 20, top: '73%', bottom: 28}],
     xAxis: [axis(0), axis(1)],
@@ -59,7 +65,7 @@ const renderChart = async () => {
     ],
     series: [
       {name: t('marketWorkbench.latestPrice'), type: 'line', data: rows.map(row => row.price), showSymbol: false,
-        connectNulls: false, itemStyle: {color: color('--theme-blue', '#4f83c7')}, lineStyle: {width: 2}},
+        connectNulls: false, itemStyle: {color: color('--workspace-chart', '#6659d7')}, lineStyle: {width: 2}},
       {name: t('marketWorkbench.minuteVolume'), type: 'bar', xAxisIndex: 1, yAxisIndex: 1, barMaxWidth: 5,
         data: rows.map(row => ({value: row.volume == null ? null : row.volume / 10000,
           itemStyle: {color: row.up ? color('--theme-red', '#c64652') : color('--theme-green', '#087043')}}))}
@@ -87,7 +93,7 @@ const loadData = async () => {
 }
 
 watch(() => props.thscode, () => { snapshot.value = null; loadData() }, {immediate: true})
-watch(locale, renderChart)
+watch([locale, isDark], renderChart)
 onMounted(() => {
   observer = new ResizeObserver(() => chart?.resize())
   observer.observe(chartRoot.value)

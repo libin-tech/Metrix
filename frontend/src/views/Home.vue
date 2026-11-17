@@ -1,9 +1,9 @@
 <template>
   <main class="research-desk">
     <section class="market-pulse" :aria-label="$t('homeDesk.marketPulse')">
-      <div class="pulse-heading"><div><p class="eyebrow">{{ $t('homeDesk.marketPulse') }}</p><h2>{{ $t('homeDesk.marketPulseTitle') }}</h2></div><div class="pulse-actions"><span role="status" class="connection-status" :class="marketDashboardConnectionState">{{ $t(`homeDesk.connection${marketDashboardConnectionState}`) }}</span><a-button type="link" @click="goToMarketReview">{{ $t('homeDesk.readReview') }} <ArrowRightOutlined /></a-button></div></div>
+      <div class="pulse-heading"><div><h1 class="workspace-title">{{ $t('homeDesk.marketPulseTitle') }}</h1></div><div class="pulse-actions"><span role="status" class="connection-status" :class="marketDashboardConnectionState">{{ $t(`homeDesk.connection${marketDashboardConnectionState}`) }}</span><a-button type="link" @click="goToMarketReview">{{ $t('homeDesk.readReview') }} <ArrowRightOutlined /></a-button></div></div>
       <div class="market-dashboard">
-        <div class="dashboard-grid overview-grid">
+        <div class="overview-grid">
           <article class="pulse-card turnover-card">
             <div class="card-heading"><div><p>{{ $t('homeDesk.marketTurnover') }}</p><small>{{ marketTurnoverAsOf ? $t('homeDesk.asOf', {date: formatTurnoverDate(marketTurnoverAsOf)}) : $t('homeDesk.marketTurnoverHint') }}</small></div><div v-if="marketTurnoverHistory.length" class="turnover-summary"><strong>{{ formatTurnover(marketTurnover?.amount) }}</strong><small>{{ $t('homeDesk.turnoverComparedPrevious') }}<span :class="{'positive': marketTurnoverDifference > 0, 'negative': marketTurnoverDifference < 0}">{{ turnoverDifferenceText }}</span></small></div></div>
             <div v-if="marketTurnoverHistory.length" ref="marketTurnoverChartRef" class="market-turnover-chart" />
@@ -35,20 +35,18 @@
         <aside class="intelligence-column" :aria-label="$t('dailyMarket.title')">
           <DailyMarketIntelligenceCard />
         </aside>
-        <div class="dashboard-grid industry-grid">
-          <article class="pulse-card sector-card">
-            <div class="card-heading"><div><p>{{ $t('homeDesk.industrySectors') }}</p><small>{{ $t('homeDesk.industrySectorsHint') }}</small></div><span class="sector-sort-label">{{ $t('homeDesk.industrySortByChange') }}</span></div>
-            <div v-if="sectorPulse.length" class="sector-grid" tabindex="0" role="region" :aria-label="$t('homeDesk.industrySectors')">
-              <div v-for="sector in sectorPulse" :key="sector.name" :title="`${sector.name} · ${formatChange(sector.changePct)}`" class="sector-tile" :class="{'sector-up': sector.changePct > 0, 'sector-down': sector.changePct < 0}">
-                <strong>{{ sector.name }}</strong>
-                <span class="sector-change">{{ formatChange(sector.changePct) }}</span>
-              </div>
+        <article class="pulse-card sector-card">
+          <div class="card-heading"><div><p>{{ $t('homeDesk.industrySectors') }}</p><small>{{ $t('homeDesk.industrySectorsHint') }}</small></div><span class="sector-sort-label">{{ $t('homeDesk.industrySortByChange') }}</span></div>
+          <div v-if="sectorPulse.length" class="sector-grid" tabindex="0" role="region" :aria-label="$t('homeDesk.industrySectors')">
+            <div v-for="sector in sectorPulse" :key="sector.name" :title="`${sector.name} · ${formatChange(sector.changePct)}`" class="sector-tile" :class="{'sector-up': sector.changePct > 0, 'sector-down': sector.changePct < 0}">
+              <strong>{{ sector.name }}</strong>
+              <span class="sector-change">{{ formatChange(sector.changePct) }}</span>
             </div>
-            <a-empty v-else :description="$t('homeDesk.noMarketData')" :image="aEmptyImage" />
-          </article>
-        </div>
+          </div>
+          <a-empty v-else :description="$t('homeDesk.noMarketData')" :image="aEmptyImage" />
+        </article>
       </div>
-      <div class="dashboard-grid signals-grid">
+      <div class="signals-grid">
         <article class="market-data-card">
           <div class="card-heading"><div><p>{{ $t('homeDesk.fundFlow') }}</p><small>{{ $t('homeDesk.fundFlowHint') }}</small></div><span>{{ $t('homeDesk.mainNetInflow') }}</span></div>
           <a-skeleton v-if="!fundFlowList.length && isLoadingMarketInsights" :paragraph="{rows: 4}" active />
@@ -137,6 +135,7 @@ let marketDashboardSocketReconnectTimer = null
 let isMarketDashboardSocketActive = false
 const isLoadingMarketInsights = ref(true)
 let marketTurnoverChart = null
+let marketTurnoverObserver = null
 const marketTurnoverChartRef = ref(null)
 const insightPageSize = 8
 const dragonTigerPage = ref(1)
@@ -247,31 +246,36 @@ const formatTurnoverDate = date => String(date || '').replace(/-/g, '/')
 const formatPrice = value => Number(value || 0).toFixed(2)
 const renderMarketTurnoverChart = () => {
   if (!marketTurnoverChartRef.value || !marketTurnoverHistory.value.length) return
-  if (!marketTurnoverChart) marketTurnoverChart = init(marketTurnoverChartRef.value)
+  if (!marketTurnoverChart) {
+    marketTurnoverChart = init(marketTurnoverChartRef.value)
+    marketTurnoverObserver = new ResizeObserver(() => marketTurnoverChart?.resize())
+    marketTurnoverObserver.observe(marketTurnoverChartRef.value)
+  }
   const history = marketTurnoverHistory.value
   const marketTurnoverAverage = calculateMarketTurnoverAverage(history)
   const referenceSeries = value => history.map(() => value)
+  const styles = getComputedStyle(document.documentElement)
+  const color = name => styles.getPropertyValue(name).trim()
   marketTurnoverChart.setOption({
     animation: false,
-    grid: {top: 28, right: 2, bottom: 18, left: 2},
-    legend: {data: [t('homeDesk.turnoverThreshold'), t('homeDesk.turnoverAverage60')], top: 0, right: 0, itemWidth: 14, itemHeight: 2, textStyle: {color: isDark.value ? '#a3b0c4' : '#71809a', fontSize: 10}},
-    tooltip: {trigger: 'axis', axisPointer: {type: 'shadow'}, backgroundColor: '#182336', borderWidth: 0, padding: [8, 10], textStyle: {color: '#ffffff', fontSize: 12}, formatter: params => {
+    grid: {top: 28, right: 8, bottom: 18, left: 14},
+    legend: {data: [t('homeDesk.turnoverThreshold'), t('homeDesk.turnoverAverage60')], top: 0, right: 0, itemWidth: 14, itemHeight: 2, textStyle: {color: color('--workspace-muted'), fontSize: 10}},
+    tooltip: {trigger: 'axis', axisPointer: {type: 'shadow'}, backgroundColor: color('--workspace-surface'), borderColor: color('--workspace-line'), borderWidth: 1, padding: [8, 10], textStyle: {color: color('--workspace-ink'), fontSize: 12}, formatter: params => {
       const bar = params.find(param => param.seriesType === 'bar')
       const item = history[bar?.dataIndex]
       if (!item) return ''
       const averageText = marketTurnoverAverage == null ? '--' : formatTurnoverDetail(marketTurnoverAverage)
       return `${formatTurnoverDate(item.date)}<br/>${t('homeDesk.marketTurnover')}：${formatTurnoverDetail(item.amount)}<br/>${t('homeDesk.turnoverThreshold')}：${formatTurnoverDetail(MARKET_TURNOVER_THRESHOLD)}<br/>${t('homeDesk.turnoverAverage60')}：${averageText}`
     }},
-    xAxis: {type: 'category', data: history.map(item => formatTurnoverDate(item.date).slice(5)), axisLine: {lineStyle: {color: isDark.value ? '#34445b' : '#dce2eb'}}, axisTick: {show: false}, axisLabel: {color: isDark.value ? '#a3b0c4' : '#8996aa', fontSize: 10, interval: Math.max(0, Math.ceil(history.length / 5) - 1)}},
+    xAxis: {type: 'category', data: history.map(item => formatTurnoverDate(item.date).slice(5)), axisLine: {lineStyle: {color: color('--workspace-line')}}, axisTick: {show: false}, axisLabel: {color: color('--workspace-muted'), fontSize: 10, interval: Math.max(0, Math.ceil(history.length / 5) - 1)}},
     yAxis: {type: 'value', show: false},
     series: [
-      {type: 'bar', data: history.map(item => Number(item.amount) || 0), barMaxWidth: 12, itemStyle: {color: '#5d8fd8', borderRadius: [3, 3, 0, 0]}, emphasis: {itemStyle: {color: '#316bc0'}}},
-      {name: t('homeDesk.turnoverThreshold'), type: 'line', data: referenceSeries(MARKET_TURNOVER_THRESHOLD), showSymbol: false, silent: true, z: 3, lineStyle: {color: '#e8b04f', type: 'dashed', width: 1.5}},
-      {name: t('homeDesk.turnoverAverage60'), type: 'line', data: marketTurnoverAverage == null ? [] : referenceSeries(marketTurnoverAverage), showSymbol: false, silent: true, z: 3, lineStyle: {color: '#21b8b2', width: 1.5}}
+      {type: 'bar', data: history.map(item => Number(item.amount) || 0), barMaxWidth: 12, itemStyle: {color: color('--workspace-chart'), borderRadius: [3, 3, 0, 0]}, emphasis: {itemStyle: {color: color('--workspace-accent')}}},
+      {name: t('homeDesk.turnoverThreshold'), type: 'line', data: referenceSeries(MARKET_TURNOVER_THRESHOLD), showSymbol: false, silent: true, z: 3, lineStyle: {color: color('--theme-amber'), type: 'dashed', width: 1.5}},
+      {name: t('homeDesk.turnoverAverage60'), type: 'line', data: marketTurnoverAverage == null ? [] : referenceSeries(marketTurnoverAverage), showSymbol: false, silent: true, z: 3, lineStyle: {color: color('--theme-green'), width: 1.5}}
     ]
   }, {notMerge: true, lazyUpdate: true, silent: true})
 }
-const resizeMarketTurnoverChart = () => marketTurnoverChart?.resize()
 const goToMarketReview = () => router.push('/market-review')
 
 watch(isDark, () => nextTick(renderMarketTurnoverChart))
@@ -283,107 +287,201 @@ watch(limitUpPoolList, () => { limitUpPoolPage.value = 1 })
 watch(limitDownPoolList, () => { limitDownPoolPage.value = 1 })
 watch(strongPoolList, () => { strongPoolPage.value = 1 })
 watch(brokenPoolList, () => { brokenPoolPage.value = 1 })
-onMounted(() => { isMarketDashboardSocketActive = true; connectMarketDashboardSocket(); window.addEventListener('resize', resizeMarketTurnoverChart) })
+onMounted(() => { isMarketDashboardSocketActive = true; connectMarketDashboardSocket() })
 onUnmounted(() => {
   isMarketDashboardSocketActive = false
   if (marketDashboardSocketReconnectTimer) window.clearTimeout(marketDashboardSocketReconnectTimer)
   marketDashboardSocket?.close()
-  window.removeEventListener('resize', resizeMarketTurnoverChart)
+  marketTurnoverObserver?.disconnect()
   marketTurnoverChart?.dispose()
   marketTurnoverChart = null
 })
 </script>
 
 <style scoped>
-.research-desk { width: 100%; max-width: none; padding: 28px 32px 52px; color: var(--theme-text, #182336); }
-.pulse-heading h2 { margin: 0; letter-spacing: -.045em; }
-.market-pulse { margin-top: 8px; }.pulse-heading { margin-bottom: 15px; }.pulse-heading h2 { font-size: 22px; }.pulse-heading :deep(.ant-btn-link) { padding-right: 0; }.pulse-card { padding: 18px; }.card-heading { align-items: start; padding-bottom: 12px; border-bottom: 1px solid var(--theme-line, #edf0f5); }.card-heading p { margin: 0; color: var(--theme-text, #263957); font-size: 15px; font-weight: 700; }.card-heading small { display: block; margin-top: 3px; color: var(--theme-muted, #8996aa); font-size: 11px; line-height: 1.35; }.card-heading > span, .card-heading > strong { color: var(--theme-muted, #71809a); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }.card-heading > strong { color: var(--theme-text, #263957); font-size: 17px; }
-.breadth-values { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px 0 14px; }
-.breadth-metric { display: grid; gap: 10px; min-width: 0; padding: 12px 10px; border: 1px solid var(--breadth-border); border-radius: 9px; background: var(--breadth-tint); color: var(--breadth-color); }
-.breadth-positive { --breadth-color: var(--theme-red, #c74452); --breadth-tint: var(--theme-raised, #fff7f7); --breadth-border: var(--theme-line, #f5e4e6); }
-.breadth-negative { --breadth-color: var(--theme-green, #087043); --breadth-tint: var(--theme-raised, #f2faf6); --breadth-border: var(--theme-line, #dfeee6); }
-.breadth-metric span { display: flex; align-items: center; gap: 5px; color: var(--theme-muted, #68788f); font-size: 11px; line-height: 1.35; }
-.breadth-metric span::before { content: ''; width: 5px; height: 5px; flex-shrink: 0; border-radius: 50%; background: var(--breadth-color); }
-.breadth-metric strong { justify-self: end; font-size: clamp(20px, 1.8vw, 28px); line-height: 1; letter-spacing: -.025em; font-variant-numeric: tabular-nums; }
-.breadth-limit { gap: 7px; padding-top: 9px; padding-bottom: 9px; }
-.breadth-limit strong { font-size: 20px; }
-.market-breadth-bar { display: flex; height: 8px; overflow: hidden; background: var(--theme-raised, #e9edf3); border-radius: 999px; }
-.market-breadth-bar i { display: block; min-width: 0; transition: width .2s ease; }
-.market-breadth-bar .breadth-up { background: #d7505d; }
-.market-breadth-bar .breadth-down { background: #159263; }
-.breadth-cache-note { display: block; margin-top: 9px; color: var(--theme-muted, #8996aa); font-size: 11px; line-height: 1.5; }
-@media (prefers-reduced-motion: reduce) { .market-breadth-bar i { transition: none; } }
+.research-desk {
+  --home-card-padding: clamp(16px, 1.5vw, 22px);
+  --home-card-gap: clamp(16px, 1.5vw, 22px);
+  color: var(--workspace-ink);
+}
 
- .quick-index-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding-top: 12px; }
-.index-quote { --quote-color: var(--theme-muted, #68788f); --quote-tint: var(--theme-raised, #f5f7fa); --quote-border: var(--theme-line, #e9edf3); display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 7px 4px; padding: 10px; border: 1px solid var(--quote-border); border-radius: 9px; background: var(--quote-tint); }
-.index-quote-up { --quote-color: var(--theme-red, #c74452); --quote-tint: var(--theme-raised, #fff7f7); --quote-border: var(--theme-line, #f5e4e6); }
-.index-quote-down { --quote-color: var(--theme-green, #087043); --quote-tint: var(--theme-raised, #f2faf6); --quote-border: var(--theme-line, #dfeee6); }
-.index-quote-name { grid-column: 1 / -1; overflow: hidden; color: var(--theme-text, #526178); font-size: 12px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
-.index-quote-value { grid-column: 1 / -1; color: var(--theme-text, #263957); font-size: clamp(16px, 1.2vw, 23px); font-weight: 700; line-height: 1.1; letter-spacing: -.025em; font-variant-numeric: tabular-nums; }
-.index-quote-change { display: inline-flex; align-items: center; gap: 4px; color: var(--quote-color); font-size: 12px; font-style: normal; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+.market-pulse { display: grid; gap: clamp(18px, 1.65vw, 24px); }
+
+.pulse-heading, .card-heading {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+}
+
+.pulse-heading { align-items: center; }
+.pulse-heading :deep(.ant-btn-link) { padding-inline-end: 0; }
+.pulse-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px; }
+.connection-status { display: inline-flex; align-items: center; gap: 6px; color: var(--workspace-muted); font-size: 13px; }
+.connection-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--theme-amber); }
+.connection-status.Connected::before { background: var(--theme-green); }
+
+.market-dashboard, .overview-grid, .signals-grid { display: grid; gap: var(--home-card-gap); min-width: 0; }
+
+.market-dashboard {
+  grid-template-columns: minmax(0, 2.65fr) minmax(320px, 1.4fr);
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    'overview intelligence'
+    'industry intelligence';
+  align-items: start;
+}
+
+.overview-grid {
+  grid-area: overview;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, .7fr);
+}
+
+.sector-card { grid-area: industry; }
+.intelligence-column { grid-area: intelligence; min-width: 0; }
+
+.pulse-card, .market-data-card {
+  min-width: 0;
+  padding: var(--home-card-padding);
+  background: var(--workspace-surface);
+  border: 1px solid var(--workspace-line);
+  border-radius: var(--workspace-radius);
+  box-shadow: var(--workspace-shadow);
+}
+
+.card-heading { align-items: start; padding-bottom: 13px; border-bottom: 1px solid var(--workspace-line); }
+.card-heading p { margin: 0; font-size: 15px; font-weight: 680; }
+.card-heading small { display: block; margin-top: 4px; color: var(--workspace-muted); font-size: 11px; line-height: 1.5; }
+.card-heading > span { color: var(--workspace-muted); font-size: 11px; }
+.turnover-summary { text-align: end; }
+.turnover-summary strong { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.turnover-summary small { margin-top: 4px; }
+
+.market-turnover-chart { width: 100%; height: 162px; margin-top: 12px; }
+.turnover-card > :deep(.ant-skeleton), .index-card > :deep(.ant-skeleton) { margin-top: 14px; }
+
+.quick-index-list, .breadth-values {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.index-quote, .breadth-metric, .sector-tile {
+  min-width: 0;
+  padding: 9px;
+  background: var(--workspace-raised);
+  border: 1px solid var(--workspace-line);
+  border-radius: var(--workspace-control-radius);
+}
+
+.index-quote {
+  --quote-color: var(--workspace-muted);
+  display: grid;
+  gap: 6px;
+}
+
+.index-quote-up { --quote-color: var(--theme-red); }
+.index-quote-down { --quote-color: var(--theme-green); }
+.index-quote-name { min-width: 0; color: var(--workspace-muted); font-size: 12px; overflow-wrap: anywhere; }
+.index-quote-value { font-size: clamp(16px, 1.2vw, 23px); line-height: 1.15; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.index-quote-change { display: inline-flex; align-items: center; gap: 5px; color: var(--quote-color); font-size: 12px; font-style: normal; font-weight: 630; font-variant-numeric: tabular-nums; }
 .index-quote-direction { width: 6px; height: 2px; background: currentColor; }
-.index-quote-up .index-quote-direction, .index-quote-down .index-quote-direction { width: 0; height: 0; border-right: 3px solid transparent; border-left: 3px solid transparent; background: transparent; }
+.index-quote-up .index-quote-direction, .index-quote-down .index-quote-direction { width: 0; height: 0; border-inline: 3px solid transparent; background: transparent; }
 .index-quote-up .index-quote-direction { border-bottom: 5px solid currentColor; }
 .index-quote-down .index-quote-direction { border-top: 5px solid currentColor; }
-.market-turnover-chart { width: 100%; height: 162px; margin-top: 8px; }
-.sector-card { align-self: start; }
-.sector-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px; max-height: 240px; overflow-y: auto; margin-top: 10px; padding: 2px; scrollbar-width: thin; scrollbar-color: #ccd5e2 transparent; overscroll-behavior-y: contain; }
-.sector-grid:focus-visible { outline: 2px solid var(--theme-line, #8aa9d4); outline-offset: 3px; border-radius: 7px; }
-.sector-tile { --sector-color: var(--theme-muted, #68788f); --sector-tint: var(--theme-raised, #f5f7fa); --sector-border: var(--theme-line, #e9edf3); display: grid; gap: 6px; min-width: 0; min-height: 52px; align-content: center; padding: 8px; border: 1px solid var(--sector-border); border-radius: 7px; color: var(--sector-color); background: var(--sector-tint); transition: border-color .15s ease, box-shadow .15s ease; }
-.sector-tile strong { overflow: hidden; color: var(--theme-text, #44536b); font-size: 11px; font-weight: 500; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
-.sector-change { display: flex; align-items: center; justify-content: space-between; gap: 4px; font-size: 12px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }
-.sector-change::before { content: ''; width: 12px; height: 3px; border-radius: 999px; background: currentColor; opacity: .55; }
-.sector-up { --sector-color: var(--theme-red, #c74452); --sector-tint: var(--theme-raised, #fff7f7); --sector-border: var(--theme-line, #f5e4e6); }
-.sector-down { --sector-color: var(--theme-green, #087043); --sector-tint: var(--theme-raised, #f2faf6); --sector-border: var(--theme-line, #dfeee6); }
-.sector-sort-label { padding: 3px 6px; border-radius: 4px; background: var(--theme-raised, #f4f6fa); }
-@media (hover: hover) { .sector-tile:hover { border-color: var(--sector-color); box-shadow: 0 2px 5px #2639570a; } }
-@media (prefers-reduced-motion: reduce) { .sector-tile { transition: none; } }
-.positive { color: var(--theme-red, #d7505d) !important; }.negative { color: var(--theme-green, #006d2c) !important; }.sector-card :deep(.ant-empty) { padding: 30px 0 8px; }.sector-card :deep(.ant-empty-description) { color: var(--theme-muted, #8996aa); font-size: 12px; }
-@media (max-width: 720px) { .research-desk { padding: 18px 16px 40px; }.pulse-heading { align-items: start; flex-direction: column; }.sector-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }.market-turnover-chart { height: 145px; } }.market-data-card { min-width: 0; min-height: 300px; padding: 18px; background: var(--theme-surface, #fff); border: 1px solid var(--theme-line, #e1e7f0); border-radius: 14px; box-shadow: 0 6px 18px rgba(34, 51, 79, .035); }.market-data-card :deep(.ant-pagination) { display: flex; justify-content: end; margin: 13px 0 0; }.market-data-card :deep(.ant-empty) { padding-top: 58px; }.market-data-card :deep(.ant-empty-description) { color: var(--theme-muted, #8996aa); font-size: 12px; }.market-data-list { margin-top: 1px; }.market-data-row { display: grid; grid-template-columns: minmax(90px, .85fr) minmax(0, 1.25fr) auto; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--theme-line, #edf0f5); }.market-data-row:last-child { border-bottom: 0; }.market-data-row > div { min-width: 0; }.market-data-row strong { display: block; overflow: hidden; color: var(--theme-text, #263957); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }.market-data-row small, .market-data-row p { display: block; overflow: hidden; margin: 3px 0 0; color: var(--theme-muted, #8996aa); font-size: 11px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }.market-data-row p { margin: 0; }.market-data-row b { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }.rank-number { display: grid; place-items: center; width: 23px; height: 23px; color: var(--theme-muted, #5d6e86); font-size: 11px; font-weight: 700; background: var(--theme-raised, #edf2f8); border-radius: 50%; }.popularity-row { grid-template-columns: 25px minmax(0, 1fr) auto; }
-@media (max-width: 720px) {.market-data-row { grid-template-columns: minmax(84px, .8fr) minmax(0, 1.2fr) auto; gap: 8px; } }
 
-.pulse-heading, .card-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
-.eyebrow { margin: 0 0 7px; color: var(--theme-muted, #72809a); font-size: 11px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
-.dashboard-grid { display: grid; gap: 16px; margin-bottom: 16px; }
-.market-dashboard { display: grid; grid-template-columns: minmax(0, 2.65fr) minmax(320px, 1.4fr); grid-template-rows: auto 1fr; grid-template-areas: 'overview intelligence' 'industry intelligence'; align-items: start; gap: 16px; margin-bottom: 16px; }
-.market-dashboard > .dashboard-grid { min-width: 0; margin-bottom: 0; }
-.overview-grid { grid-area: overview; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, .7fr); }
-.intelligence-column { grid-area: intelligence; min-width: 0; }
+.breadth-metric {
+  display: grid;
+  gap: 8px;
+  color: var(--breadth-color);
+}
+
+.breadth-positive { --breadth-color: var(--theme-red); }
+.breadth-negative { --breadth-color: var(--theme-green); }
+.breadth-metric span { display: inline-flex; align-items: center; gap: 5px; color: var(--workspace-muted); font-size: 11px; }
+.breadth-metric span::before { content: ''; width: 5px; height: 5px; flex-shrink: 0; border-radius: 50%; background: var(--breadth-color); }
+.breadth-metric strong { justify-self: end; font-size: clamp(19px, 1.6vw, 25px); line-height: 1; font-variant-numeric: tabular-nums; }
+.breadth-limit strong { font-size: 19px; }
+.market-breadth-bar { display: flex; height: 8px; overflow: hidden; margin-top: 14px; background: var(--workspace-raised); border-radius: 999px; }
+.market-breadth-bar i { min-width: 0; transition: width .2s ease; }
+.breadth-up { background: var(--theme-red); }
+.breadth-down { background: var(--theme-green); }
+.breadth-cache-note { display: block; margin-top: 8px; color: var(--workspace-muted); font-size: 12px; }
+
+.sector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 110px), 1fr));
+  gap: 8px;
+  max-height: 240px;
+  padding: 1px;
+  margin-top: 14px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--workspace-line) transparent;
+  overscroll-behavior-y: contain;
+}
+
+.sector-grid:focus-visible { outline: 2px solid var(--workspace-accent); outline-offset: 3px; border-radius: 7px; }
+.sector-tile { --sector-color: var(--workspace-muted); display: grid; align-content: center; gap: 6px; min-height: 54px; color: var(--sector-color); }
+.sector-up { --sector-color: var(--theme-red); }
+.sector-down { --sector-color: var(--theme-green); }
+.sector-tile strong { overflow: hidden; color: var(--workspace-ink); font-size: 11px; font-weight: 550; text-overflow: ellipsis; white-space: nowrap; }
+.sector-change { display: flex; align-items: center; justify-content: space-between; gap: 4px; font-size: 12px; font-weight: 680; font-variant-numeric: tabular-nums; }
+.sector-change::before { content: ''; width: 12px; height: 3px; border-radius: 999px; background: currentColor; opacity: .55; }
+.sector-sort-label { padding: 4px 8px; background: var(--workspace-raised); border-radius: 5px; }
+@media (hover: hover) { .sector-tile:hover { border-color: var(--sector-color); } }
+@media (prefers-reduced-motion: reduce) { .market-breadth-bar i { transition: none; } }
+
 .signals-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
-.industry-grid { grid-area: industry; grid-template-columns: minmax(0, 1fr); }
-.pulse-card { min-width: 0; background: var(--theme-surface, #fff); border: 1px solid var(--theme-line, #e1e7f0); border-radius: 14px; }
-.signals-grid > article { padding: 12px; }
-.signals-grid .card-heading { flex-wrap: wrap; gap: 4px; }
-.signals-grid .market-data-row { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; padding: 9px 0; }
-.signals-grid .market-data-row > div { grid-column: 1 / -1; }
-.signals-grid .market-data-row > b { justify-self: end; }
-.signals-grid .popularity-row { grid-template-columns: 23px minmax(0, 1fr); }
-.signals-grid .popularity-row > div { grid-column: 2; }
-.signals-grid .popularity-row > b { grid-column: 2; }
+.market-data-card { min-height: 300px; padding: clamp(14px, 1.2vw, 18px); }
+.market-data-card :deep(.ant-pagination) { display: flex; justify-content: end; margin: 16px 0 0; }
+.market-data-card :deep(.ant-empty), .sector-card :deep(.ant-empty) { margin: 30px 0 8px; }
+.market-data-card :deep(.ant-empty-description), .sector-card :deep(.ant-empty-description) { color: var(--workspace-muted); font-size: 13px; }
+
+.market-data-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 6px 14px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--workspace-line);
+}
+
+.market-data-row:last-child { border-bottom: 0; }
+.market-data-row > div { grid-column: 1 / -1; }
+.market-data-row strong, .market-data-row small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.market-data-row strong { font-size: 14px; }
+.market-data-row small, .market-data-row p { color: var(--workspace-muted); font-size: 12px; line-height: 1.5; }
+.market-data-row small { margin-top: 3px; }
+.market-data-row p { grid-column: 1; margin: 0; overflow-wrap: anywhere; }
+.market-data-row b { grid-column: 2; justify-self: end; font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.popularity-row { grid-template-columns: 25px minmax(0, 1fr); }
+.popularity-row > div, .popularity-row b { grid-column: 2; }
+.rank-number { display: grid; place-items: center; width: 24px; height: 24px; color: var(--workspace-muted); background: var(--workspace-raised); border-radius: 50%; font-size: 12px; font-weight: 650; }
+.positive { color: var(--theme-red); }
+.negative { color: var(--theme-green); }
+
 @media (max-width: 1600px) {
   .signals-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .index-quote { padding: 8px; }
 }
+
 @media (max-width: 1200px) {
   .market-dashboard { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; grid-template-areas: 'overview' 'intelligence' 'industry'; }
   .overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .turnover-card { grid-column: 1 / -1; }
   .signals-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .overview-grid .quick-index-list { gap: 6px; }
 }
+
 @media (max-width: 720px) {
-  .overview-grid { grid-template-columns: 1fr; }
+  .overview-grid { grid-template-columns: minmax(0, 1fr); }
   .signals-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .overview-grid .quick-index-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sector-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .market-turnover-chart { height: 145px; }
 }
+
 @media (max-width: 420px) {
-  .signals-grid { grid-template-columns: 1fr; }
+  .signals-grid { grid-template-columns: minmax(0, 1fr); }
 }
-.turnover-summary { text-align: right; flex-shrink: 0; }
-.turnover-summary strong { color: var(--theme-text, #263957); font-size: 17px; font-variant-numeric: tabular-nums; }
-.turnover-summary small { margin-top: 4px; font-size: 11px; white-space: nowrap; }
-.pulse-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
-.connection-status { display: inline-flex; align-items: center; gap: 6px; color: var(--theme-muted, #8996aa); font-size: 12px; }
-.connection-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #b98b2b; }
-.connection-status.Connected::before { background: #159263; }
 </style>

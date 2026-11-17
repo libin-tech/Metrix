@@ -1,27 +1,22 @@
 <template>
-  <main class="login-page">
-    <header class="login-header">
-      <RouterLink class="brand" to="/"><img src="/Metrix-logo.png" alt="Metrix" /><span>Metrix</span></RouterLink>
-      <button class="language-button" type="button" @click="switchLanguage"><GlobalOutlined />{{ locale === 'zh-CN' ? 'English' : '中文' }}</button>
+  <component :is="embedded ? 'div' : 'main'" class="login-page" :class="{embedded}">
+    <header v-if="!embedded" class="public-header">
+      <MetrixBrand />
+      <div class="public-header-actions">
+        <ThemeToggle />
+        <LanguageToggle />
+      </div>
     </header>
 
-    <section class="login-shell">
-      <aside class="login-aside">
-        <p class="aside-eyebrow">METRIX / RESEARCH DESK</p>
-        <h1>{{ $t('login.asideTitle') }}</h1>
-        <p>{{ $t('login.asideDescription') }}</p>
-        <div class="aside-line"></div>
-        <small>{{ $t('login.asideNote') }}</small>
-      </aside>
-
-      <section class="auth-card" :aria-label="$t('login.title')">
+    <div class="login-shell">
+      <section class="auth-card" aria-labelledby="login-heading">
+        <MetrixBrand class="login-brand" />
         <template v-if="mode === 'user'">
-          <p class="mode-label">{{ $t('login.userEyebrow') }}</p>
-          <h2>{{ $t('login.userLoginTitle') }}</h2>
+          <h1 id="login-heading">{{ $t('login.userLoginTitle') }}</h1>
           <p class="mode-description">{{ $t('login.userLoginDescription') }}</p>
           <a-form layout="vertical" :model="userLoginForm" @finish="handleUserLogin">
-            <a-form-item :label="$t('login.email')" name="email" :rules="emailRules"><a-input v-model:value="userLoginForm.email" size="large" :placeholder="$t('login.emailPlaceholder')"><template #prefix><MailOutlined /></template></a-input></a-form-item>
-            <a-form-item :label="$t('login.password')" name="password" :rules="requiredRules"><a-input-password v-model:value="userLoginForm.password" size="large" :placeholder="$t('login.passwordPlaceholder')"><template #prefix><LockOutlined /></template></a-input-password></a-form-item>
+            <a-form-item :label="$t('login.email')" name="email" :rules="emailRules"><a-input v-model:value="userLoginForm.email" autocomplete="username" size="large" :placeholder="$t('login.emailPlaceholder')"><template #prefix><MailOutlined /></template></a-input></a-form-item>
+            <a-form-item :label="$t('login.password')" name="password" :rules="requiredRules"><a-input-password v-model:value="userLoginForm.password" autocomplete="current-password" size="large" :placeholder="$t('login.passwordPlaceholder')"><template #prefix><LockOutlined /></template></a-input-password></a-form-item>
             <a-form-item v-if="captchaEnabled" :label="$t('login.captcha')" name="captchaCode" :rules="requiredRules"><div class="captcha-field"><a-input v-model:value="userLoginForm.captchaCode" size="large" :maxlength="4" :placeholder="$t('login.captchaPlaceholder')" /><button type="button" class="captcha-image" :aria-label="$t('login.refreshCaptcha')" @click="refreshCaptcha"><img v-if="captcha.image" :src="captcha.image" :alt="$t('login.captcha')" /><ReloadOutlined v-else /></button></div></a-form-item>
             <div class="form-links"><button type="button" @click="changeMode('reset')">{{ $t('login.forgotPassword') }}</button></div>
             <a-button type="primary" html-type="submit" block size="large" :loading="loading">{{ $t('login.login') }}</a-button>
@@ -30,11 +25,11 @@
         </template>
 
         <template v-else-if="mode === 'register'">
-          <p class="mode-label">{{ $t('login.userEyebrow') }}</p><h2>{{ $t('login.registerTitle') }}</h2><p class="mode-description">{{ $t('login.registerDescription') }}</p>
+          <h1 id="login-heading">{{ $t('login.registerTitle') }}</h1><p class="mode-description">{{ $t('login.registerDescription') }}</p>
           <a-form layout="vertical" :model="registerForm" @finish="handleRegister">
             <a-form-item :label="$t('login.nickname')" name="nickname" :rules="nicknameRules"><a-input v-model:value="registerForm.nickname" size="large" :placeholder="$t('login.nicknamePlaceholder')"><template #prefix><UserOutlined /></template></a-input></a-form-item>
-            <a-form-item :label="$t('login.email')" name="email" :rules="emailRules"><a-input v-model:value="registerForm.email" size="large" :placeholder="$t('login.emailPlaceholder')"><template #prefix><MailOutlined /></template></a-input></a-form-item>
-            <a-form-item :label="$t('login.password')" name="password" :rules="passwordRules"><a-input-password v-model:value="registerForm.password" size="large" :placeholder="$t('login.passwordPolicy')"><template #prefix><LockOutlined /></template></a-input-password></a-form-item>
+            <a-form-item :label="$t('login.email')" name="email" :rules="emailRules"><a-input v-model:value="registerForm.email" autocomplete="email" size="large" :placeholder="$t('login.emailPlaceholder')"><template #prefix><MailOutlined /></template></a-input></a-form-item>
+            <a-form-item :label="$t('login.password')" name="password" :rules="passwordRules"><a-input-password v-model:value="registerForm.password" autocomplete="new-password" size="large" :placeholder="$t('login.passwordPolicy')"><template #prefix><LockOutlined /></template></a-input-password></a-form-item>
             <VerificationFields v-model:email-code="registerForm.emailCode" :sending="sendingCode" :countdown="codeCountdown" @send="requestEmailCode('REGISTER', registerForm)" />
             <a-checkbox v-model:checked="registerForm.privacyAgreed" class="privacy-agreement">{{ $t('login.privacyAgreementPrefix') }} <button type="button" @click.prevent.stop="showPrivacyPolicy = true">{{ $t('login.privacyPolicy') }}</button></a-checkbox>
             <a-button type="primary" html-type="submit" block size="large" :loading="loading">{{ $t('login.register') }}</a-button>
@@ -43,11 +38,11 @@
         </template>
 
         <template v-else-if="mode === 'reset'">
-          <p class="mode-label">{{ $t('login.userEyebrow') }}</p><h2>{{ $t('login.resetTitle') }}</h2><p class="mode-description">{{ $t('login.resetDescription') }}</p>
+          <h1 id="login-heading">{{ $t('login.resetTitle') }}</h1><p class="mode-description">{{ $t('login.resetDescription') }}</p>
           <a-form layout="vertical" :model="resetForm" @finish="handleReset">
-            <a-form-item :label="$t('login.email')" name="email" :rules="emailRules"><a-input v-model:value="resetForm.email" size="large" :placeholder="$t('login.emailPlaceholder')"><template #prefix><MailOutlined /></template></a-input></a-form-item>
-            <a-form-item :label="$t('login.newPassword')" name="password" :rules="passwordRules"><a-input-password v-model:value="resetForm.password" size="large" :placeholder="$t('login.passwordPolicy')"><template #prefix><LockOutlined /></template></a-input-password></a-form-item>
-            <a-form-item :label="$t('login.confirmPassword')" name="confirmPassword" :rules="confirmPasswordRules"><a-input-password v-model:value="resetForm.confirmPassword" size="large" :placeholder="$t('login.confirmPasswordPlaceholder')"><template #prefix><LockOutlined /></template></a-input-password></a-form-item>
+            <a-form-item :label="$t('login.email')" name="email" :rules="emailRules"><a-input v-model:value="resetForm.email" autocomplete="email" size="large" :placeholder="$t('login.emailPlaceholder')"><template #prefix><MailOutlined /></template></a-input></a-form-item>
+            <a-form-item :label="$t('login.newPassword')" name="password" :rules="passwordRules"><a-input-password v-model:value="resetForm.password" autocomplete="new-password" size="large" :placeholder="$t('login.passwordPolicy')"><template #prefix><LockOutlined /></template></a-input-password></a-form-item>
+            <a-form-item :label="$t('login.confirmPassword')" name="confirmPassword" :rules="confirmPasswordRules"><a-input-password v-model:value="resetForm.confirmPassword" autocomplete="new-password" size="large" :placeholder="$t('login.confirmPasswordPlaceholder')"><template #prefix><LockOutlined /></template></a-input-password></a-form-item>
             <VerificationFields v-model:email-code="resetForm.emailCode" :sending="sendingCode" :countdown="codeCountdown" @send="requestEmailCode('RESET_PASSWORD', resetForm)" />
             <a-button type="primary" html-type="submit" block size="large" :loading="loading">{{ $t('login.resetPassword') }}</a-button>
           </a-form>
@@ -55,10 +50,10 @@
         </template>
 
         <template v-else>
-          <p class="mode-label">{{ $t('login.adminEyebrow') }}</p><h2>{{ $t('login.adminLoginTitle') }}</h2><p class="mode-description">{{ $t('login.adminLoginDescription') }}</p>
+          <h1 id="login-heading">{{ $t('login.adminLoginTitle') }}</h1><p class="mode-description">{{ $t('login.adminLoginDescription') }}</p>
           <a-form layout="vertical" :model="adminForm" @finish="handleAdminLogin">
-            <a-form-item :label="$t('login.username')" name="username" :rules="requiredRules"><a-input v-model:value="adminForm.username" size="large" :placeholder="$t('login.usernamePlaceholder')"><template #prefix><UserOutlined /></template></a-input></a-form-item>
-            <a-form-item :label="$t('login.password')" name="password" :rules="requiredRules"><a-input-password v-model:value="adminForm.password" size="large" :placeholder="$t('login.passwordPlaceholder')"><template #prefix><LockOutlined /></template></a-input-password></a-form-item>
+            <a-form-item :label="$t('login.username')" name="username" :rules="requiredRules"><a-input v-model:value="adminForm.username" autocomplete="username" size="large" :placeholder="$t('login.usernamePlaceholder')"><template #prefix><UserOutlined /></template></a-input></a-form-item>
+            <a-form-item :label="$t('login.password')" name="password" :rules="requiredRules"><a-input-password v-model:value="adminForm.password" autocomplete="current-password" size="large" :placeholder="$t('login.passwordPlaceholder')"><template #prefix><LockOutlined /></template></a-input-password></a-form-item>
             <a-form-item v-if="captchaEnabled" :label="$t('login.captcha')" name="captchaCode" :rules="requiredRules"><div class="captcha-field"><a-input v-model:value="adminForm.captchaCode" size="large" :maxlength="4" :placeholder="$t('login.captchaPlaceholder')" /><button type="button" class="captcha-image" :aria-label="$t('login.refreshCaptcha')" @click="refreshCaptcha"><img v-if="captcha.image" :src="captcha.image" :alt="$t('login.captcha')" /><ReloadOutlined v-else /></button></div></a-form-item>
             <a-button type="primary" html-type="submit" block size="large" :loading="loading">{{ $t('login.adminLogin') }}</a-button>
           </a-form>
@@ -68,25 +63,31 @@
         <div class="legal-row">{{ $t('login.legalPrefix') }} <button type="button" @click="showDisclaimer = true">{{ $t('login.disclaimer') }}</button></div>
         <button v-if="mode !== 'admin'" type="button" class="admin-entry" @click="changeMode('admin')"><SafetyCertificateOutlined />{{ $t('login.adminEntry') }}</button>
       </section>
-    </section>
 
-    <footer>{{ $t('common.copyright', { year: new Date().getFullYear() }) }}</footer>
+    </div>
+
+    <footer v-if="!embedded">{{ $t('common.copyright', { year: new Date().getFullYear() }) }}</footer>
     <a-modal :title="$t('login.disclaimer')" v-model:open="showDisclaimer" width="720px" :footer="null"><div class="disclaimer-content" v-html="renderedDisclaimer"></div></a-modal>
     <a-modal :title="$t('login.privacyPolicy')" v-model:open="showPrivacyPolicy" width="720px" :footer="null"><div class="disclaimer-content" v-html="renderedPrivacyPolicy"></div></a-modal>
     <a-modal v-model:open="showEmailCaptcha" :title="$t('login.captchaDialogTitle')" :ok-text="$t('login.captchaConfirm')" :cancel-text="$t('login.captchaCancel')" :confirm-loading="sendingCode" :mask-closable="!sendingCode" @ok="confirmEmailCode" @cancel="cancelEmailCaptcha"><p class="captcha-dialog-description">{{ $t('login.captchaDialogDescription') }}</p><div class="captcha-field"><a-input v-model:value="emailCaptchaCode" size="large" :maxlength="4" :placeholder="$t('login.captchaPlaceholder')" @press-enter="confirmEmailCode" /><button type="button" class="captcha-image" :aria-label="$t('login.refreshCaptcha')" @click="refreshCaptcha"><img v-if="captcha.image" :src="captcha.image" :alt="$t('login.captcha')" /><ReloadOutlined v-else /></button></div></a-modal>
-  </main>
+  </component>
 </template>
 
 <script setup>
 import {computed, defineComponent, h, onBeforeUnmount, onMounted, reactive, ref} from 'vue'
-import {RouterLink, useRouter} from 'vue-router'
+import {useRouter} from 'vue-router'
 import {useI18n} from 'vue-i18n'
 import {Button, Input, message} from 'ant-design-vue'
-import {GlobalOutlined, LockOutlined, MailOutlined, ReloadOutlined, SafetyCertificateOutlined, UserOutlined} from '@ant-design/icons-vue'
+import {LockOutlined, MailOutlined, ReloadOutlined, SafetyCertificateOutlined, UserOutlined} from '@ant-design/icons-vue'
 import {getCaptcha, getVerificationConfig, loginAdmin, loginUser, registerUser, resetUserPassword, sendEmailCode} from '../api'
 import {marked} from 'marked'
+import LanguageToggle from '../components/LanguageToggle.vue'
+import MetrixBrand from '../components/MetrixBrand.vue'
+import ThemeToggle from '../components/ThemeToggle.vue'
 
-const {locale, t} = useI18n()
+defineProps({embedded: {type: Boolean, default: false}})
+
+const {t} = useI18n()
 const router = useRouter()
 const mode = ref('user')
 const loading = ref(false)
@@ -127,7 +128,6 @@ const VerificationFields = defineComponent({
   }
 })
 
-const switchLanguage = () => { locale.value = locale.value === 'zh-CN' ? 'en' : 'zh-CN'; localStorage.setItem('locale', locale.value) }
 const changeMode = nextMode => { mode.value = nextMode; if (captchaEnabled.value && (nextMode === 'admin' || nextMode === 'user' || nextMode === 'register' || nextMode === 'reset')) refreshCaptcha() }
 const refreshCaptcha = async () => { if (!captchaEnabled.value) return; try { const response = await getCaptcha(); Object.assign(captcha, response.data) } catch { message.error(t('login.captchaLoadFailed')) } }
 const persistSession = response => { localStorage.setItem('token', response.data.token); localStorage.setItem('userId', response.data.userId); localStorage.setItem('username', response.data.username); localStorage.setItem('userRole', response.data.role); router.push('/workspace') }
@@ -145,5 +145,76 @@ onBeforeUnmount(() => clearInterval(codeCountdownTimer))
 </script>
 
 <style scoped>
-.login-page{min-height:100vh;display:flex;flex-direction:column;background:radial-gradient(circle at 5% 20%,var(--theme-raised, #e8f0ff) 0,transparent 27%),radial-gradient(circle at 90% 90%,var(--theme-red-surface, #fce9e2) 0,transparent 28%),var(--theme-raised, #f8fafc);color:var(--theme-text, #17253c)}.login-header{width:min(1200px,100%);height:76px;margin:0 auto;padding:0 28px;display:flex;align-items:center;justify-content:space-between}.brand{display:flex;gap:9px;align-items:center;text-decoration:none;color:var(--theme-text, #17253c);font-weight:800;font-size:19px}.brand img{width:31px;height:31px;object-fit:contain}.language-button,.form-links button,.mode-switch button,.legal-row button,.admin-entry,.privacy-agreement button{background:none;border:0;cursor:pointer;font:inherit}.language-button{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--theme-text, #56647a)}.login-shell{width:min(1020px,100%);margin:auto;display:grid;grid-template-columns:.9fr 1fr;align-items:center;gap:72px;padding:40px 28px 70px}.login-aside{padding:24px}.aside-eyebrow,.mode-label{font:500 11px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:1.5px;color:var(--theme-red, #e76b55)}.login-aside h1{font-size:clamp(37px,4vw,54px);letter-spacing:-2.5px;line-height:1.1;margin:20px 0;color:var(--theme-text, #1e2d45)}.login-aside>p:not(.aside-eyebrow){max-width:330px;font-size:15px;line-height:1.8;color:var(--theme-muted, #657288)}.aside-line{height:1px;width:70px;background:#ed785f;margin:35px 0 18px}.login-aside small{font-size:12px;color:var(--theme-muted, #7f8c9d)}.auth-card{padding:42px 38px 26px;border:1px solid var(--theme-line, #e1e7f0);border-radius:19px;background:var(--theme-surface, rgba(255,255,255,.86));box-shadow:0 24px 65px rgba(28,46,74,.12);backdrop-filter:blur(14px)}.auth-card h2{font-size:27px;letter-spacing:-1px;margin:9px 0}.mode-description{font-size:13px;line-height:1.65;color:var(--theme-muted, #738094);margin-bottom:26px}.auth-card :deep(.ant-form-item){margin-bottom:17px}.auth-card :deep(.ant-form-item-label>label),.field-label{font-size:13px;font-weight:600;color:var(--theme-text, #344259)}.auth-card :deep(.ant-input),.auth-card :deep(.ant-input-affix-wrapper){border-radius:9px;border-color:var(--theme-line, #dbe3ed)}.auth-card :deep(.ant-btn-primary){background:var(--theme-raised, #243a5b);border-color:var(--theme-line, #243a5b);border-radius:9px;height:42px;box-shadow:none}.form-links{display:flex;justify-content:flex-end;margin:-6px 0 19px}.form-links button,.mode-switch button{font-size:13px;color:var(--theme-blue, #537bbd)}.mode-switch{text-align:center;margin:19px 0 3px;font-size:13px;color:var(--theme-muted, #778397)}.verification-fields{display:grid;gap:8px;margin-bottom:20px}.field-label{margin-top:1px}.captcha-field,.email-code-field{display:flex;gap:9px}.captcha-field :deep(.ant-input),.email-code-field :deep(.ant-input){flex:1}.captcha-image{width:120px;height:40px;padding:0;display:grid;place-content:center;overflow:hidden;border:1px solid var(--theme-line, #dbe3ed);border-radius:8px;background:var(--theme-raised, #f0f3f7);cursor:pointer}.captcha-image img{display:block;width:120px;height:40px}.email-code-field :deep(.ant-btn){height:40px;border-radius:8px;font-size:12px;white-space:nowrap}.privacy-agreement{display:flex;margin:-3px 0 20px;color:var(--theme-muted, #778397);font-size:12px;line-height:1.6}.privacy-agreement button{padding:0;color:var(--theme-blue, #537bbd)}.captcha-dialog-description{margin:0 0 17px;font-size:13px;line-height:1.6;color:var(--theme-muted, #6f7c90)}.legal-row{margin:24px 0 13px;text-align:center;font-size:11px;color:var(--theme-muted, #99a3b2)}.legal-row button{padding:0;color:var(--theme-blue, #537bbd);font-size:11px}.admin-entry{margin:0 auto;display:flex;gap:6px;align-items:center;color:var(--theme-muted, #758297);font-size:12px}.disclaimer-content{max-height:60vh;overflow:auto;font-size:14px;line-height:1.75;color:var(--theme-text, #374151)}footer{padding:22px;text-align:center;font-size:12px;color:var(--theme-muted, #98a3b2)}@media(max-width:760px){.login-header{height:68px;padding:0 20px}.login-shell{display:block;padding:15px 20px 42px}.login-aside{display:none}.auth-card{max-width:520px;margin:auto;padding:34px 25px 23px}.captcha-image{width:105px}.captcha-image img{width:105px}.login-page{min-height:100svh}}
+.login-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  color: var(--workspace-ink);
+  background: radial-gradient(ellipse at 50% 82%, var(--workspace-soft-accent), transparent 68%), var(--workspace-surface);
+}
+
+.login-shell {
+  width: min(100% - 2 * var(--workspace-gutter), 420px);
+  margin: auto;
+  background: var(--workspace-surface);
+  border: 1px solid var(--workspace-line);
+  border-radius: var(--workspace-radius);
+  box-shadow: var(--workspace-overlay-shadow);
+}
+
+.auth-card { padding: clamp(22px, 4.6vw, 36px); }
+.login-brand { display: flex; margin: 0 auto 20px; }
+.auth-card h1 { margin: 0 0 7px; font-size: 1.55rem; line-height: 1.25; letter-spacing: -.025em; text-align: center; }
+.mode-description { margin: 0 0 22px; color: var(--workspace-muted); font-size: 14px; line-height: 1.6; text-align: center; }
+
+.login-page.embedded { min-height: 0; border-radius: inherit; background: transparent; }
+.embedded .login-shell { width: 100%; margin: 0; background: transparent; border: 0; box-shadow: none; }
+
+.auth-card :deep(.ant-form-item) { margin-bottom: 16px; }
+.auth-card :deep(.ant-form-item-label > label), .field-label { color: var(--workspace-ink); font-size: 13px; font-weight: 630; }
+.auth-card :deep(.ant-form-item-label) { padding-bottom: 5px; }
+.auth-card :deep(.ant-form-item-control-input) { min-height: 42px; }
+.auth-card :deep(.ant-btn-primary) { height: 43px; border-radius: 999px; font-weight: 630; }
+
+.form-links { display: flex; justify-content: flex-end; margin: -5px 0 13px; }
+:is(.form-links, .mode-switch, .legal-row, .privacy-agreement) button, .admin-entry {
+  padding: 2px 0;
+  color: var(--workspace-accent);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+:is(.form-links, .mode-switch, .legal-row, .privacy-agreement) button:hover, .admin-entry:hover { text-decoration: underline; }
+.form-links, .mode-switch { font-size: 13px; }
+.mode-switch, .legal-row { color: var(--workspace-muted); text-align: center; }
+.mode-switch { margin: 14px 0 0; }
+.legal-row { margin: 16px 0 6px; padding-top: 13px; border-top: 1px solid var(--workspace-line); font-size: 12px; }
+.admin-entry { display: flex; align-items: center; gap: 6px; margin: 0 auto; font-size: 12px; }
+
+.verification-fields { display: grid; gap: 6px; margin-bottom: 16px; }
+.captcha-field, .email-code-field { display: flex; align-items: center; gap: 8px; }
+.captcha-field :deep(.ant-input), .email-code-field :deep(.ant-input) { flex: 1; min-width: 0; }
+.captcha-image {
+  display: grid;
+  place-items: center;
+  flex: 0 0 clamp(86px, 10vw, 120px);
+  height: 40px;
+  padding: 0;
+  overflow: hidden;
+  color: var(--workspace-accent);
+  background: var(--workspace-raised);
+  border: 1px solid var(--workspace-line);
+  border-radius: var(--workspace-control-radius);
+  cursor: pointer;
+}
+
+.captcha-image img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.email-code-field :deep(.ant-btn) { height: 40px; padding-inline: 9px; font-size: 12px; white-space: nowrap; }
+.privacy-agreement { display: flex; align-items: center; margin: 0 0 16px; color: var(--workspace-muted); font-size: 12px; }
+.captcha-dialog-description { margin: 0 0 16px; color: var(--workspace-muted); font-size: 13px; line-height: 1.6; }
+.disclaimer-content { max-height: 60dvh; overflow: auto; color: var(--workspace-ink); font-size: 14px; line-height: 1.75; }
+footer { padding: 24px var(--workspace-gutter); color: var(--workspace-muted); font-size: 12px; text-align: center; }
+
 </style>

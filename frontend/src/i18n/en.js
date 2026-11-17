@@ -3,13 +3,46 @@ import dailyMarket from './dailyMarket.en.js'
 export default {
   dailyMarket,
   landing: {
-    navigation: 'Website navigation', navigationFeatures: 'Features', navigationAdvantages: 'Why Metrix', navigationGuide: 'Getting started', login: 'Log in', startNow: 'Get started', exploreFeatures: 'Explore features',
-    eyebrow: 'AI-powered research workspace', titleStart: 'Make every', titleEmphasis: 'investment decision', titleEnd: 'more informed', description: 'Metrix brings market data, AI insight, and your research process into one workspace—so information becomes a decision you can act on.', trustLine: 'Your research process stays in your hands', signal: 'Trend confirming',
-    featuresEyebrow: 'Core capabilities', featuresTitle: 'One workspace, from information to conviction', featuresDescription: 'Built around a real research workflow, Metrix connects scattered signals, opinions, and actions naturally.',
-    features: {research:{title:'AI instrument analysis',description:'Move from technicals and fundamentals to related news in a structured research brief.',note:'Start with a question'},review:{title:'Market review',description:'Connect breadth, capital flows, and sentiment to understand what moved the market today.',note:'Build daily market awareness'},portfolio:{title:'Portfolio management',description:'Keep accounts, holdings, and research conclusions together—so every decision is traceable.',note:'Invest with continuity'}},
-    advantagesEyebrow: 'Why Metrix', advantagesTitle: 'A tool should not decide for you. It should help you see clearly.', advantagesDescription: 'Made for patient researchers: less noise, and a clearer path from question to evidence to conviction.', advantages: {focus:{title:'Questions, not endless feeds',description:'Each analysis begins with your question, protecting attention for what actually matters.'},traceable:{title:'Research you can revisit',description:'Connect market observations, instrument analysis, and portfolio decisions while preserving context.'},yours:{title:'Your judgment remains yours',description:'AI contributes information and perspectives; the final call, risk control, and action remain yours.'}}, metricLabel:'Research method', metricTitle:'Ask first. Find the answer.', metricDescription:'Build your own research rhythm with a process you can repeat.',
-    guideEyebrow: 'Getting started', guideTitle: 'Your research workspace in three steps', goToLogin: 'Go to login', guide: {login:{title:'Enter the workspace',description:'Sign in to Metrix and start building your own research environment.'},configure:{title:'Configure your sources',description:'Connect market data, news, and AI models so the workspace fits how you research.'},research:{title:'Start with one question',description:'Analyze instruments, review the market, and record opinions—so every session compounds.'}},
-    ctaTitle:'Build your investment research system', ctaDescription:'Let information serve judgment, and let judgment stand up to review.', loginToWorkspace:'Open workspace', footer:'Metrix · An AI research workspace for independent thinkers', disclaimer:'Disclaimer: Information, analysis, and tools on this website are for learning and research only. They are not investment advice, an offer, or a recommendation. Investing involves risk; make independent decisions based on your own circumstances.', contactTitle:'Contact us', contactDescription:'Scan to follow the Metrix Lab WeChat official account for product updates and research notes.', wechatQrAlt:'Metrix Lab WeChat official account QR code'
+    navigation: 'Website navigation', navigationFeatures: 'Features', navigationAdvantages: 'Why Metrix', navigationGuide: 'Quick start',
+    login: 'Log in', startNow: 'Get started', exploreFeatures: 'Explore Metrix online',
+    description: 'Metrix is an AI workspace for A-share research. Follow quotes, analyze stocks, review the market, and track accounts and holdings in one place.',
+    featuresTitle: 'Your A-share research workspace',
+    featuresDescription: 'Keep quotes, stock research, portfolio tracking, and market review in one workspace.',
+    scenesLabel: 'Choose a feature',
+    scenes: {
+      market: {tab: 'Quotes', title: 'Follow quotes and unusual moves', description: 'Search synced A-share instruments to check intraday prices, candlesticks, moving averages, drawdowns, and unusual moves in your holdings.'},
+      research: {tab: 'Research', title: 'Turn stock data into research', description: 'Summarize technical signals, flows, and related news in a structured report. Read earlier analyses for the same instrument.'},
+      portfolio: {tab: 'Portfolio', title: 'See your accounts and holdings together', description: 'Track positions, costs, and returns across accounts, and run batch analysis for selected holdings.'},
+      review: {tab: 'Review', title: 'See what moved the market', description: 'Review index performance, market breadth, and capital flows in a daily market summary.'}
+    },
+    preview: {
+      sample: 'Metrix interface · Sample data',
+      screens: {
+        chatHero: 'Ask Me with an example conversation about Kweichow Moutai’s price and trading volume',
+        market: 'Market workbench with a quote summary, candlestick chart, and holdings',
+        research: 'Stock assessment with history, quote metrics, and a research summary',
+        portfolio: 'Portfolio with account totals and a holdings table',
+        review: 'Market review with review history, a summary, and index performance'
+      }
+    },
+    integrationsTitle: 'Connect your research data and tools',
+    integrationsDescription: 'Configure quotes, news, and AI models for the way you research.',
+    providers: {market: 'THS market data', news: 'Bocha Search', models: 'OpenAI-compatible APIs', localModels: 'Ollama', notifications: 'Feishu notifications'},
+    advantagesTitle: 'Keep your research traceable',
+    advantagesDescription: 'Keep the context for each question, the data you looked at, and the conclusions you want to revisit.',
+    advantages: {
+      focus: {title: 'Start with a question', description: 'Find technical data, capital flows, and news for the stocks or market moves you are studying.'},
+      traceable: {title: 'Revisit earlier analysis', description: 'Read past stock assessments and daily reviews alongside recent information.'},
+      yours: {title: 'Make your own judgment', description: 'AI contributes information and analysis you can use to make your own investment and risk decisions.'}
+    },
+    guideTitle: 'Start researching in three steps', goToLogin: 'Open Metrix',
+    guide: {
+      login: {title: 'Sign in', description: 'Log in or create an account with your email.'},
+      configure: {title: 'Configure your sources', description: 'Connect market data, news, and AI models.'},
+      research: {title: 'Start researching', description: 'Search stocks, review markets, or manage holdings.'}
+    },
+    disclaimer: 'Disclaimer: Information, analysis, and tools on this website are for learning and research only. They are not investment advice, an offer, or a recommendation. Investing involves risk; make independent decisions based on your own circumstances.',
+    contactTitle: 'Contact us', contactDescription: 'Scan to follow the Metrix Lab WeChat official account for product updates and research notes.', wechatQrAlt: 'Metrix Lab WeChat official account QR code'
   },
   login: {
     title: 'Metrix',
@@ -29,11 +62,6 @@ export default {
     privacyPolicy: 'Privacy Policy',
     privacyAgreementRequired: 'Please read and agree to the Privacy Policy',
     privacyPolicyContent: '## Privacy Policy\n\nMetrix values your personal information and research data. Please read this notice before registering.\n\n## Information we collect\n\nWhen you register, we collect your display name, email address, and securely hashed password. While you use the service, we also process the account configuration and activity data needed to provide the research workspace.\n\n## How we use it\n\nWe use this information only to create and protect your account, send essential email-verification notices, provide and improve Metrix, and maintain system security.\n\n## Protection\n\nWe apply reasonable technical and organizational safeguards. We do not sell your personal information unless required by law or with your explicit consent.\n\n## Your choices\n\nYou may stop using the service at any time. For questions or requests about your personal information, contact us using the contact details published by the platform.',
-    asideTitle: 'Turn research into the foundation of every decision.',
-    asideDescription: 'Bring market data, AI insight, and your accumulated knowledge into one investment research workspace.',
-    asideNote: 'Let information serve judgment, and judgment stand up to review.',
-    userEyebrow: 'User access',
-    adminEyebrow: 'Administrator access',
     userLoginTitle: 'Welcome back',
     userLoginDescription: 'Sign in to your workspace with your registered email and password.',
     adminLoginTitle: 'Administrator sign in',
@@ -111,6 +139,7 @@ export default {
     logout: 'Logout',
   },
   layout: {
+    navigation: 'Workspace navigation',
     logo: 'Metrix',
     systemName: 'Metrix',
     admin: 'Admin',
@@ -284,6 +313,7 @@ export default {
   analysis: {
     researchBrief: 'Research brief',
     records: 'Records',
+    deleteRecord: 'Delete assessment record',
     refresh: 'Refresh',
     seconds: 's',
     noRecords: 'No records yet',

@@ -107,7 +107,7 @@
 
         <a-card v-else :bordered="false" class="detail-card">
           <div class="empty-detail">
-            <FundOutlined style="font-size: 48px; color: #d9d9d9;" />
+            <FundOutlined class="empty-detail-icon" />
             <p>{{ $t('marketReview.selectHint') }}</p>
           </div>
         </a-card>
@@ -354,9 +354,9 @@ onUnmounted(() => {
 
 <style scoped>
 .market-review-page {
-  --workspace-content-width: 1500px;
   padding: 20px 24px;
-  height: calc(100vh - 84px);
+  height: calc(100dvh - 142px);
+  min-height: 540px;
   overflow: hidden;
   background: var(--theme-raised, #f7f9fc);
 }
@@ -541,14 +541,14 @@ onUnmounted(() => {
   margin: 0 0 28px;
   padding: 24px 26px;
   color: var(--theme-text, #e8effa);
-  background: radial-gradient(circle at 88% 0%, #3c5787 0, transparent 34%), var(--theme-raised, #1b2b45);
+  background: var(--workspace-soft-accent);
   border: 0;
   border-radius: 16px;
 }
 
 .core-summary-title {
   margin-bottom: 10px;
-  color: var(--theme-blue, #9eb7e3);
+  color: var(--workspace-accent);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: .12em;
@@ -654,7 +654,7 @@ onUnmounted(() => {
 }
 
 @media (max-width: 900px) {
-  .market-review-page { height: auto; min-height: calc(100vh - 76px); padding: 18px; overflow: visible; }
+  .market-review-page { height: auto; min-height: calc(100dvh - 142px); padding: 18px; overflow: visible; }
   .market-review-layout { grid-template-columns: 1fr; gap: 20px; height: auto; }
   .left-panel, .right-panel, .records-card, .detail-card { height: auto; }
   .records-list { max-height: 360px; }
@@ -668,16 +668,18 @@ onUnmounted(() => {
   .core-summary { padding: 20px; }
 }
 
-/* 市场日评：左侧作为时间线导航，右侧专注阅读当天的研究结论。 */
-.market-review-page { padding: 24px 28px; background: radial-gradient(circle at 92% 0%, var(--theme-raised, #edf3ff) 0, transparent 31%), var(--theme-raised, #f7f9fc); }.market-review-layout { grid-template-columns: 350px minmax(0, 1fr); gap: 24px; }.records-card { overflow: hidden; color: var(--theme-text, #dce7f8); background: radial-gradient(circle at 100% 0%, #38547f 0, transparent 35%), var(--theme-raised, #18263d); border-color: var(--theme-line, #2d4261); border-radius: 16px; box-shadow: 0 16px 34px rgba(24, 38, 61, .16); }.records-card :deep(.ant-card-head) { border-bottom-color: rgba(194, 214, 242, .16); }.records-header { color: var(--theme-text, #f2f6fd); }.records-card .review-name { color: var(--theme-text, #f1f5fc); font-size: 14px; }.records-card .time-info, .records-card .end-hint, .records-card .empty-tip, .records-card .empty-hint { color: var(--theme-muted, #a9bbd5); }.records-list :deep(.ant-list-item:hover) { background: rgba(255, 255, 255, .07); }.records-list .active { background: rgba(130, 167, 227, .24); box-shadow: inset 2px 0 #a9c7ff; }.records-list .active .review-name { color: var(--theme-text, #ffffff) !important; }.records-list .active .time-info { color: var(--theme-text, #d7e6ff) !important; }.records-list :deep(.ant-list-item) { margin: 3px 9px; }.detail-card { padding: 0 24px; background: var(--theme-surface, rgba(255, 255, 255, .94)); border: 1px solid var(--theme-line, #e1e8f1); border-radius: 16px; box-shadow: 0 12px 30px rgba(34, 51, 79, .06); }.detail-card :deep(.ant-card-head) { border-bottom-color: var(--theme-line, #d7e1ed); }.detail-card :deep(.ant-card-body) { padding-right: 4px; padding-left: 4px; }.review-detail { max-width: 980px; padding-right: 12px; padding-left: 12px; }.review-detail :deep(h1), .review-detail :deep(h2), .review-detail :deep(h3) { color: var(--theme-text, #203653); }.review-detail :deep(h2) { padding-top: 14px; border-top: 1px solid var(--theme-line, #e5ebf2); }
-.records-list :deep(.ant-list-item) { padding: 8px 7px; margin: 2px 6px; cursor: pointer; }.records-list .active .review-name { color: var(--theme-text, #ffffff) !important; }.records-list .active .time-info { color: var(--theme-text, #d7e6ff) !important; }
+.market-review-page { padding: 0; background: transparent; }
+.market-review-layout { gap: 16px; }
+.records-card, .detail-card { background: var(--workspace-surface); }
+.records-list :deep(.ant-list-item) { margin: 3px 8px; padding: 10px; border-radius: var(--workspace-control-radius); }
+.records-list :deep(.ant-list-item.active) { background: var(--workspace-soft-accent); box-shadow: inset 2px 0 var(--workspace-accent); }
+.detail-card { padding-inline: clamp(12px, 2.2vw, 24px); }
+.detail-card :deep(.ant-card-body) { padding-inline: 4px; }
+.review-detail { max-width: 76ch; overflow-wrap: anywhere; }
+.empty-detail-icon { color: var(--workspace-accent); font-size: 42px; }
 
-/* 复盘页以日期导航为辅，正文保留舒展的阅读宽度。 */
-@media (min-width: 1200px) {
-  .market-review-layout { grid-template-columns: 350px minmax(0, 1fr); gap: 28px; }
-  .detail-card { max-width: 1180px; }
+@media (max-width: 900px) {
+  .market-review-page { min-height: 0; padding: 0; }
+  .market-review-layout { grid-template-columns: minmax(0, 1fr); }
 }
-
-/* 默认浅色：复盘日期导航退到次级层，阅读内容保持主视觉。 */
-.records-card { color: var(--theme-text, #263957); background: var(--theme-surface, #fff); border-color: var(--theme-line, #dfe7f0); box-shadow: 0 10px 26px rgba(34, 51, 79, .05); }.records-card :deep(.ant-card-head) { border-bottom-color: var(--theme-line, #e6ecf3); }.records-header, .records-card .review-name { color: var(--theme-text, #263957); }.records-card .time-info, .records-card .end-hint, .records-card .empty-tip, .records-card .empty-hint { color: var(--theme-muted, #8190a4); }.records-list :deep(.ant-list-item:hover) { background: var(--theme-raised, #f4f7fb); }.records-list .active { background: var(--theme-raised, #edf3ff); box-shadow: inset 2px 0 #5878c2; }.records-list .active .review-name { color: var(--theme-text, #263957) !important; }.records-list .active .time-info { color: var(--theme-muted, #5b7193) !important; }
 </style>

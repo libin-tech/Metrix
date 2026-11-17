@@ -11,7 +11,7 @@
           </template>
 
           <!-- 分析记录列表 -->
-          <div class="records-list" v-if="analysisRecords.length > 0" @scroll="handleScroll">
+          <div v-if="analysisRecords.length > 0" class="records-list" role="region" :aria-label="$t('analysis.records')" tabindex="0" @scroll="handleScroll">
             <a-list :data-source="analysisRecords">
               <template #renderItem="{ item }">
                 <a-list-item
@@ -21,34 +21,20 @@
                   }"
                   @click="selectRecord(item)"
                 >
-                  <a-list-item-meta>
-                    <template #title>
-                      <div class="record-title">
-                        <LoadingOutlined v-if="item.status === 'ANALYZING'" class="loading-spinner" />
-                        <span v-else :class="['status-dot', item.status.toLowerCase()]"></span>
-                        <span class="stock-code">{{ item.stockCode }}</span>
-                        <span class="stock-name">{{ item.stockName }}</span>
-                        <a-tag v-if="item.isHolding" color="blue" size="small" class="holding-tag">{{ $t('analysis.holdingTag') }}</a-tag>
-                      </div>
-                    </template>
-                    <template #description>
-                      <span class="time-info">
-                        <ClockCircleOutlined /> {{ formatTime(item.createTime) }}
-                      </span>
-                      <span class="duration" v-if="item.duration">
-                        <FieldTimeOutlined /> {{ item.duration }}{{ $t('analysis.seconds') }}
-                      </span>
-                    </template>
-                  </a-list-item-meta>
-                  <a-button
-                    type="text"
-                    danger
-                    size="small"
-                    class="delete-btn"
-                    @click.stop="handleDelete(item.id)"
-                  >
-                    <DeleteOutlined />
-                  </a-button>
+                  <div class="record-title">
+                    <LoadingOutlined v-if="item.status === 'ANALYZING'" class="loading-spinner" />
+                    <span v-else :class="['status-dot', item.status.toLowerCase()]"></span>
+                    <span class="stock-code">{{ item.stockCode }}</span>
+                    <span class="stock-name" :title="item.stockName">{{ item.stockName }}</span>
+                    <a-tag v-if="item.isHolding" color="blue" class="holding-tag">{{ $t('analysis.holdingTag') }}</a-tag>
+                  </div>
+                  <div class="record-details">
+                    <time class="time-info" :datetime="item.createTime">{{ formatTime(item.createTime) }}</time>
+                    <span v-if="item.duration" class="duration">{{ item.duration }}{{ $t('analysis.seconds') }}</span>
+                    <a-button type="text" danger size="small" class="delete-btn" :aria-label="$t('analysis.deleteRecord')" @click.stop="handleDelete(item.id)">
+                      <DeleteOutlined />
+                    </a-button>
+                  </div>
                 </a-list-item>
               </template>
             </a-list>
@@ -517,9 +503,7 @@ import {
   AimOutlined,
   AppstoreOutlined,
   BarChartOutlined,
-  ClockCircleOutlined,
   DeleteOutlined,
-  FieldTimeOutlined,
   FileTextOutlined,
   InboxOutlined,
   LinkOutlined,
@@ -1158,17 +1142,14 @@ onUnmounted(() => {
 
 <style scoped>
 .analysis-page {
-  --workspace-content-width: 1500px;
-  padding: 20px;
-  height: calc(100vh - 84px);
-  overflow: hidden;
-  background: var(--theme-raised, #f5f7fa);
+  height: calc(100dvh - 142px);
+  min-height: 540px;
 }
 
 .analysis-layout {
   display: grid;
-  grid-template-columns: 350px 1fr;
-  gap: 20px;
+  grid-template-columns: clamp(400px, 44%, 438px) minmax(0, 1fr);
+  gap: 16px;
   height: 100%;
   overflow: hidden;
 }
@@ -1191,6 +1172,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  padding: 14px;
 }
 
 .queue-status {
@@ -1219,18 +1201,17 @@ onUnmounted(() => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  margin-right: 8px;
   flex-shrink: 0;
 }
 
 .status-dot.analyzing {
-  background-color: #1890ff;
+  background-color: var(--workspace-accent);
   box-shadow: 0 0 6px rgba(24, 144, 255, 0.6);
   animation: pulse-blue 2s infinite;
 }
 
 .loading-spinner {
-  margin-right: 8px;
+  flex-shrink: 0;
   font-size: 14px;
   color: var(--theme-blue, #1890ff);
   animation: spin 1s linear infinite;
@@ -1242,12 +1223,12 @@ onUnmounted(() => {
 }
 
 .status-dot.completed {
-  background-color: #52c41a;
+  background-color: var(--theme-green);
   box-shadow: 0 0 6px rgba(82, 196, 26, 0.6);
 }
 
 .status-dot.failed {
-  background-color: #f5222d;
+  background-color: var(--theme-red);
   box-shadow: 0 0 6px rgba(245, 34, 45, 0.6);
 }
 
@@ -1273,15 +1254,19 @@ onUnmounted(() => {
 
 .records-list {
   flex: 1;
-  overflow-y: auto;
+  overflow: auto;
   min-height: 0;
 }
 
+.records-list :deep(.ant-list-items) { min-width: 390px; }
+
 .records-list :deep(.ant-list-item) {
+  gap: 8px;
+  margin: 3px 0;
+  padding: 10px;
   cursor: pointer;
   transition: all 0.3s;
-  border-radius: 6px;
-  margin-bottom: 4px;
+  border-radius: var(--workspace-control-radius);
 }
 
 .records-list :deep(.ant-list-item:hover) {
@@ -1289,38 +1274,53 @@ onUnmounted(() => {
 }
 
 .records-list :deep(.ant-list-item.active) {
-  background: var(--theme-raised, #e6f7ff);
-  border-left: 3px solid var(--theme-line, #1890ff);
+  background: var(--workspace-soft-accent);
+  box-shadow: inset 2px 0 var(--workspace-accent);
 }
 
 .record-title {
   display: flex;
   align-items: center;
+  flex: 1;
+  min-width: 0;
+  gap: 6px;
+  white-space: nowrap;
 }
 
 .stock-code {
+  flex-shrink: 0;
   font-weight: bold;
   color: var(--theme-text, #333);
-  margin-right: 8px;
 }
 
 .stock-name {
+  min-width: 0;
+  overflow: hidden;
   color: var(--theme-text, #666);
   font-size: 14px;
+  text-overflow: ellipsis;
 }
 
 .holding-tag {
-  margin-left: auto;
-  margin-right: 3px;
+  flex-shrink: 0;
+  margin-inline: auto 0;
   font-size: 11px;
   line-height: 18px;
   vertical-align: middle;
 }
 
+.record-details {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 6px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
 .time-info {
   color: var(--theme-muted, #999);
   font-size: 12px;
-  margin-right: 12px;
 }
 
 .duration {
@@ -1329,16 +1329,21 @@ onUnmounted(() => {
 }
 
 .delete-btn {
+ flex-shrink: 0;
  opacity: 0;
  transition: opacity 0.3s;
 }
 
-.records-list :deep(.ant-list-item:hover) .delete-btn {
+.records-list :deep(.ant-list-item:is(:hover, :focus-within)) .delete-btn {
  opacity: 1;
 }
 
 .delete-btn:hover {
  background: var(--theme-raised, #fff2f0);
+}
+
+@media (hover: none) {
+  .delete-btn { opacity: 1; }
 }
 
 .empty-tip {
@@ -2328,7 +2333,7 @@ onUnmounted(() => {
 }
 
 .news-link:hover {
-  background: #1890ff;
+  background: var(--workspace-primary);
   color: var(--theme-text, #ffffff);
   text-decoration: none;
 }
@@ -2519,7 +2524,7 @@ onUnmounted(() => {
 }
 
 .news-link:hover {
-  background: #1890ff;
+  background: var(--workspace-primary);
   color: var(--theme-text, #ffffff);
   text-decoration: none;
 }
@@ -2544,10 +2549,6 @@ onUnmounted(() => {
 
 /* 响应式设计 */
 @media (max-width: 1200px) {
-  .analysis-layout {
-    grid-template-columns: 280px 1fr;
-  }
-  
   .metrics-grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -2967,12 +2968,8 @@ onUnmounted(() => {
   }
 }
 
-@media (max-width: 1100px) {
-}
 
 /* 投研简报：以判断和证据为主线，弱化后台式卡片堆叠。 */
-.analysis-page { background: var(--theme-raised, #f7f9fc); }
-.analysis-layout { gap: 32px; }
 .records-card,
 .analysis-form-card,
 .result-card { box-shadow: none; }
@@ -2996,7 +2993,7 @@ onUnmounted(() => {
 .records-card :deep(.ant-card-extra) { padding-left: 18px; }
 .records-refresh-button { color: var(--theme-muted, #5a7198); }
 .overview-content { padding: 28px 4px 0; }
-.price-hero { padding: 23px 26px; margin: 0 0 26px; color: var(--theme-text, #182a45); background: radial-gradient(circle at 90% 5%, var(--theme-blue-surface, #dfe9fb) 0, transparent 31%), var(--theme-raised, #edf3fb); border: 1px solid var(--theme-line, #dbe5f1); border-radius: 16px; }
+.price-hero { padding: 23px 26px; margin: 0 0 26px; color: var(--theme-text, #182a45); background: var(--workspace-soft-accent); border: 1px solid var(--theme-line, #dbe5f1); border-radius: 16px; }
 .ph-label, .ph-stat-label, .ph-vol-label { color: var(--theme-muted, #72819a); }
 .ph-price { color: var(--theme-text, #1f3151); }
 .ph-price.up, .ph-change-pct.up, .ph-change-amt.up, .ph-stat-value.high { color: var(--theme-red, #c94755); }
@@ -3042,20 +3039,18 @@ onUnmounted(() => {
   .price-hero { padding: 20px; }
 }
 
-/* 标的研究工作台：将任务导航与研究内容分层，避免后台表单的视觉感受。 */
-.analysis-page { padding: 24px 28px; background: radial-gradient(circle at 92% 0%, var(--theme-raised, #edf3ff) 0, transparent 31%), var(--theme-raised, #f7f9fc); }.analysis-layout { grid-template-columns: 350px minmax(0, 1fr); gap: 24px; }.records-card { overflow: hidden; color: var(--theme-text, #dce7f8); background: radial-gradient(circle at 100% 0%, #38547f 0, transparent 35%), var(--theme-raised, #18263d); border: 1px solid var(--theme-line, #2d4261); border-radius: 16px; box-shadow: 0 16px 34px rgba(24, 38, 61, .16); }.records-card :deep(.ant-card-head) { border-bottom-color: rgba(194, 214, 242, .16); }.records-card :deep(.ant-card-head-title) { color: var(--theme-text, #f2f6fd); font-size: 15px; }.records-refresh-button { color: var(--theme-text, #b9cdea); }.records-refresh-button:hover { color: var(--theme-text, #fff); background: rgba(255, 255, 255, .08); }.records-list :deep(.ant-list-item) { margin: 3px 9px; border-radius: 10px; }.records-list :deep(.ant-list-item:hover) { background: rgba(255, 255, 255, .07); }.records-list :deep(.ant-list-item.active) { background: rgba(130, 167, 227, .24); box-shadow: inset 2px 0 #a9c7ff; }.records-list :deep(.ant-list-item.active .stock-code), .records-list :deep(.ant-list-item.active .stock-name) { color: var(--theme-text, #ffffff) !important; }.records-list :deep(.ant-list-item.active .time-info), .records-list :deep(.ant-list-item.active .duration) { color: var(--theme-text, #d7e6ff) !important; }.records-card .stock-code, .records-card .stock-name { color: var(--theme-text, #f1f5fc); }.records-card .time-info, .records-card .duration, .records-card .end-hint, .records-card .empty-tip, .records-card .empty-hint { color: var(--theme-muted, #a9bbd5); }.records-card .holding-tag { border: 0; }.analysis-form-card { overflow: hidden; color: var(--theme-text, #e7effc); background: radial-gradient(circle at 92% 0%, #5476ae 0, transparent 37%), var(--theme-raised, #263c61); border: 0; border-radius: 16px; box-shadow: 0 12px 27px rgba(41, 64, 102, .16); }.analysis-form-card :deep(.ant-card-head) { min-height: 58px; color: var(--theme-text, #fff); border-bottom-color: rgba(224, 236, 255, .2); }.analysis-form-card :deep(.ant-card-head-title) { color: var(--theme-text, #fff); font-weight: 700; }.analysis-form-card :deep(.ant-card-body) { padding: 16px 22px; }.analysis-form-card :deep(.ant-checkbox-wrapper) { color: var(--theme-text, #d9e6fb); }.analysis-form-card :deep(.ant-input), .analysis-form-card :deep(.ant-select-selector) { background: var(--theme-surface, rgba(255, 255, 255, .94)) !important; border-color: transparent !important; }.result-card { padding: 0 4px; }.result-card :deep(.ant-card-head) { border-bottom-color: var(--theme-line, #d7e1ed); }
-.records-list :deep(.ant-list-item) { padding: 9px 8px; }.records-list :deep(.ant-list-item.active .stock-code), .records-list :deep(.ant-list-item.active .stock-name) { color: var(--theme-text, #ffffff) !important; }.records-list :deep(.ant-list-item.active .time-info), .records-list :deep(.ant-list-item.active .duration) { color: var(--theme-text, #d7e6ff) !important; }
-.records-list :deep(.ant-list-item.analyzing-item .stock-code), .records-list :deep(.ant-list-item.analyzing-item .stock-name), .records-list :deep(.ant-list-item.analyzing-item .time-info), .records-list :deep(.ant-list-item.analyzing-item .duration) { color: var(--theme-text, #18263d) !important; }
+.records-card, .analysis-form-card, .result-card { background: var(--workspace-surface); }
+.records-refresh-button { color: var(--workspace-accent); }
+.analysis-form-card :deep(.ant-card-body) { padding: 16px clamp(12px, 2vw, 22px); }
+.result-card { padding-inline: clamp(12px, 2vw, 20px); }
 
-/* 研究页采用窄导航轨，让分析表单和研究报告成为唯一主工作面。 */
-@media (min-width: 1200px) {
-  .analysis-layout { grid-template-columns: 320px minmax(0, 1fr); gap: 28px; }
-  .right-panel { gap: 20px; }
-  .result-card { max-width: 1180px; }
+@media (max-width: 900px) {
+  .analysis-page { height: auto; min-height: 0; }
+  .analysis-layout { grid-template-columns: minmax(0, 1fr); height: auto; overflow: visible; }
+  .left-panel, .right-panel, .records-card { height: auto; }
+  .records-list { max-height: 320px; }
 }
 
-/* 默认浅色：记录导航、操作区和报告区使用同一表面体系。 */
-.records-card { color: var(--theme-text, #263957); background: var(--theme-surface, #fff); border-color: var(--theme-line, #dfe7f0); box-shadow: 0 10px 26px rgba(34, 51, 79, .05); }.records-card :deep(.ant-card-head) { border-bottom-color: var(--theme-line, #e6ecf3); }.records-card :deep(.ant-card-head-title), .records-card .stock-code, .records-card .stock-name { color: var(--theme-text, #263957); }.records-refresh-button { color: var(--theme-blue, #5878a7); }.records-refresh-button:hover { color: var(--theme-blue, #3160a4); background: var(--theme-raised, #edf3ff); }.records-card .time-info, .records-card .duration, .records-card .end-hint, .records-card .empty-tip, .records-card .empty-hint { color: var(--theme-muted, #8190a4); }.records-list :deep(.ant-list-item:hover) { background: var(--theme-raised, #f4f7fb); }.records-list :deep(.ant-list-item.active) { background: var(--theme-raised, #edf3ff); box-shadow: inset 2px 0 #5878c2; }.records-list :deep(.ant-list-item.active .stock-code), .records-list :deep(.ant-list-item.active .stock-name) { color: var(--theme-text, #263957) !important; }.records-list :deep(.ant-list-item.active .time-info), .records-list :deep(.ant-list-item.active .duration) { color: var(--theme-muted, #5b7193) !important; }.analysis-form-card { color: var(--theme-text, #263957); background: radial-gradient(circle at 92% 0%, var(--theme-blue-surface, #dce9fb) 0, transparent 38%), var(--theme-raised, #f6f9fe); border: 1px solid var(--theme-line, #d9e5f3); box-shadow: 0 10px 24px rgba(41, 64, 102, .05); }.analysis-form-card :deep(.ant-card-head), .analysis-form-card :deep(.ant-card-head-title) { color: var(--theme-text, #263957); border-bottom-color: var(--theme-line, #dce7f3); }.analysis-form-card :deep(.ant-checkbox-wrapper) { color: var(--theme-text, #52657f); }.analysis-form-card :deep(.ant-input), .analysis-form-card :deep(.ant-select-selector) { background: var(--theme-surface, #fff) !important; border-color: var(--theme-line, #cfdaea) !important; }
 </style>
 
 <style>

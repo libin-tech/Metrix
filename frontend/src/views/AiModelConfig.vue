@@ -224,22 +224,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.config-container {
-  padding: 0;
-}
-
-.config-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.config-header h3 {
-  margin: 0;
-  color: var(--theme-text, #333);
-}
-
 .help-text {
   display: block;
   font-size: 12px;

@@ -1,51 +1,81 @@
-/* Dark overrides use semantic colors; existing light colors remain each declaration's fallback. */
+:root {
+  color-scheme: light;
+  --workspace-ink: #102348;
+  --workspace-muted: #526581;
+  --workspace-line: #dce6f5;
+  --workspace-surface: #fff;
+  --workspace-canvas: #f5f8fe;
+  --workspace-raised: #f0f5fc;
+  --workspace-primary: #082878;
+  --workspace-primary-hover: #123e9d;
+  --workspace-accent: #0858d8;
+  --workspace-soft-accent: #e5efff;
+  --workspace-on-primary: #fff;
+  --workspace-chart: #0866df;
+  --workspace-halo: #aedaff;
+  --workspace-halo-cool: #dcf4ff;
+  --workspace-shadow: 0 1px 3px #1023480b;
+  --workspace-overlay-shadow: 0 20px 52px #183e861a;
+  --workspace-radius: 14px;
+  --workspace-control-radius: 9px;
+  --workspace-gutter: clamp(14px, 3vw, 36px);
+  --workspace-font: "Source Sans 3 Variable", "Noto Sans SC Variable", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --workspace-title-size: clamp(1.6rem, 2.8vw, 2rem);
+
+  --theme-surface: var(--workspace-surface);
+  --theme-raised: var(--workspace-raised);
+  --theme-text: var(--workspace-ink);
+  --theme-muted: var(--workspace-muted);
+  --theme-line: var(--workspace-line);
+  --theme-red: #b33a46;
+  --theme-green: #19734e;
+  --theme-amber: #8a5b12;
+  --theme-blue: #345f9f;
+  --theme-purple: #7046aa;
+  --theme-red-surface: #fbeced;
+  --theme-green-surface: #e8f5ed;
+  --theme-amber-surface: #fbf1dc;
+  --theme-blue-surface: #e9f0fb;
+  --theme-purple-surface: #f1eafb;
+}
+
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --theme-surface: #172231;
-  --theme-raised: #1d2b3f;
-  --theme-text: #e0e8f3;
-  --theme-muted: #a3b0c4;
-  --theme-line: #34445b;
-  --theme-red: #ff8790;
-  --theme-green: #5dcc9e;
-  --theme-amber: #f3be69;
-  --theme-blue: #94b9ff;
-  --theme-purple: #c1a3ef;
-  --theme-red-surface: #35232d;
-  --theme-green-surface: #17352e;
-  --theme-amber-surface: #352f22;
-  --theme-blue-surface: #20334f;
-  --theme-purple-surface: #302a43;
-  --workspace-ink: var(--theme-text);
-  --workspace-muted: var(--theme-muted);
-  --workspace-line: var(--theme-line);
-  --workspace-surface: var(--theme-surface);
-  --workspace-canvas: #101824;
-  --workspace-accent: #5278ba;
-  --workspace-soft-accent: #20334f;
+  --workspace-ink: #ecf3ff;
+  --workspace-muted: #adbeda;
+  --workspace-line: #2c4063;
+  --workspace-surface: #15213a;
+  --workspace-canvas: #0e172b;
+  --workspace-raised: #1a2c49;
+  --workspace-primary: #8cbaff;
+  --workspace-primary-hover: #b3d2ff;
+  --workspace-accent: #91c1ff;
+  --workspace-soft-accent: #203960;
+  --workspace-on-primary: #102348;
+  --workspace-chart: #78b8ff;
+  --workspace-halo: #224e85;
+  --workspace-halo-cool: #1b3d56;
+  --workspace-shadow: 0 1px 3px #0002;
+  --workspace-overlay-shadow: 0 20px 52px #060d2080;
+
+  --theme-red: #ff9ca4;
+  --theme-green: #79d8ac;
+  --theme-amber: #f3c777;
+  --theme-blue: #a3c5ff;
+  --theme-purple: #d2b5fa;
+  --theme-red-surface: #3b2937;
+  --theme-green-surface: #1d3634;
+  --theme-amber-surface: #39312b;
+  --theme-blue-surface: #263550;
+  --theme-purple-surface: #352b4a;
 }
-:root[data-theme='light'] { color-scheme: light; }
-:root[data-theme='dark'] body,
-:root[data-theme='dark'] .content {
+
+/* Ant Design's static messages and confirmations are outside the app provider. */
+:root[data-theme='dark'] :is(.ant-modal-content, .ant-modal-header, .ant-message-notice-content, .ant-notification-notice) {
   color: var(--workspace-ink);
-  background: var(--workspace-canvas);
+  background: var(--workspace-surface);
 }
-:root[data-theme='dark'] .content {
-  background-image: radial-gradient(circle at 10% 0, #18283d66, transparent 40%);
+
+:root[data-theme='dark'] :is(.ant-modal-confirm-title, .ant-modal-confirm-content, .ant-notification-notice-message, .ant-notification-notice-description) {
+  color: var(--workspace-ink);
 }
-:root[data-theme='dark'] .ant-input::placeholder,
-:root[data-theme='dark'] textarea::placeholder { color: var(--theme-muted); }
-:root[data-theme='dark'] .ant-skeleton .ant-skeleton-content .ant-skeleton-title,
-:root[data-theme='dark'] .ant-skeleton .ant-skeleton-content .ant-skeleton-paragraph > li { background: var(--theme-raised); }
-/* Static Ant Design messages/confirmations are mounted outside the app provider. */
-:root[data-theme='dark'] .ant-modal-content,
-:root[data-theme='dark'] .ant-modal-header,
-:root[data-theme='dark'] .ant-message-notice-content,
-:root[data-theme='dark'] .ant-notification-notice {
-  color: var(--theme-text);
-  background: var(--theme-raised);
-}
-:root[data-theme='dark'] .ant-modal-confirm-title,
-:root[data-theme='dark'] .ant-modal-confirm-content,
-:root[data-theme='dark'] .ant-notification-notice-message,
-:root[data-theme='dark'] .ant-notification-notice-description { color: var(--theme-text) !important; }

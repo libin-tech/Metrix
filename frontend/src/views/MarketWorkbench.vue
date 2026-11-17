@@ -2,8 +2,8 @@
   <main class="market-workbench">
     <header class="workbench-header">
       <div>
-        <p class="eyebrow">{{ $t('marketWorkbench.eyebrow') }}</p>
-        <h1>{{ $t('marketWorkbench.title') }}</h1>
+        <h1 class="workspace-title">{{ $t('marketWorkbench.title') }}</h1>
+        <p>{{ $t('marketWorkbench.eyebrow') }}</p>
       </div>
       <a-auto-complete
         v-model:value="query"
@@ -13,11 +13,12 @@
         @search="searchStocksDebounced"
         @select="loadOverview"
       >
-        <a-input-search :loading="loading" :aria-label="$t('marketWorkbench.searchPlaceholder')" @search="loadOverview(query)" />
+        <a-input-search size="large" :loading="loading" :aria-label="$t('marketWorkbench.searchPlaceholder')" @search="loadOverview(query)" />
       </a-auto-complete>
     </header>
 
-    <section class="account-summary" :aria-label="$t('marketWorkbench.accountSummary')">
+    <section class="account-summary" aria-labelledby="account-summary-heading">
+      <h2 id="account-summary-heading">{{ $t('marketWorkbench.accountSummary') }}</h2>
       <dl class="account-summary-metrics">
         <div v-for="metric in accountMetrics" :key="metric.key" class="account-summary-metric">
           <dt>{{ $t(metric.label) }}</dt>
@@ -36,44 +37,32 @@
       <button v-for="stock in recentSearches" :key="stock.thscode" type="button" @click="loadOverview(stock.thscode)">{{ stock.name }} · {{ stock.thscode }}</button>
     </section>
 
-    <section class="workbench-layout">
-      <section class="workbench-primary">
-      <section class="holding-strip" :aria-label="$t('marketWorkbench.holdings')">
-        <div v-if="displayedHoldings.length" class="holding-list">
-          <button v-for="holding in displayedHoldings" :key="holding.stockCode" type="button" class="holding-chip" @click="loadOverview(holding.stockCode)">
-            <span>{{ holding.stockName }}</span>
-            <small>{{ holding.stockCode }}</small>
-            <strong :class="changeClass(holding.profitLossPercent)">{{ signedPercent(holding.profitLossPercent) }}</strong>
-          </button>
-        </div>
-        <span v-else class="holding-empty">{{ $t('marketWorkbench.noHoldings') }}</span>
-      </section>
-
-    <section v-if="error" class="workbench-error" role="alert"><ExclamationCircleOutlined /><div><strong>{{ $t('marketWorkbench.loadFailed') }}</strong><span>{{ error }}</span></div></section>
-    <section v-else-if="loading && !overview" class="workbench-loading"><a-skeleton active :paragraph="{rows: 9}" /></section>
-    <section v-else-if="overview" class="dashboard">
-      <section class="quote-overview" :aria-label="$t('marketWorkbench.quoteOverview')">
-        <div class="instrument-identity">
-          <p>{{ overview.instrument.name }}</p><span>{{ overview.instrument.thscode }}</span>
-          <small>{{ overview.dataTime || $t('marketWorkbench.timeUnavailable') }}</small>
-        </div>
-        <div class="latest-price"><span>{{ $t('marketWorkbench.latestPrice') }}</span><strong>{{ formatPrice(overview.quote.lastPrice) }}</strong><em :class="changeClass(overview.quote.changePct)">{{ signedPercent(overview.quote.changePct) }}</em></div>
-        <div class="metric-item"><span>{{ $t('marketWorkbench.yearReturn') }}</span><strong :class="changeClass(overview.metrics.yearReturn)">{{ signedPercent(overview.metrics.yearReturn) }}</strong></div>
-        <div class="metric-item drawdown-metrics">
-          <span :title="$t('marketWorkbench.drawdownHint')">{{ $t('marketWorkbench.maxDrawdown') }}</span>
-          <div class="drawdown-grid">
-            <div v-for="window in windows" :key="window.key" class="drawdown-period">
-              <span>{{ $t(`marketWorkbench.drawdown${window.key}`) }}</span>
-              <strong :class="{negative: overview.metrics[`maxDrawdown${window.key}`] < 0}">{{ formatPercent(overview.metrics[`maxDrawdown${window.key}`]) }}</strong>
-            </div>
+    <section v-if="overview" class="quote-overview" :aria-label="$t('marketWorkbench.quoteOverview')">
+      <div class="instrument-identity">
+        <h2>{{ overview.instrument.name }}</h2><span>{{ overview.instrument.thscode }}</span>
+        <small>{{ overview.dataTime || $t('marketWorkbench.timeUnavailable') }}</small>
+      </div>
+      <div class="latest-price"><span>{{ $t('marketWorkbench.latestPrice') }}</span><strong>{{ formatPrice(overview.quote.lastPrice) }}</strong><em :class="changeClass(overview.quote.changePct)">{{ signedPercent(overview.quote.changePct) }}</em></div>
+      <div class="metric-item"><span>{{ $t('marketWorkbench.yearReturn') }}</span><strong :class="changeClass(overview.metrics.yearReturn)">{{ signedPercent(overview.metrics.yearReturn) }}</strong></div>
+      <div class="metric-item"><span>{{ $t('marketWorkbench.averageAmount') }}</span><strong>{{ formatAmount(overview.metrics.averageAmount20) }}</strong></div>
+      <div class="metric-item drawdown-metrics">
+        <span :title="$t('marketWorkbench.drawdownHint')">{{ $t('marketWorkbench.maxDrawdown') }}</span>
+        <div class="drawdown-grid">
+          <div v-for="window in windows" :key="window.key" class="drawdown-period">
+            <span>{{ $t(`marketWorkbench.drawdown${window.key}`) }}</span>
+            <strong :class="{negative: overview.metrics[`maxDrawdown${window.key}`] < 0}">{{ formatPercent(overview.metrics[`maxDrawdown${window.key}`]) }}</strong>
           </div>
         </div>
-        <div class="metric-item"><span>{{ $t('marketWorkbench.averageAmount') }}</span><strong>{{ formatAmount(overview.metrics.averageAmount20) }}</strong></div>
-      </section>
+      </div>
+    </section>
 
-      <section class="market-panels">
-        <article class="chart-card">
-          <div class="card-heading"><div><p>{{ $t(chartMode === 'intraday' ? 'marketWorkbench.intraday' : 'marketWorkbench.priceTrend') }}</p><small>{{ $t(chartMode === 'intraday' ? 'marketWorkbench.intradayHint' : 'marketWorkbench.chartHint') }}</small></div><div class="range-tabs" role="group" :aria-label="$t('marketWorkbench.range')"><button type="button" :class="{active: chartMode === 'intraday'}" @click="chartMode = 'intraday'">{{ $t('marketWorkbench.intraday') }}</button><button v-for="window in windows" :key="window.key" type="button" :class="{active: chartMode === 'daily' && selectedWindow === window.key}" @click="selectWindow(window)">{{ window.label }}</button></div></div>
+    <section class="workbench-layout">
+      <section class="workbench-primary">
+        <section v-if="error" class="workbench-error" role="alert"><ExclamationCircleOutlined /><div><strong>{{ $t('marketWorkbench.loadFailed') }}</strong><span>{{ error }}</span></div></section>
+        <section v-else-if="loading && !overview" class="workbench-loading"><a-skeleton active :paragraph="{rows: 9}" /></section>
+        <section v-else-if="!overview" class="workbench-empty"><FundOutlined /><h2>{{ $t('marketWorkbench.emptyTitle') }}</h2><p>{{ $t('marketWorkbench.emptyDescription') }}</p></section>
+        <article v-else class="chart-card">
+          <div class="card-heading"><div><h2>{{ $t(chartMode === 'intraday' ? 'marketWorkbench.intraday' : 'marketWorkbench.priceTrend') }}</h2><small>{{ $t(chartMode === 'intraday' ? 'marketWorkbench.intradayHint' : 'marketWorkbench.chartHint') }}</small></div><div class="range-tabs" role="group" :aria-label="$t('marketWorkbench.range')"><button type="button" :aria-pressed="chartMode === 'intraday'" @click="chartMode = 'intraday'">{{ $t('marketWorkbench.intraday') }}</button><button v-for="window in windows" :key="window.key" type="button" :aria-pressed="chartMode === 'daily' && selectedWindow === window.key" @click="selectWindow(window)">{{ window.label }}</button></div></div>
           <IntradayChart v-if="chartMode === 'intraday'" :thscode="overview.instrument.thscode" />
           <div
             v-else
@@ -85,6 +74,7 @@
             @pointerdown="startPan"
             @pointermove="moveChart"
             @pointerup="endPan"
+            @pointercancel="endPan"
             @pointerleave="endPan"
             @wheel.prevent="zoomChart"
             @keydown="handleChartKey"
@@ -100,17 +90,22 @@
             <div class="chart-legend"><span class="ma5">MA5 {{ formatPrice(overview.metrics.ma5) }}</span><span class="ma20">MA20 {{ formatPrice(overview.metrics.ma20) }}</span><span class="ma30">MA30 {{ formatPrice(overview.metrics.ma30) }}</span><span class="ma60">MA60 {{ formatPrice(overview.metrics.ma60) }}</span></div>
           </div>
         </article>
-        <article class="structure-card"><div class="card-heading"><div><p>{{ $t('marketWorkbench.tradeStructure') }}</p><small>{{ $t('marketWorkbench.tradeStructureHint') }}</small></div></div><dl><div><dt>{{ $t('marketWorkbench.open') }}</dt><dd>{{ formatPrice(overview.quote.open) }}</dd></div><div><dt>{{ $t('marketWorkbench.high') }}</dt><dd>{{ formatPrice(overview.quote.high) }}</dd></div><div><dt>{{ $t('marketWorkbench.low') }}</dt><dd>{{ formatPrice(overview.quote.low) }}</dd></div><div><dt>{{ $t('marketWorkbench.prevClose') }}</dt><dd>{{ formatPrice(overview.quote.prevClose) }}</dd></div><div><dt>{{ $t('marketWorkbench.volume') }}</dt><dd>{{ formatVolume(overview.quote.volume) }}</dd></div><div><dt>{{ $t('marketWorkbench.amount') }}</dt><dd>{{ formatAmount(overview.quote.amount) }}</dd></div><div><dt>{{ $t('marketWorkbench.amplitude') }}</dt><dd>{{ formatPercent(overview.quote.amplitude) }}</dd></div><div><dt>{{ $t('marketWorkbench.changeAmount') }}</dt><dd :class="changeClass(overview.quote.changeAmount)">{{ signedNumber(overview.quote.changeAmount) }}</dd></div></dl></article>
-      </section>
-
-      <section class="data-card"><div class="card-heading"><div><p>{{ $t('marketWorkbench.recentData') }}</p><small>{{ $t('marketWorkbench.recentDataHint') }}</small></div><span>{{ $t('marketWorkbench.adjustment') }} · {{ overview.adjustment }}</span></div><div class="data-table-wrap"><table><thead><tr><th>{{ $t('marketWorkbench.date') }}</th><th>{{ $t('marketWorkbench.open') }}</th><th>{{ $t('marketWorkbench.high') }}</th><th>{{ $t('marketWorkbench.low') }}</th><th>{{ $t('marketWorkbench.close') }}</th><th>{{ $t('marketWorkbench.change') }}</th><th>{{ $t('marketWorkbench.amount') }}</th></tr></thead><tbody><tr v-for="bar in recentBars" :key="bar.timestamp"><td>{{ bar.date }}</td><td>{{ formatPrice(bar.open) }}</td><td>{{ formatPrice(bar.high) }}</td><td>{{ formatPrice(bar.low) }}</td><td>{{ formatPrice(bar.close) }}</td><td :class="changeClass(bar.changePct)">{{ signedPercent(bar.changePct) }}</td><td>{{ formatAmount(bar.amount) }}</td></tr></tbody></table></div></section>
-      <footer class="data-disclaimer"><span>{{ $t('marketWorkbench.code') }} {{ overview.instrument.thscode }}</span><span>{{ $t('marketWorkbench.source') }} {{ overview.source }}</span><span>{{ $t('marketWorkbench.adjustment') }} {{ overview.adjustment }}</span><span>{{ $t('marketWorkbench.disclaimer') }}</span></footer>
-    </section>
-    <section v-else class="workbench-empty"><FundOutlined /><h2>{{ $t('marketWorkbench.emptyTitle') }}</h2><p>{{ $t('marketWorkbench.emptyDescription') }}</p></section>
       </section>
       <aside class="anomaly-column">
-        <section class="anomaly-card" :aria-label="$t('marketWorkbench.anomalyTitle')">
-          <div class="anomaly-heading"><div><p>{{ $t('marketWorkbench.anomalyTitle') }}</p><small>{{ anomalyDataTime || $t('marketWorkbench.anomalyHint') }}</small></div></div>
+        <section class="holding-strip" aria-labelledby="holdings-heading">
+          <h2 id="holdings-heading">{{ $t('marketWorkbench.holdings') }}</h2>
+          <div v-if="displayedHoldings.length" class="holding-list">
+            <button v-for="holding in displayedHoldings" :key="holding.stockCode" type="button" class="holding-chip" :aria-pressed="overview?.instrument.thscode === holding.stockCode" @click="loadOverview(holding.stockCode)">
+              <span>{{ holding.stockName }}</span>
+              <small>{{ holding.stockCode }}</small>
+              <strong :class="changeClass(holding.profitLossPercent)">{{ signedPercent(holding.profitLossPercent) }}</strong>
+            </button>
+          </div>
+          <span v-else class="holding-empty">{{ $t('marketWorkbench.noHoldings') }}</span>
+        </section>
+        <article v-if="overview" class="structure-card"><div class="card-heading"><div><h2>{{ $t('marketWorkbench.tradeStructure') }}</h2><small>{{ $t('marketWorkbench.tradeStructureHint') }}</small></div></div><dl><div><dt>{{ $t('marketWorkbench.open') }}</dt><dd>{{ formatPrice(overview.quote.open) }}</dd></div><div><dt>{{ $t('marketWorkbench.high') }}</dt><dd>{{ formatPrice(overview.quote.high) }}</dd></div><div><dt>{{ $t('marketWorkbench.low') }}</dt><dd>{{ formatPrice(overview.quote.low) }}</dd></div><div><dt>{{ $t('marketWorkbench.prevClose') }}</dt><dd>{{ formatPrice(overview.quote.prevClose) }}</dd></div><div><dt>{{ $t('marketWorkbench.volume') }}</dt><dd>{{ formatVolume(overview.quote.volume) }}</dd></div><div><dt>{{ $t('marketWorkbench.amount') }}</dt><dd>{{ formatAmount(overview.quote.amount) }}</dd></div><div><dt>{{ $t('marketWorkbench.amplitude') }}</dt><dd>{{ formatPercent(overview.quote.amplitude) }}</dd></div><div><dt>{{ $t('marketWorkbench.changeAmount') }}</dt><dd :class="changeClass(overview.quote.changeAmount)">{{ signedNumber(overview.quote.changeAmount) }}</dd></div></dl></article>
+        <section class="anomaly-card" aria-labelledby="anomaly-heading">
+          <div class="anomaly-heading"><div><h2 id="anomaly-heading">{{ $t('marketWorkbench.anomalyTitle') }}</h2><small>{{ anomalyDataTime || $t('marketWorkbench.anomalyHint') }}</small></div></div>
           <div v-if="anomalyLoading" class="anomaly-state">{{ $t('marketWorkbench.anomalyLoading') }}</div>
           <div v-else-if="anomalyError" class="anomaly-state anomaly-error">{{ anomalyError }}</div>
           <div v-else-if="anomalies.length" class="anomaly-list">
@@ -124,6 +119,11 @@
         </section>
       </aside>
     </section>
+
+    <template v-if="overview">
+      <section class="data-card" aria-labelledby="recent-data-heading"><div class="card-heading"><div><h2 id="recent-data-heading">{{ $t('marketWorkbench.recentData') }}</h2><small>{{ $t('marketWorkbench.recentDataHint') }}</small></div><span>{{ $t('marketWorkbench.adjustment') }} · {{ overview.adjustment }}</span></div><div class="data-table-wrap" tabindex="0" role="region" aria-labelledby="recent-data-heading"><table><thead><tr><th>{{ $t('marketWorkbench.date') }}</th><th>{{ $t('marketWorkbench.open') }}</th><th>{{ $t('marketWorkbench.high') }}</th><th>{{ $t('marketWorkbench.low') }}</th><th>{{ $t('marketWorkbench.close') }}</th><th>{{ $t('marketWorkbench.change') }}</th><th>{{ $t('marketWorkbench.amount') }}</th></tr></thead><tbody><tr v-for="bar in recentBars" :key="bar.timestamp"><td>{{ bar.date }}</td><td>{{ formatPrice(bar.open) }}</td><td>{{ formatPrice(bar.high) }}</td><td>{{ formatPrice(bar.low) }}</td><td>{{ formatPrice(bar.close) }}</td><td :class="changeClass(bar.changePct)">{{ signedPercent(bar.changePct) }}</td><td>{{ formatAmount(bar.amount) }}</td></tr></tbody></table></div></section>
+      <footer class="data-disclaimer"><span>{{ $t('marketWorkbench.code') }} {{ overview.instrument.thscode }}</span><span>{{ $t('marketWorkbench.source') }} {{ overview.source }}</span><span>{{ $t('marketWorkbench.adjustment') }} {{ overview.adjustment }}</span><span>{{ $t('marketWorkbench.disclaimer') }}</span></footer>
+    </template>
   </main>
 </template>
 
@@ -221,48 +221,177 @@ function saveRecentSearch(instrument) { if (!instrument?.thscode || !instrument?
 </script>
 
 <style scoped>
-.account-summary {
-  margin-bottom: 16px;
-  padding: 12px 14px;
-  background: var(--theme-surface, #fff);
-  border: 1px solid var(--theme-line, #e1e7f0);
-  border-radius: 12px;
-}
-.account-summary-metrics {
+.market-workbench {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 148px), 1fr));
-  gap: 8px;
+  gap: clamp(14px, 2vw, 22px);
+  color: var(--workspace-ink);
+}
+
+.workbench-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px 24px;
+}
+
+.workbench-header p { margin: 5px 0 0; color: var(--workspace-muted); font-size: 13px; }
+.instrument-search { width: min(100%, 460px); }
+.instrument-search :deep(.ant-input-group > .ant-input),
+.instrument-search :deep(.ant-input-affix-wrapper),
+.instrument-search :deep(.ant-input-search-button) { height: 40px; }
+.instrument-search :deep(.ant-input-search-button) { display: inline-flex; align-items: center; justify-content: center; }
+
+.account-summary h2, .holding-strip h2, .card-heading h2, .anomaly-heading h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 670;
+  line-height: 1.35;
+}
+
+.account-summary h2 { margin-bottom: 8px; }
+.account-summary-metrics, .quote-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: 10px;
   margin: 0;
 }
-.account-summary-metric {
+
+.account-summary-metric, .quote-overview > div, .workbench-primary > *, .anomaly-column > *, .data-card {
   min-width: 0;
-  padding: 8px 10px;
-  background: var(--theme-raised, #f8fafc);
-  border-radius: 7px;
+  background: var(--workspace-surface);
+  border: 1px solid var(--workspace-line);
+  border-radius: var(--workspace-radius);
+  box-shadow: var(--workspace-shadow);
 }
-.account-summary-metric dt {
-  color: var(--theme-muted, #7f8da1);
-  font-size: 12px;
+
+.account-summary-metric { padding: 12px 14px; }
+.account-summary-metric dt, .metric-item > span, .latest-price > span { color: var(--workspace-muted); font-size: 12px; }
+.account-summary-metric dd { margin: 5px 0 0; font-size: clamp(1rem, 1.5vw, 1.2rem); font-weight: 700; overflow-wrap: anywhere; }
+.account-summary-metric dd, .quote-overview strong, .holding-chip strong, .structure-card dd, .data-card table { font-variant-numeric: tabular-nums; }
+.account-summary-error { margin: 8px 0 0; color: var(--theme-red); font-size: 12px; }
+
+.recent-searches { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; color: var(--workspace-muted); }
+.recent-searches button {
+  padding: 4px 8px;
+  color: var(--workspace-accent);
+  background: var(--workspace-soft-accent);
+  border: 1px solid transparent;
+  border-radius: var(--workspace-control-radius);
+  cursor: pointer;
+  font: inherit;
 }
-.account-summary-metric dd {
-  margin: 4px 0 0;
-  font-size: 16px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
+
+.recent-searches button:hover { border-color: var(--workspace-accent); }
+
+.quote-overview { grid-template-columns: minmax(145px, 1.15fr) repeat(3, minmax(105px, .8fr)) minmax(240px, 1.55fr); }
+.quote-overview > div { display: grid; align-content: center; gap: 5px; padding: 13px 15px; }
+.quote-overview .latest-price { background: var(--workspace-soft-accent); }
+.instrument-identity h2 { margin: 0; font-size: 19px; overflow-wrap: anywhere; }
+.instrument-identity span, .instrument-identity small { color: var(--workspace-muted); font-size: 12px; overflow-wrap: anywhere; }
+.quote-overview strong { font-size: 19px; line-height: 1.2; letter-spacing: -.025em; overflow-wrap: anywhere; }
+.quote-overview .latest-price strong { font-size: clamp(1.4rem, 2.4vw, 1.85rem); }
+.latest-price em { font-size: 13px; font-weight: 680; font-style: normal; }
+.positive { color: var(--theme-red); }
+.negative { color: var(--theme-green); }
+.drawdown-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px 10px; }
+.drawdown-period { display: grid; gap: 3px; min-width: 0; }
+.drawdown-period span { color: var(--workspace-muted); font-size: 11px; }
+.drawdown-period strong { font-size: 13px; }
+
+.workbench-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(300px, .8fr); gap: 16px; align-items: start; }
+.workbench-primary, .anomaly-column { display: grid; min-width: 0; gap: 16px; }
+.chart-card, .structure-card, .data-card, .holding-strip, .anomaly-card, .workbench-loading { padding: clamp(13px, 2vw, 21px); }
+.card-heading, .anomaly-heading { display: flex; align-items: start; justify-content: space-between; flex-wrap: wrap; gap: 9px 12px; padding-bottom: 12px; border-bottom: 1px solid var(--workspace-line); }
+.card-heading small, .card-heading > span, .anomaly-heading small { display: block; margin-top: 4px; color: var(--workspace-muted); font-size: 12px; }
+.holding-empty, .anomaly-state { display: block; padding-block: 12px 0; color: var(--workspace-muted); font-size: 13px; }
+.holding-strip h2 { padding-bottom: 9px; border-bottom: 1px solid var(--workspace-line); }
+.holding-chip, .anomaly-item {
+  width: 100%;
+  padding: 9px 6px;
+  color: var(--workspace-ink);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
 }
-.account-summary-error {
-  margin: 8px 0 0;
-  color: var(--theme-muted, #7f8da1);
-  font-size: 12px;
+
+.holding-chip + .holding-chip, .anomaly-item + .anomaly-item { border-top: 1px solid var(--workspace-line); }
+.holding-chip:hover, .holding-chip[aria-pressed='true'], .anomaly-item:hover {
+  background: var(--workspace-soft-accent);
+  border-radius: var(--workspace-control-radius);
 }
-.market-workbench { width: 100%; max-width: 1440px; margin: 0 auto; padding: 28px 32px 44px; color: var(--theme-text, #20304a); }.workbench-header { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 18px; }.eyebrow { margin: 0 0 6px; color: var(--theme-muted, #7b8aa0); font-size: 11px; font-weight: 700; letter-spacing: .12em; }.workbench-header h1 { margin: 0; font-size: 25px; letter-spacing: -.04em; }.instrument-search { width: min(420px, 100%); }.instrument-search :deep(.ant-input-affix-wrapper), .instrument-search :deep(.ant-input-search-button) { height: 40px; border-radius: 8px; }.workbench-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(300px, .8fr); align-items: start; gap: 16px; }.workbench-primary { display: grid; min-width: 0; gap: 16px; }.holding-strip { display: flex; align-items: center; gap: 13px; min-height: 118px; padding: 11px 14px; background: var(--theme-surface, #fff); border: 1px solid var(--theme-line, #e1e7f0); border-radius: 12px; }.holding-strip-title { display: grid; gap: 1px; min-width: 68px; color: var(--theme-text, #53647d); font-size: 12px; }.holding-strip-title > :first-child { color: var(--theme-blue, #637fc0); font-size: 17px; }.holding-strip-title small { color: var(--theme-muted, #9aa6b7); font-size: 10px; }.holding-list { display: flex; min-width: 0; gap: 7px; overflow-x: auto; }.holding-chip { display: grid; grid-template-columns: auto auto; align-items: center; gap: 1px 8px; min-width: 118px; padding: 8px 10px; color: var(--theme-text, #32435e); text-align: left; background: var(--theme-raised, #f8fafc); border: 1px solid var(--theme-line, #eef2f6); border-radius: 7px; cursor: pointer; }.holding-chip span { overflow: hidden; font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }.holding-chip small { color: var(--theme-muted, #9aa6b7); font-size: 10px; }.holding-chip strong { grid-column: 2; grid-row: 1 / 3; justify-self: end; font-size: 11px; }.holding-empty { color: var(--theme-muted, #8996a8); font-size: 12px; }.anomaly-card { min-width: 0; padding: 12px 14px; overflow: hidden; background: var(--theme-surface, #fff); border: 1px solid var(--theme-line, #e1e7f0); border-radius: 12px; }.anomaly-heading { display: flex; align-items: start; justify-content: space-between; gap: 8px; padding-bottom: 7px; border-bottom: 1px solid var(--theme-line, #edf0f5); }.anomaly-heading p { margin: 0; color: var(--theme-text, #2a3d59); font-size: 12px; font-weight: 700; }.anomaly-heading small, .anomaly-heading > span { display: block; margin-top: 2px; color: var(--theme-muted, #8996a9); font-size: 10px; }.anomaly-heading > span { margin-top: 0; color: var(--theme-blue, #6883af); }.anomaly-list { display: grid; max-height: 88px; overflow-y: auto; }.anomaly-item { display: grid; grid-template-columns: minmax(78px, auto) minmax(0, 1fr); align-items: center; gap: 2px 9px; width: 100%; padding: 7px 0; color: var(--theme-text, #50617a); text-align: left; background: transparent; border: 0; border-bottom: 1px solid var(--theme-line, #f0f3f7); cursor: pointer; }.anomaly-item:last-child { border-bottom: 0; }.anomaly-item span { display: grid; gap: 1px; }.anomaly-item strong { color: var(--theme-text, #31435f); font-size: 11px; }.anomaly-item small, .anomaly-item em { overflow: hidden; color: var(--theme-muted, #96a2b3); font-size: 9px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }.anomaly-item p { overflow: hidden; margin: 0; color: var(--theme-muted, #62738a); font-size: 10px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }.anomaly-item em { grid-column: 2; color: var(--theme-muted, #6c85ad); }.anomaly-state { display: flex; align-items: center; gap: 6px; min-height: 70px; color: var(--theme-muted, #96a2b3); font-size: 11px; }.anomaly-error { color: var(--theme-red, #b56b72); line-height: 1.45; }.workbench-error { display: flex; gap: 12px; max-width: 780px; margin: 80px auto; padding: 18px; color: var(--theme-red, #a3414b); background: var(--theme-surface, #fff8f8); border: 1px solid var(--theme-line, #f0dfe1); border-radius: 10px; }.workbench-error span { display: block; margin-top: 4px; color: var(--theme-muted, #7d6870); font-size: 13px; }.workbench-loading { padding: 30px; background: var(--theme-surface, #fff); border: 1px solid var(--theme-line, #e1e7f0); border-radius: 12px; }.dashboard { display: grid; gap: 16px; }.quote-overview { display: grid; grid-template-columns: minmax(190px, 1.35fr) repeat(2, minmax(0, 1fr)) minmax(220px, 1.6fr) minmax(0, 1fr); gap: 0; overflow: hidden; background: var(--theme-surface, #fff); border: 1px solid var(--theme-line, #e1e7f0); border-radius: 12px; }.instrument-identity, .latest-price, .metric-item { display: grid; align-content: center; min-height: 108px; padding: 19px; border-right: 1px solid var(--theme-line, #edf0f5); }.instrument-identity p { margin: 0; color: var(--theme-text, #263957); font-size: 17px; font-weight: 700; }.instrument-identity span { margin-top: 4px; color: var(--theme-muted, #76869e); font-size: 12px; }.instrument-identity small { margin-top: 8px; color: var(--theme-muted, #a0abba); font-size: 10px; }.latest-price span, .metric-item span { color: var(--theme-muted, #7f8da1); font-size: 11px; }.latest-price strong { margin: 5px 0 1px; color: var(--theme-text, #263957); font-size: 29px; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }.latest-price em { font-size: 12px; font-style: normal; font-weight: 600; }.metric-item strong { margin-top: 8px; color: var(--theme-text, #263957); font-size: 18px; letter-spacing: -.025em; font-variant-numeric: tabular-nums; }.positive { color: var(--theme-red, #c64652) !important; }.negative { color: var(--theme-green, #087043) !important; }.market-panels { display: grid; grid-template-columns: minmax(0, 1.9fr) minmax(270px, .7fr); gap: 16px; }.chart-card, .structure-card, .data-card { min-width: 0; padding: 18px; background: var(--theme-surface, #fff); border: 1px solid var(--theme-line, #e1e7f0); border-radius: 12px; }.card-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; padding-bottom: 13px; border-bottom: 1px solid var(--theme-line, #edf0f5); }.card-heading p { margin: 0; color: var(--theme-text, #2a3d59); font-size: 14px; font-weight: 700; }.card-heading small, .card-heading > span { display: block; margin-top: 3px; color: var(--theme-muted, #8996a9); font-size: 11px; }.range-tabs { display: flex; gap: 3px; padding: 3px; background: var(--theme-raised, #f3f6fa); border-radius: 7px; }.range-tabs button { padding: 4px 7px; color: var(--theme-muted, #7a899f); font-size: 10px; background: transparent; border: 0; border-radius: 5px; cursor: pointer; }.range-tabs button.active { color: var(--theme-blue, #3565a8); font-weight: 700; background: var(--theme-surface, #fff); box-shadow: 0 1px 3px #26395718; }.kline-chart { position: relative; height: 400px; margin-top: 12px; overflow: hidden; touch-action: none; outline: none; user-select: none; }.kline-chart:focus-visible { outline: 2px solid var(--theme-line, #6d93ca); outline-offset: 3px; }.kline-chart svg { width: 100%; height: 100%; }.chart-grid line { stroke: var(--theme-text, #edf1f6); stroke-width: 1; }.candle line { stroke-width: 1.5; }.candle rect { opacity: .88; }.candle.up, .volume-bars .up { fill: var(--theme-red, #d55761); stroke: var(--theme-red, #d55761); }.candle.down, .volume-bars .down { fill: var(--theme-green, #189464); stroke: var(--theme-green, #189464); }.volume-bars rect { opacity: .45; }.ma-line polyline { fill: none; stroke-width: 1.8; vector-effect: non-scaling-stroke; }.ma5 polyline { stroke: var(--theme-blue, #4f83c7); }.ma20 polyline { stroke: var(--theme-amber, #e59546); }.ma30 polyline { stroke: var(--theme-purple, #8b68bb); }.ma60 polyline { stroke: var(--theme-green, #32856e); }.crosshair line { stroke: var(--theme-muted, #7d8fa8); stroke-width: 1; stroke-dasharray: 3 4; opacity: .75; }.chart-tooltip { position: absolute; top: 12px; z-index: 1; display: grid; gap: 3px; min-width: 112px; padding: 8px; color: var(--theme-text, #586980); font-size: 10px; pointer-events: none; background: var(--theme-surface, #fffffff2); border: 1px solid var(--theme-line, #dce4ef); border-radius: 6px; box-shadow: 0 4px 12px #26395712; transform: translateX(-50%); }.chart-tooltip strong { color: var(--theme-text, #2c3d57); }.chart-legend { position: absolute; bottom: 4px; left: 2px; display: flex; flex-wrap: wrap; gap: 9px; font-size: 10px; }.chart-legend span { font-variant-numeric: tabular-nums; }.chart-legend .ma5 { color: var(--theme-blue, #4f83c7); }.chart-legend .ma20 { color: var(--theme-amber, #e59546); }.chart-legend .ma30 { color: var(--theme-purple, #8b68bb); }.chart-legend .ma60 { color: var(--theme-green, #32856e); }.structure-card dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin: 13px 0 0; }.structure-card dl div { padding: 12px 9px; background: var(--theme-raised, #f8fafc); }.structure-card dt { color: var(--theme-muted, #8593a7); font-size: 10px; }.structure-card dd { margin: 6px 0 0; color: var(--theme-text, #32445f); font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }.data-table-wrap { overflow-x: auto; margin-top: 3px; }.data-card table { width: 100%; min-width: 760px; border-collapse: collapse; }.data-card th { padding: 11px 9px; color: var(--theme-muted, #7e8ca1); font-size: 11px; font-weight: 600; text-align: right; background: var(--theme-raised, #f7f9fc); }.data-card th:first-child, .data-card td:first-child { text-align: left; }.data-card td { padding: 10px 9px; color: var(--theme-text, #42536c); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; border-bottom: 1px solid var(--theme-line, #edf0f5); }.data-card tbody tr:last-child td { border-bottom: 0; }.data-disclaimer { display: flex; flex-wrap: wrap; gap: 10px 18px; padding: 1px 2px; color: var(--theme-muted, #8996a8); font-size: 10px; }.data-disclaimer span:last-child { color: var(--theme-muted, #a0767b); }.workbench-empty { display: grid; place-items: center; min-height: 420px; color: var(--theme-muted, #92a0b3); text-align: center; }.workbench-empty :deep(svg) { color: var(--theme-muted, #91a8d2); font-size: 31px; }.workbench-empty h2 { margin: 12px 0 5px; color: var(--theme-text, #53657e); font-size: 17px; }.workbench-empty p { font-size: 12px; }
-.workbench-header { align-items: center; }.instrument-search :deep(.ant-input-group-wrapper), .instrument-search :deep(.ant-input-group), .instrument-search :deep(.ant-input-affix-wrapper), .instrument-search :deep(.ant-input-search-button) { height: 40px; }.instrument-search :deep(.ant-input-affix-wrapper) { display: flex; align-items: center; border-radius: 8px 0 0 8px; }.instrument-search :deep(.ant-input-search-button) { display: inline-flex; align-items: center; justify-content: center; border-radius: 0 8px 8px 0; }.holding-strip { gap: 0; }.holding-strip-title { display: none; }
-@media (max-width: 980px) { .workbench-layout { grid-template-columns: 1fr; }.quote-overview { grid-template-columns: repeat(3, minmax(0, 1fr)); }.instrument-identity { grid-column: span 2; }.market-panels { grid-template-columns: 1fr; }.structure-card { display: none; } }
-@media (max-width: 680px) { .market-workbench { padding: 20px 14px 34px; }.workbench-header { align-items: stretch; flex-direction: column; gap: 16px; }.instrument-search { width: 100%; }.holding-strip { align-items: start; flex-direction: column; }.holding-list { width: 100%; }.quote-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }.instrument-identity { grid-column: span 2; }.metric-item, .latest-price { min-height: 88px; padding: 14px; }.instrument-identity { min-height: 82px; }.latest-price strong { font-size: 25px; }.kline-chart { height: 340px; }.range-tabs button { padding: 4px 5px; }.card-heading { align-items: start; flex-direction: column; }.chart-tooltip { display: none; } }
-.drawdown-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; margin-top: 12px; }
-.drawdown-period { display: grid; min-width: 0; }
-.drawdown-period strong { margin-top: 4px; font-size: 16px; }
-@media (max-width: 680px) { .drawdown-metrics { grid-column: span 2; } }
-.recent-searches { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: -6px 0 14px; }.recent-searches > span { color: var(--theme-muted, #7b8aa0); font-size: 11px; }.recent-searches button { padding: 3px 7px; color: var(--theme-blue, #476fa8); font-size: 11px; background: var(--theme-raised, #f3f6fa); border: 1px solid var(--theme-line, #e1e7f0); border-radius: 5px; cursor: pointer; }.anomaly-list { max-height: none; overflow-y: visible; }.anomaly-item p { overflow: visible; text-overflow: clip; white-space: normal; }
+
+.holding-chip { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 8px; }
+.holding-chip span { font-size: 13px; font-weight: 630; overflow-wrap: anywhere; }
+.holding-chip small { grid-column: 1; color: var(--workspace-muted); font-size: 11px; }
+.holding-chip strong { grid-column: 2; grid-row: 1 / 3; align-self: center; font-size: 13px; }
+.anomaly-list { max-height: none; overflow-y: visible; }
+.anomaly-item { display: grid; gap: 5px; font-size: 13px; overflow-wrap: anywhere; }
+.anomaly-item span { display: flex; align-items: baseline; flex-wrap: wrap; gap: 3px 8px; }
+.anomaly-item small, .anomaly-item em { color: var(--workspace-muted); font-size: 11px; font-style: normal; }
+.anomaly-item p { overflow: visible; text-overflow: clip; white-space: normal; }
+.anomaly-item p { margin: 0; color: var(--workspace-muted); line-height: 1.55; }
+.anomaly-item em { color: var(--workspace-accent); }
+.anomaly-error { color: var(--theme-red); }
+.workbench-error { display: flex; align-items: start; gap: 10px; padding: 18px; color: var(--theme-red); }
+.workbench-error span { display: block; margin-top: 4px; color: var(--workspace-muted); overflow-wrap: anywhere; }
+
+.range-tabs { display: flex; flex-wrap: wrap; gap: 3px; padding: 4px; background: var(--workspace-raised); border-radius: var(--workspace-control-radius); }
+.range-tabs button { min-height: 30px; padding: 4px 8px; color: var(--workspace-muted); font: inherit; font-size: 12px; white-space: nowrap; background: transparent; border: 0; border-radius: 6px; cursor: pointer; }
+.range-tabs button:hover, .range-tabs button[aria-pressed='true'] { color: var(--workspace-accent); background: var(--workspace-soft-accent); }
+.range-tabs button[aria-pressed='true'] { font-weight: 680; }
+
+.kline-chart { position: relative; height: clamp(263px, 33vw, 415px); margin-top: 14px; overflow: hidden; touch-action: pan-y; user-select: none; }
+.kline-chart svg { display: block; width: 100%; height: 100%; }
+.chart-grid line { stroke: var(--workspace-line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.candle.up, .volume-bars .up { fill: var(--theme-red); stroke: var(--theme-red); }
+.candle.down, .volume-bars .down { fill: var(--theme-green); stroke: var(--theme-green); }
+.volume-bars rect { opacity: .38; }
+.ma-line polyline { fill: none; stroke: currentColor; stroke-width: 1.65; vector-effect: non-scaling-stroke; }
+.ma5 { color: var(--theme-blue); }
+.ma20 { color: var(--theme-amber); }
+.ma30 { color: var(--theme-purple); }
+.ma60 { color: var(--theme-green); }
+.crosshair line { stroke: var(--workspace-muted); stroke-width: 1; stroke-dasharray: 3 4; opacity: .75; }
+.chart-tooltip { position: absolute; top: 12px; z-index: 1; display: grid; gap: 3px; min-width: 112px; padding: 8px; color: var(--workspace-ink); font-size: 11px; pointer-events: none; background: var(--workspace-surface); border: 1px solid var(--workspace-line); border-radius: 7px; box-shadow: var(--workspace-shadow); transform: translateX(-50%); }
+.chart-legend { position: absolute; inset: auto 0 4px; display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11px; font-variant-numeric: tabular-nums; }
+
+.structure-card dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin: 10px 0 0; }
+.structure-card dl div { min-width: 0; padding: 7px 9px; border-radius: 7px; background: var(--workspace-raised); }
+.structure-card dt { color: var(--workspace-muted); font-size: 11px; }
+.structure-card dd { margin: 3px 0 0; font-size: 13px; font-weight: 640; overflow-wrap: anywhere; }
+
+.data-table-wrap { max-height: 460px; margin-top: 8px; overflow: auto; }
+.data-card table { width: 100%; min-width: 625px; border-spacing: 0; font-size: 13px; }
+.data-card th, .data-card td { padding: 10px 12px; border-bottom: 1px solid var(--workspace-line); text-align: right; white-space: nowrap; }
+.data-card th { position: sticky; top: 0; color: var(--workspace-muted); background: var(--workspace-raised); font-size: 12px; }
+.data-card :is(th, td):first-child { text-align: left; }
+.data-card tbody tr:hover { background: var(--workspace-raised); }
+.data-disclaimer { display: flex; flex-wrap: wrap; gap: 5px 16px; color: var(--workspace-muted); font-size: 12px; }
+
+.workbench-empty { display: grid; justify-items: center; align-content: center; gap: 8px; min-height: 300px; padding: 22px; text-align: center; }
+.workbench-empty :deep(.anticon) { display: grid; place-items: center; width: 46px; height: 46px; color: var(--workspace-accent); background: var(--workspace-soft-accent); border-radius: 11px; font-size: 23px; }
+.workbench-empty h2 { margin: 9px 0 0; font-size: 19px; }
+.workbench-empty p { margin: 0; color: var(--workspace-muted); font-size: 13px; }
+
+@media (max-width: 1000px) {
+  .quote-overview { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .drawdown-metrics { grid-column: span 2; }
+}
+
+@media (max-width: 810px) {
+  .workbench-layout { grid-template-columns: minmax(0, 1fr); }
+  .anomaly-column { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .anomaly-card { grid-column: 1 / -1; }
+}
+
+@media (max-width: 540px) {
+  .instrument-search { width: 100%; }
+  .account-summary-metrics, .quote-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .account-summary-metric, .quote-overview > div { padding: 10px 11px; }
+  .anomaly-column { grid-template-columns: minmax(0, 1fr); }
+  .chart-tooltip { display: none; }
+}
 </style>

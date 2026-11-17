@@ -3,13 +3,46 @@ import dailyMarket from './dailyMarket.zh-CN.js'
 export default {
   dailyMarket,
   landing: {
-    navigation: '官网导航', navigationFeatures: '功能', navigationAdvantages: '优势', navigationGuide: '使用教程', login: '登录', startNow: '开始使用', exploreFeatures: '探索功能',
-    eyebrow: 'AI 驱动的投研工作台', titleStart: '把每一次', titleEmphasis: '投资判断', titleEnd: '变得更笃定', description: 'Metrix 将市场数据、AI 洞察和你的研究过程放在同一个工作台，让信息沉淀为可执行的判断。', trustLine: '你的研究过程，始终由你掌控', signal: '趋势确认中',
-    featuresEyebrow: '核心功能', featuresTitle: '从信息到判断，只需一个工作台', featuresDescription: '围绕真实投研流程设计，把分散的信息、观点与行动自然串联。',
-    features: {research:{title:'AI 标的评估',description:'从技术面、基本面到关联资讯，快速形成结构化的研究摘要。',note:'从问题开始研究'},review:{title:'大盘复盘',description:'连接市场广度、资金流向和情绪信号，读懂每天正在发生什么。',note:'建立每日市场感知'},portfolio:{title:'持仓管理',description:'把账户、持仓与研究结论放在一起，让决策和复盘都有迹可循。',note:'让投资保持连贯'}},
-    advantagesEyebrow: '为什么是 Metrix', advantagesTitle: '工具不替你做决定，而是让你看得更清楚。', advantagesDescription: 'Metrix 为长期研究者准备：少一点噪声，多一条由问题、证据到判断的清晰路径。', advantages: {focus:{title:'围绕问题，而非信息流',description:'每一次评估从你的问题开始，帮助你把注意力留给真正重要的事情。'},traceable:{title:'让研究能够被复盘',description:'把市场观察、标的分析和持仓决策连接起来，保留思考的上下文。'},yours:{title:'保留你的判断主权',description:'AI 提供信息与视角，最终判断、风险控制和行动始终属于你。'}}, metricLabel:'研究方法', metricTitle:'先有问题，再找答案', metricDescription:'用一套能反复使用的流程，建立自己的研究节奏。',
-    guideEyebrow: '开始使用', guideTitle: '三步，开启你的研究工作台', goToLogin: '前往登录', guide: {login:{title:'进入工作台',description:'登录 Metrix，开始建立属于你的研究环境。'},configure:{title:'配置你的信息源',description:'连接行情、新闻与 AI 模型，让工作台贴合你的研究方式。'},research:{title:'从一个问题开始',description:'评估标的、复盘市场、记录观点，让每次研究都有所积累。'}},
-    ctaTitle:'开始建立你的投资研究系统', ctaDescription:'让信息服务于判断，让判断经得起复盘。', loginToWorkspace:'登录工作台', footer:'Metrix · 为独立思考而生的 AI 投研工作台', disclaimer:'免责声明：本网站提供的信息、分析及工具仅供学习和研究参考，不构成任何投资建议、要约或推荐。投资有风险，请结合自身情况独立判断。', contactTitle:'联系方式', contactDescription:'扫码关注 Metrix Lab 微信公众号，获取产品动态与研究内容。', wechatQrAlt:'Metrix Lab 微信公众号二维码'
+    navigation: '官网导航', navigationFeatures: '功能场景', navigationAdvantages: '产品特点', navigationGuide: '使用指南',
+    login: '登录', startNow: '开始使用', exploreFeatures: '在线了解 Metrix',
+    description: 'Metrix 是面向 A 股研究的 AI 工作台。在同一个空间查看行情、分析个股、复盘市场，并跟踪账户和持仓。',
+    featuresTitle: '你的 A 股研究工作台',
+    featuresDescription: '从看盘到复盘，把行情、个股研究和日常持仓管理放在同一个工作台。',
+    scenesLabel: '选择功能场景',
+    scenes: {
+      market: {tab: '行情', title: '在一处看行情与异动', description: '搜索任意已同步的 A 股标的，查看分时、K 线、均线与最大回撤，并追踪持仓标的的当日异动。'},
+      research: {tab: '研究', title: '把个股信息整理成研究结论', description: '结合技术面、资金面与关联资讯生成结构化报告，按标的查阅与回顾历史分析。'},
+      portfolio: {tab: '持仓', title: '集中管理账户与持仓', description: '在同一个列表查看多账户持仓、成本与盈亏，并对选中的标的发起批量评估。'},
+      review: {tab: '复盘', title: '复盘市场当天发生了什么', description: '把指数表现、市场广度和资金动向整理成每日复盘，回顾关键变化。'}
+    },
+    preview: {
+      sample: '实际界面 · 示例数据',
+      screens: {
+        chatHero: '问一问界面，示例对话分析贵州茅台的走势和成交量',
+        market: '行情工作台，包含个股报价、K 线和持仓看板',
+        research: '个股评估页面，包含历史记录、行情概览和研究摘要',
+        portfolio: '持仓管理，包含多账户汇总和个股持仓表',
+        review: '大盘复盘页面，包含历史日期、核心结论和指数表现'
+      }
+    },
+    integrationsTitle: '连接常用的投研数据和工具',
+    integrationsDescription: '配置行情、新闻和 AI 模型，按自己的研究方式搭建工作台。',
+    providers: {market: '同花顺行情', news: '博查搜索', models: 'OpenAI 兼容接口', localModels: 'Ollama', notifications: '飞书通知'},
+    advantagesTitle: '让研究有据可循',
+    advantagesDescription: '从提出问题、整理证据到回顾结论，Metrix 帮你保留每一步的研究上下文。',
+    advantages: {
+      focus: {title: '从问题出发', description: '围绕你关心的标的或市场现象，按需整理技术、资金和资讯信息。'},
+      traceable: {title: '回看历史分析', description: '查看标的评估和大盘复盘记录，把新信息与过去的研究结论放在一起。'},
+      yours: {title: '由你做出判断', description: 'AI 提供信息和分析视角，最终判断、风险控制和行动由你决定。'}
+    },
+    guideTitle: '三步开启投研工作台', goToLogin: '进入 Metrix',
+    guide: {
+      login: {title: '登录工作台', description: '使用你的邮箱登录或注册账号。'},
+      configure: {title: '配置数据源', description: '连接行情、新闻与 AI 模型。'},
+      research: {title: '开始研究', description: '搜索标的、复盘市场或管理持仓。'}
+    },
+    disclaimer: '免责声明：本网站提供的信息、分析及工具仅供学习和研究参考，不构成任何投资建议、要约或推荐。投资有风险，请结合自身情况独立判断。',
+    contactTitle: '联系方式', contactDescription: '扫码关注 Metrix Lab 微信公众号，获取产品动态与研究内容。', wechatQrAlt: 'Metrix Lab 微信公众号二维码'
   },
   login: {
     title: 'Metrix',
@@ -29,11 +62,6 @@ export default {
     privacyPolicy: '隐私政策',
     privacyAgreementRequired: '请先阅读并同意隐私政策',
     privacyPolicyContent: '## 隐私政策\n\nMetrix 重视你的个人信息与研究数据。注册前，请阅读以下说明。\n\n## 我们收集的信息\n\n注册时会收集昵称、邮箱地址及经过加密处理的登录密码；在你使用服务时，系统还会处理为提供研究工作台所必需的账户配置和操作数据。\n\n## 使用目的\n\n这些信息仅用于创建和保护账号、发送必要的邮箱验证通知、提供和改进 Metrix 服务，以及保障系统安全。\n\n## 信息保护\n\n我们采取合理的技术和管理措施保护你的信息。除法律法规要求或取得你的明确同意外，不会出售你的个人信息。\n\n## 你的选择\n\n你可以停止使用服务；如需了解或处理与你的个人信息有关的事项，请通过平台公布的联系方式与我们联系。',
-    asideTitle: '让研究，成为你的决策基础。',
-    asideDescription: '把市场数据、AI 洞察和长期积累放进同一个投资研究工作台。',
-    asideNote: '信息服务于判断，判断经得起复盘。',
-    userEyebrow: '普通用户入口',
-    adminEyebrow: '管理员入口',
     userLoginTitle: '欢迎回来',
     userLoginDescription: '使用注册邮箱和登录密码进入你的工作台。',
     adminLoginTitle: '管理员登录',
@@ -111,6 +139,7 @@ export default {
     logout: '退出登录',
   },
   layout: {
+    navigation: '工作台导航',
     logo: 'Metrix',
     systemName: 'Metrix',
     admin: '管理员',
@@ -284,6 +313,7 @@ export default {
   analysis: {
     researchBrief: '投研摘要',
     records: '评估记录',
+    deleteRecord: '删除评估记录',
     refresh: '刷新',
     seconds: '秒',
     noRecords: '暂无评估记录',

@@ -1,100 +1,350 @@
 <template>
-  <main class="landing-page">
-    <header class="site-header">
-      <a class="brand" href="#top" aria-label="Metrix home">
-        <img src="/Metrix-logo.png" alt="Metrix" />
-        <span>Metrix</span>
-      </a>
+  <header class="site-header">
+    <div class="public-header site-header-inner">
+      <MetrixBrand />
       <nav class="site-nav" :aria-label="$t('landing.navigation')">
-        <a href="#features">{{ $t('landing.navigationFeatures') }}</a>
-        <a href="#advantages">{{ $t('landing.navigationAdvantages') }}</a>
-        <a href="#guide">{{ $t('landing.navigationGuide') }}</a>
+        <RouterLink
+          v-for="item in navigation"
+          :key="item.hash"
+          :to="{path: '/', hash: item.hash}"
+          :aria-current="currentSection === item.hash ? 'location' : undefined"
+        >{{ $t(item.label) }}</RouterLink>
       </nav>
-      <div class="header-actions">
-        <button class="locale-button" type="button" @click="switchLanguage">
-          <GlobalOutlined />
-          {{ locale === 'zh-CN' ? 'EN' : '中文' }}
-        </button>
-        <a class="text-link" href="/login">{{ $t('landing.login') }}</a>
-        <a class="primary-button compact" href="#guide">{{ $t('landing.startNow') }} <ArrowRightOutlined /></a>
+      <div class="public-header-actions">
+        <ThemeToggle />
+        <LanguageToggle />
+        <RouterLink class="pill-button header-start" to="/login">{{ $t('landing.startNow') }} <ArrowRightOutlined /></RouterLink>
+        <button class="site-login" type="button" @click="loginOpen = true">{{ $t('landing.login') }}</button>
       </div>
-    </header>
+    </div>
+  </header>
 
-    <section id="top" class="hero section-wrap">
-      <div class="hero-copy">
-        <p class="eyebrow"><span></span>{{ $t('landing.eyebrow') }}</p>
-        <h1>{{ $t('landing.titleStart') }}<em>{{ $t('landing.titleEmphasis') }}</em>{{ $t('landing.titleEnd') }}</h1>
-        <p class="hero-description">{{ $t('landing.description') }}</p>
-        <div class="hero-actions">
-          <a class="primary-button" href="#guide">{{ $t('landing.startNow') }} <ArrowRightOutlined /></a>
-          <a class="secondary-button" href="#features">{{ $t('landing.exploreFeatures') }} <DownOutlined /></a>
+  <main id="top" class="landing-page">
+    <section class="hero">
+      <div class="section-wrap">
+        <div class="hero-copy">
+          <h1><img src="/metrix-mark.webp" alt="" width="82" height="86" /> <span>Metrix</span></h1>
+          <p>{{ $t('landing.description') }}</p>
+          <div class="hero-actions">
+            <RouterLink class="pill-button hero-login" to="/login">{{ $t('landing.startNow') }} Metrix <ArrowRightOutlined /></RouterLink>
+            <RouterLink class="feature-link" to="/#features">{{ $t('landing.exploreFeatures') }}</RouterLink>
+          </div>
         </div>
-        <p class="trust-line"><SafetyCertificateOutlined /> {{ $t('landing.trustLine') }}</p>
+        <LandingPreview class="hero-preview" featured />
       </div>
-      <div class="hero-visual" aria-hidden="true">
-        <div class="orb orb-one"></div><div class="orb orb-two"></div>
-        <div class="workspace-card">
-          <div class="panel-top"><span></span><span></span><span></span><strong>METRIX / RESEARCH DESK</strong></div>
-          <div class="market-row"><div><small>MARKET PULSE</small><b>+ 2.64%</b><p>Risk appetite is rising</p></div><div class="pulse-ring">72<small>/100</small></div></div>
-          <div class="chart-area"><div class="chart-label"><span>Market breadth</span><strong>Positive</strong></div><svg viewBox="0 0 390 116" preserveAspectRatio="none"><defs><linearGradient id="fill" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#20d5d2" stop-opacity=".48"/><stop offset="1" stop-color="#20d5d2" stop-opacity="0"/></linearGradient></defs><path d="M0,99 C22,95 26,68 48,77 S80,94 98,64 S133,72 149,43 S178,61 196,38 S224,59 242,30 S270,42 291,25 S329,39 349,13 S378,20 390,8 L390,116 L0,116Z" fill="url(#fill)"/><path d="M0,99 C22,95 26,68 48,77 S80,94 98,64 S133,72 149,43 S178,61 196,38 S224,59 242,30 S270,42 291,25 S329,39 349,13 S378,20 390,8" fill="none" stroke="#4c86ff" stroke-width="3"/></svg></div>
-          <div class="insight"><BulbOutlined /><div><small>AI INSIGHT</small><p>Focus on flow, breadth and confirmation.</p></div><ArrowUpOutlined /></div>
+    </section>
+
+    <section id="features" class="section-wrap section-block">
+      <div class="section-heading centered-heading">
+        <h2>{{ $t('landing.featuresTitle') }}</h2>
+        <p>{{ $t('landing.featuresDescription') }}</p>
+      </div>
+      <div class="scene-controls">
+        <a-segmented v-model:value="activeScene" :options="sceneOptions" :aria-label="$t('landing.scenesLabel')" />
+      </div>
+      <div class="scene-card">
+        <div class="scene-copy">
+          <h3>{{ $t(`landing.scenes.${activeScene}.title`) }}</h3>
+          <p>{{ $t(`landing.scenes.${activeScene}.description`) }}</p>
         </div>
-        <div class="float-card research-card"><FileSearchOutlined /><div><small>RESEARCH</small><b>NVDA · Watchlist</b></div><CheckCircleFilled /></div>
-        <div class="float-card signal-card"><RadarChartOutlined /><div><small>SIGNAL</small><b>{{ $t('landing.signal') }}</b></div></div>
+        <div class="scene-media"><LandingPreview :key="activeScene" :view="activeScene" /></div>
       </div>
     </section>
 
-    <section id="features" class="feature-section">
-      <div class="section-wrap"><p class="eyebrow"><span></span>{{ $t('landing.featuresEyebrow') }}</p><div class="section-heading"><h2>{{ $t('landing.featuresTitle') }}</h2><p>{{ $t('landing.featuresDescription') }}</p></div>
-      <div class="feature-grid"><article v-for="item in featureItems" :key="item.title" class="feature-card"><component :is="item.icon" /><h3>{{ item.title }}</h3><p>{{ item.description }}</p><span>{{ item.note }}</span></article></div></div>
+    <section class="section-wrap section-block integrations">
+      <div class="section-heading centered-heading">
+        <h2>{{ $t('landing.integrationsTitle') }}</h2>
+        <p>{{ $t('landing.integrationsDescription') }}</p>
+      </div>
+      <ul class="integration-list">
+        <li v-for="provider in providers" :key="provider.label">
+          <component :is="provider.icon" aria-hidden="true" /> {{ $t(provider.label) }}
+        </li>
+      </ul>
     </section>
 
-    <section id="advantages" class="advantage-section section-wrap">
-      <div class="advantage-copy"><p class="eyebrow light"><span></span>{{ $t('landing.advantagesEyebrow') }}</p><h2>{{ $t('landing.advantagesTitle') }}</h2><p>{{ $t('landing.advantagesDescription') }}</p><div class="advantage-list"><div v-for="item in advantageItems" :key="item.title"><CheckCircleFilled /><section><h3>{{ item.title }}</h3><p>{{ item.description }}</p></section></div></div></div>
-      <div class="advantage-metric"><p>{{ $t('landing.metricLabel') }}</p><b>01 <span>/ 03</span></b><div class="metric-line"><i></i></div><h3>{{ $t('landing.metricTitle') }}</h3><p>{{ $t('landing.metricDescription') }}</p></div>
+    <section id="advantages" class="section-wrap">
+      <div class="value-section">
+        <div class="section-heading value-heading">
+          <h2>{{ $t('landing.advantagesTitle') }}</h2>
+          <p>{{ $t('landing.advantagesDescription') }}</p>
+        </div>
+        <div class="feature-grid">
+          <article v-for="value in values" :key="value.key" class="value-card">
+            <component :is="value.icon" aria-hidden="true" />
+            <h3>{{ $t(`landing.advantages.${value.key}.title`) }}</h3>
+            <p>{{ $t(`landing.advantages.${value.key}.description`) }}</p>
+          </article>
+        </div>
+      </div>
     </section>
 
-    <section id="guide" class="guide-section"><div class="section-wrap"><p class="eyebrow"><span></span>{{ $t('landing.guideEyebrow') }}</p><div class="section-heading guide-heading"><h2>{{ $t('landing.guideTitle') }}</h2><a href="/login">{{ $t('landing.goToLogin') }} <ArrowRightOutlined /></a></div>
-      <div class="guide-grid"><article v-for="(item, index) in guideItems" :key="item.title" class="guide-card"><span class="step-number">0{{ index + 1 }}</span><component :is="item.icon" /><h3>{{ item.title }}</h3><p>{{ item.description }}</p></article></div></div>
+    <section id="guide" class="section-wrap section-block guide-section">
+      <div class="section-heading centered-heading"><h2>{{ $t('landing.guideTitle') }}</h2></div>
+      <ol class="guide-grid">
+        <li v-for="step in guideSteps" :key="step.key">
+          <component :is="step.icon" aria-hidden="true" />
+          <h3>{{ $t(`landing.guide.${step.key}.title`) }}</h3>
+          <p>{{ $t(`landing.guide.${step.key}.description`) }}</p>
+        </li>
+      </ol>
+      <RouterLink class="pill-button guide-login" to="/login">{{ $t('landing.goToLogin') }} <ArrowRightOutlined /></RouterLink>
     </section>
-
-    <section class="cta section-wrap"><div><p class="eyebrow"><span></span>METRIX</p><h2>{{ $t('landing.ctaTitle') }}</h2><p>{{ $t('landing.ctaDescription') }}</p></div><a class="primary-button light-button" href="/login">{{ $t('landing.loginToWorkspace') }} <ArrowRightOutlined /></a></section>
-    <footer><a class="brand" href="#top"><img src="/Metrix-logo.png" alt="" /><span>Metrix</span></a><div class="footer-copy"><p>{{ $t('landing.footer') }}</p><p class="footer-disclaimer">{{ $t('landing.disclaimer') }}</p></div><section class="footer-contact"><img class="footer-qr" src="/Mertix-lab-wx.jpg" :alt="$t('landing.wechatQrAlt')" /><div class="footer-contact-copy"><strong>{{ $t('landing.contactTitle') }}</strong><p>{{ $t('landing.contactDescription') }}</p></div></section><button type="button" @click="switchLanguage">{{ locale === 'zh-CN' ? 'English' : '中文' }}</button></footer>
   </main>
+
+  <footer class="site-footer">
+    <div class="section-wrap footer-layout">
+      <div class="footer-copy"><MetrixBrand /><p>{{ $t('landing.disclaimer') }}</p></div>
+      <nav :aria-label="$t('landing.navigation')">
+        <RouterLink v-for="item in navigation.slice(1)" :key="item.hash" :to="{path:'/', hash:item.hash}">{{ $t(item.label) }}</RouterLink>
+      </nav>
+      <div class="footer-contact">
+        <img src="/Mertix-lab-wx.jpg" width="72" height="72" loading="lazy" :alt="$t('landing.wechatQrAlt')" />
+        <div><strong>{{ $t('landing.contactTitle') }}</strong><p>{{ $t('landing.contactDescription') }}</p></div>
+      </div>
+    </div>
+  </footer>
+
+  <a-modal
+    v-model:open="loginOpen"
+    wrap-class-name="site-login-layer"
+    :width="420"
+    :footer="null"
+    :body-style="{padding: 0}"
+    centered
+    destroy-on-close
+  >
+    <template #title><span class="login-dialog-title">{{ $t('landing.login') }}</span></template>
+    <EmbeddedLogin embedded />
+  </a-modal>
 </template>
 
 <script setup>
-import {computed} from 'vue'
+import {computed, defineAsyncComponent, ref} from 'vue'
+import {useRoute} from 'vue-router'
 import {useI18n} from 'vue-i18n'
-import {ArrowRightOutlined, ArrowUpOutlined, BulbOutlined, CheckCircleFilled, DownOutlined, FileSearchOutlined, FundOutlined, GlobalOutlined, RadarChartOutlined, SafetyCertificateOutlined, StockOutlined} from '@ant-design/icons-vue'
+import {
+  ApiOutlined, ArrowRightOutlined, BellOutlined, DatabaseOutlined, FileSearchOutlined, FundOutlined,
+  LineChartOutlined, LoginOutlined, SafetyCertificateOutlined, SettingOutlined
+} from '@ant-design/icons-vue'
+import LandingPreview from '../components/LandingPreview.vue'
+import LanguageToggle from '../components/LanguageToggle.vue'
+import MetrixBrand from '../components/MetrixBrand.vue'
+import ThemeToggle from '../components/ThemeToggle.vue'
 
-const {locale, t} = useI18n()
-const switchLanguage = () => {
-  locale.value = locale.value === 'zh-CN' ? 'en' : 'zh-CN'
-  localStorage.setItem('locale', locale.value)
-}
-const featureItems = computed(() => [
-  {icon: FileSearchOutlined, title: t('landing.features.research.title'), description: t('landing.features.research.description'), note: t('landing.features.research.note')},
-  {icon: FundOutlined, title: t('landing.features.review.title'), description: t('landing.features.review.description'), note: t('landing.features.review.note')},
-  {icon: StockOutlined, title: t('landing.features.portfolio.title'), description: t('landing.features.portfolio.description'), note: t('landing.features.portfolio.note')},
-])
-const advantageItems = computed(() => [
-  {title: t('landing.advantages.focus.title'), description: t('landing.advantages.focus.description')},
-  {title: t('landing.advantages.traceable.title'), description: t('landing.advantages.traceable.description')},
-  {title: t('landing.advantages.yours.title'), description: t('landing.advantages.yours.description')},
-])
-const guideItems = computed(() => [
-  {icon: GlobalOutlined, title: t('landing.guide.login.title'), description: t('landing.guide.login.description')},
-  {icon: RadarChartOutlined, title: t('landing.guide.configure.title'), description: t('landing.guide.configure.description')},
-  {icon: BulbOutlined, title: t('landing.guide.research.title'), description: t('landing.guide.research.description')},
-])
+const EmbeddedLogin = defineAsyncComponent(() => import('./Login.vue'))
+const {t} = useI18n()
+const route = useRoute()
+const loginOpen = ref(false)
+const activeScene = ref('market')
+const navigation = [
+  {hash: '#top', label: 'menu.home'},
+  {hash: '#features', label: 'landing.navigationFeatures'},
+  {hash: '#advantages', label: 'landing.navigationAdvantages'},
+  {hash: '#guide', label: 'landing.navigationGuide'}
+]
+const currentSection = computed(() => route.hash || '#top')
+const sceneOptions = computed(() => ['market', 'research', 'portfolio', 'review'].map(view => ({
+  value: view, label: t(`landing.scenes.${view}.tab`)
+})))
+const providers = [
+  {label: 'landing.providers.market', icon: FundOutlined},
+  {label: 'landing.providers.news', icon: FileSearchOutlined},
+  {label: 'landing.providers.models', icon: ApiOutlined},
+  {label: 'landing.providers.localModels', icon: DatabaseOutlined},
+  {label: 'landing.providers.notifications', icon: BellOutlined}
+]
+const values = [
+  {key: 'focus', icon: FileSearchOutlined},
+  {key: 'traceable', icon: LineChartOutlined},
+  {key: 'yours', icon: SafetyCertificateOutlined}
+]
+const guideSteps = [
+  {key: 'login', icon: LoginOutlined},
+  {key: 'configure', icon: SettingOutlined},
+  {key: 'research', icon: LineChartOutlined}
+]
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700;800&display=swap');
-.landing-page { --ink:#162239; --muted:#6d7685; --coral:#f2684e; --cream:#fffaf4; color:var(--ink); background:var(--theme-surface, #fffdf9); font-family:Manrope,'Noto Sans SC',sans-serif; overflow:hidden; }
-.footer-copy{flex:1}.footer-copy .footer-disclaimer{max-width:760px;margin-top:5px;font-size:10px;line-height:1.55;color:var(--theme-muted, #adb2ba)}
-.section-wrap,.site-header,footer { max-width:1200px; margin:0 auto; padding-left:32px; padding-right:32px; }.site-header { height:82px; display:flex; align-items:center; justify-content:space-between; gap:28px; }.brand{display:inline-flex;align-items:center;gap:10px;color:var(--ink);font-weight:800;text-decoration:none;font-size:19px;letter-spacing:-.5px}.brand img{width:32px;height:32px;object-fit:contain}.site-nav{display:flex;gap:30px;margin-left:auto}.site-nav a,.text-link{font-size:14px;color:var(--theme-text, #4f5969);text-decoration:none;font-weight:600}.site-nav a:hover,.text-link:hover{color:var(--coral)}.header-actions{display:flex;align-items:center;gap:18px}.locale-button,footer button{border:0;background:transparent;color:var(--ink);font:600 13px inherit;cursor:pointer;display:flex;gap:6px;align-items:center}.primary-button,.secondary-button{border-radius:999px;padding:14px 21px;display:inline-flex;align-items:center;gap:11px;text-decoration:none;font-size:14px;font-weight:700;transition:.2s}.primary-button{background:var(--ink);color:var(--theme-text, #fff);box-shadow:0 10px 20px rgba(22,34,57,.14)}.primary-button:hover{background:var(--coral);transform:translateY(-2px)}.primary-button.compact{padding:10px 15px;font-size:13px}.secondary-button{color:var(--ink);border:1px solid var(--theme-line, #dbe0e7)}.secondary-button:hover{background:var(--theme-raised, #f5f0e9)}.hero{display:grid;grid-template-columns:1fr 1fr;align-items:center;min-height:620px;gap:42px;padding-top:74px;padding-bottom:86px}.eyebrow{font:500 11px 'DM Mono',monospace;letter-spacing:1.7px;color:var(--coral);display:flex;align-items:center;gap:8px;text-transform:uppercase}.eyebrow span{width:27px;height:1px;background:currentColor}.hero h1{font-size:clamp(42px,5vw,67px);letter-spacing:-3px;line-height:1.08;max-width:660px;margin:18px 0 23px;font-weight:800}.hero h1 em{font-style:normal;color:var(--coral);display:block}.hero-description{color:var(--muted);max-width:540px;font-size:17px;line-height:1.75}.hero-actions{display:flex;gap:12px;margin-top:32px}.trust-line{font-size:12px;color:var(--theme-muted, #7d8591);margin-top:22px;display:flex;align-items:center;gap:8px}.trust-line :deep(svg){color:var(--theme-green, #5eaf85)}.hero-visual{min-height:405px;position:relative}.workspace-card{position:absolute;right:1%;top:12px;width:min(100%,475px);border-radius:20px;background:var(--theme-raised, #19283f);padding:18px;box-shadow:0 26px 70px rgba(18,29,47,.22);color:var(--theme-text, #fff);transform:rotate(2deg);z-index:2}.panel-top{font:10px 'DM Mono',monospace;color:var(--theme-muted, #8796ad);display:flex;align-items:center;gap:5px}.panel-top span{width:7px;height:7px;border-radius:50%;background:#f26d55}.panel-top span:nth-child(2){background:var(--theme-amber-surface, #f4c95d)}.panel-top span:nth-child(3){background:#76bb91}.panel-top strong{margin-left:auto;font-weight:400;font-size:9px}.market-row{display:flex;justify-content:space-between;align-items:center;padding:25px 6px 15px}.market-row small,.insight small{font:10px 'DM Mono',monospace;color:var(--theme-muted, #9eacbf);letter-spacing:.8px}.market-row b{font-size:30px;display:block;letter-spacing:-1px;margin:3px 0;color:var(--theme-red, #ff9674)}.market-row p{font-size:11px;color:var(--theme-text, #bdc7d4)}.pulse-ring{width:69px;height:69px;border-radius:50%;border:6px solid var(--theme-line, #ed765d);border-left-color:var(--theme-line, #60728a);display:grid;place-content:center;font-size:20px;font-weight:800}.pulse-ring small{font-size:8px;text-align:center;color:var(--theme-muted, #9eacbf)}.chart-area{border-radius:12px;background:var(--theme-raised, #22334c);padding:13px 15px 5px}.chart-label{display:flex;justify-content:space-between;color:var(--theme-muted, #aeb9c8);font-size:11px}.chart-label strong{font-weight:700;color:var(--theme-muted, #9bd8af)}.chart-area svg{width:100%;height:110px}.insight{margin-top:13px;padding:13px;border-radius:12px;background:var(--theme-raised, #263952);display:flex;gap:10px;align-items:center}.insight :deep(svg){color:var(--theme-amber, #f8c45c);font-size:17px}.insight div{flex:1}.insight p{font-size:12px;margin-top:3px;color:var(--theme-text, #d7dfeb)}.insight > :last-child{color:var(--theme-green, #81c89c)}.float-card{position:absolute;z-index:3;background:var(--theme-surface, #fff);border:1px solid var(--theme-line, #e7e9ee);border-radius:12px;box-shadow:0 18px 35px rgba(24,37,58,.12);padding:13px;display:flex;gap:10px;align-items:center}.float-card > :first-child{font-size:19px;color:var(--coral)}.float-card small{display:block;font:9px 'DM Mono',monospace;color:var(--theme-muted, #a2a8b3);letter-spacing:.5px}.float-card b{display:block;font-size:11px;margin-top:3px}.research-card{bottom:0;left:0}.research-card > :last-child{color:var(--theme-green, #58a578);font-size:14px}.signal-card{right:0;bottom:45px}.orb{position:absolute;border-radius:50%;filter:blur(1px)}.orb-one{width:260px;height:260px;background:var(--theme-amber-surface, #fde3ce);right:-40px;top:-20px}.orb-two{width:180px;height:180px;background:var(--theme-raised, #dce9ea);left:40px;bottom:10px}.feature-section{background:var(--cream);padding:95px 0}.section-heading{display:flex;justify-content:space-between;align-items:flex-end;margin:15px 0 36px;gap:30px}.section-heading h2,.advantage-copy h2,.cta h2{font-size:clamp(30px,3.4vw,46px);letter-spacing:-2px;line-height:1.16}.section-heading p{max-width:410px;color:var(--muted);line-height:1.7;font-size:14px}.feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:17px}.feature-card{min-height:255px;background:var(--theme-surface, #fff);padding:28px;border:1px solid var(--theme-line, #f0ebe5);border-radius:15px;transition:.22s}.feature-card:hover{transform:translateY(-5px);box-shadow:0 18px 40px rgba(36,44,56,.08)}.feature-card :deep(svg){font-size:26px;color:var(--coral);padding:12px;background:var(--theme-raised, #fff0e9);border-radius:10px}.feature-card h3{font-size:18px;margin:28px 0 10px}.feature-card p{font-size:13px;line-height:1.7;color:var(--muted);min-height:65px}.feature-card span{font:10px 'DM Mono',monospace;color:var(--theme-muted, #a2a6ae);letter-spacing:.5px}.advantage-section{margin:74px auto;border-radius:20px;background:var(--theme-raised, #18263c);color:var(--theme-text, #fff);display:grid;grid-template-columns:1.5fr .8fr;gap:60px;padding-top:62px;padding-bottom:62px}.eyebrow.light{color:var(--theme-red, #ff9075)}.advantage-copy>p:not(.eyebrow){color:var(--theme-muted, #b5c0cf);line-height:1.75;margin:18px 0 30px;max-width:590px}.advantage-list{display:grid;gap:17px}.advantage-list>div{display:flex;gap:13px}.advantage-list :deep(svg){font-size:15px;color:var(--theme-red, #f78c71);margin-top:3px}.advantage-list h3{font-size:14px}.advantage-list p{font-size:12px;color:var(--theme-muted, #a8b4c4);margin-top:5px;line-height:1.55}.advantage-metric{border-left:1px solid var(--theme-line, #46556a);padding:8px 0 8px 34px;align-self:center}.advantage-metric>p{font:10px 'DM Mono',monospace;letter-spacing:1px;color:var(--theme-muted, #98a7ba)}.advantage-metric b{font-size:45px;display:block;margin:12px 0;color:var(--theme-red, #ff9277)}.advantage-metric b span{font-size:13px;color:var(--theme-muted, #8190a3)}.metric-line{height:2px;background:var(--theme-raised, #44556b);margin:15px 0 23px}.metric-line i{display:block;width:33%;height:100%;background:var(--theme-red-surface, #ff9277)}.advantage-metric h3{font-size:16px}.advantage-metric p:last-child{font:12px/1.7 Manrope,'Noto Sans SC',sans-serif;margin-top:7px;color:var(--theme-muted, #aab6c6)}.guide-section{padding:72px 0 95px}.guide-heading a{color:var(--coral);font-size:13px;text-decoration:none;font-weight:700;white-space:nowrap}.guide-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:45px;counter-reset:steps}.guide-card{position:relative;border-top:1px solid var(--theme-line, #dfe3e8);padding-top:26px}.step-number{position:absolute;right:0;top:17px;font:11px 'DM Mono',monospace;color:var(--theme-muted, #bcc2ca)}.guide-card :deep(svg){font-size:25px;color:var(--theme-text, #293953)}.guide-card h3{font-size:17px;margin:20px 0 8px}.guide-card p{font-size:13px;line-height:1.7;color:var(--muted);max-width:280px}.cta{margin-bottom:56px;padding-top:55px;padding-bottom:55px;background:#f16d53;border-radius:19px;color:var(--theme-text, #fff);display:flex;align-items:center;justify-content:space-between;gap:35px}.cta .eyebrow{color:var(--theme-text, #ffe2d8)}.cta h2{margin:13px 0 10px}.cta>div>p:last-child{font-size:14px;color:var(--theme-text, #fff0eb)}.light-button{background:var(--theme-surface, #fff);color:var(--theme-red, #db5a42);white-space:nowrap}.light-button:hover{background:var(--theme-raised, #18263c);color:var(--theme-text, #fff)}footer{padding-top:10px;padding-bottom:35px;display:flex;align-items:center;gap:25px;border-top:1px solid var(--theme-line, #ece6df)}footer .brand{font-size:16px}footer .brand img{width:25px;height:25px}footer p{font-size:12px;color:var(--theme-muted, #9298a1);flex:1}footer button{color:var(--theme-muted, #657084)}@media(max-width:820px){.site-header{height:70px;padding-left:20px;padding-right:20px}.site-nav,.header-actions .text-link,.header-actions .compact{display:none}.header-actions{margin-left:auto}.section-wrap,footer{padding-left:20px;padding-right:20px}.hero{grid-template-columns:1fr;padding-top:55px;gap:30px}.hero-visual{width:min(100%,510px);justify-self:center;min-height:375px}.feature-grid,.guide-grid{grid-template-columns:1fr}.feature-card{min-height:0}.advantage-section{margin:38px 20px;grid-template-columns:1fr;gap:35px;padding:40px 26px}.advantage-metric{border-left:0;border-top:1px solid var(--theme-line, #46556a);padding:25px 0 0}.section-heading{display:block}.section-heading p{margin-top:14px}.guide-grid{gap:25px}.guide-card{padding-top:18px}.cta{margin-left:20px;margin-right:20px;padding:35px 26px;display:block}.cta .light-button{margin-top:24px}footer{margin:0 20px;padding-left:0;padding-right:0}.hero h1{letter-spacing:-2px}.workspace-card{right:0}.signal-card{right:0}}
-.footer-contact{display:flex;align-items:center;gap:12px;padding-left:20px;border-left:1px solid var(--theme-line, #ece6df)}.footer-qr{width:66px;height:66px;object-fit:cover;border:1px solid var(--theme-line, #ece6df);border-radius:7px}.footer-contact-copy{display:grid;gap:4px;min-width:154px}.footer-contact-copy strong{font-size:12px;color:var(--ink)}.footer-contact-copy p{margin:0;font-size:11px;line-height:1.55;color:var(--theme-muted, #9298a1)}.footer-contact-copy p{flex:initial}@media(max-width:820px){footer{flex-wrap:wrap}.footer-contact{width:100%;padding-left:0;border-left:0}.footer-contact-copy{min-width:0}}
-.landing-page { --ink:#e7f4ff; --muted:#91a7c8; --coral:#25d0d1; --cream:#0b1930; color:var(--ink); background:radial-gradient(circle at 77% 12%, #1765dd38, transparent 25%),radial-gradient(circle at 14% 28%, #16d5c622, transparent 23%),linear-gradient(135deg, #06101f 0%, #091a34 51%, #07152b 100%); }.landing-page::before { position:fixed; inset:0; z-index:0; pointer-events:none; content:''; background-image:linear-gradient(#7fc5ff0b 1px, transparent 1px),linear-gradient(90deg, #7fc5ff0b 1px, transparent 1px); background-size:34px 34px; mask-image:linear-gradient(to bottom, #000 0%, transparent 80%); }.landing-page > * { position:relative; z-index:1; }.site-header { border-bottom:1px solid #75baff1f; background:#071425a8; backdrop-filter:blur(16px); }.brand { color:var(--ink); }.brand img { border-radius:8px; box-shadow:0 0 18px #23cdd34d; }.site-nav a,.text-link,.locale-button,footer button { color:#bdcce1; }.site-nav a:hover,.text-link:hover { color:#41e1df; }.primary-button { background:linear-gradient(135deg, #166fe6, #14c9cc); box-shadow:0 10px 28px #1278e344,0 0 0 1px #a9ffff33 inset; }.primary-button:hover { background:linear-gradient(135deg, #318cff, #2ae8d9); }.secondary-button { color:#d8eeff; border-color:#79b7ff66; background:#102b4d66; }.secondary-button:hover { background:#1a467366; }.hero h1 em,.eyebrow,.guide-heading a { color:#2fd7d6; }.hero-description { color:var(--muted); }.trust-line { color:#a7b9d2; }.trust-line :deep(svg) { color:#2ed8bd; }.workspace-card { background:linear-gradient(145deg, #102b50f2, #08182df5); border:1px solid #6db7ff52; box-shadow:0 28px 90px #02081499,0 0 42px #167be033; }.panel-top span { background:#4c86ff; box-shadow:0 0 8px #4c86ff; }.panel-top span:nth-child(2) { background:#27d8d0; box-shadow:0 0 8px #27d8d0; }.panel-top span:nth-child(3) { background:#7fc4ff; }.market-row b,.advantage-metric b { color:#40e0d5; text-shadow:0 0 22px #1ed6d07a; }.pulse-ring { border-color:#4a8cff; border-left-color:#22d4cf; box-shadow:0 0 26px #257ff13d; }.chart-area { background:#07182f; border:1px solid #74b7ff2e; }.insight { background:#10294b; border:1px solid #59aaff24; }.insight :deep(svg),.float-card > :first-child { color:#35dad4; }.float-card { color:#deefff; background:#102a4ee8; border-color:#70b8ff50; box-shadow:0 18px 42px #0209168a; backdrop-filter:blur(12px); }.orb-one { background:radial-gradient(circle, #1b72ed99 0%, #1c70e636 43%, transparent 72%); }.orb-two { background:radial-gradient(circle, #1bd3cb7a 0%, #1bd3cb1d 50%, transparent 72%); }.feature-section { background:linear-gradient(180deg, #0b1930cc, #0a172c); border-top:1px solid #6caeff1c; border-bottom:1px solid #6caeff1c; }.section-heading p,.feature-card p,.guide-card p { color:var(--muted); }.feature-card { color:var(--ink); background:linear-gradient(145deg, #112b4bf2, #0c1d36f2); border-color:#75b8ff35; box-shadow:inset 0 1px #abdcff14; }.feature-card:hover { border-color:#38d8d188; box-shadow:0 18px 42px #0208148a,0 0 0 1px #37dad144 inset; }.feature-card :deep(svg) { color:#55a0ff; background:#1b4c7c8a; }.feature-card span { color:#72cfcf; }.advantage-section { background:linear-gradient(135deg, #0b2243, #102e60 55%, #0b2144); border:1px solid #75b8ff3d; box-shadow:0 24px 70px #0208148a; }.eyebrow.light,.advantage-list :deep(svg) { color:#35d8d1; }.advantage-metric { border-left-color:#71b7ff45; }.metric-line { background:#5e94ca4d; }.metric-line i { background:linear-gradient(90deg, #25d0d1, #4c86ff); box-shadow:0 0 12px #2ed5d7aa; }.guide-section { background:#07142699; }.guide-card { border-top-color:#72b7ff4a; }.guide-card :deep(svg) { color:#61a5ff; }.cta { background:linear-gradient(115deg, #0d4da6, #167cdf 48%, #16c8c5); border:1px solid #96eeff66; box-shadow:0 22px 56px #046ee14d; }.cta .eyebrow { color:#ccffff; }.cta>div>p:last-child { color:#e7fbff; }.light-button { color:#1675d4; background:#effcff; }.light-button:hover { background:#071a36; color:#4fe9de; }footer { border-top-color:#72b7ff2e; }footer p,.footer-contact-copy p { color:#91a7c8; }.footer-contact { border-left-color:#72b7ff2e; }.footer-qr { border-color:#72b7ff43; }
+.landing-page, .site-footer { color: var(--workspace-ink); background: var(--workspace-surface); }
+.landing-page { --site-header-height: 66px; }
+.landing-page [id], .landing-page { scroll-margin-top: calc(var(--site-header-height) + 14px); }
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--workspace-surface);
+  border-bottom: 1px solid var(--workspace-line);
+}
+
+.site-header-inner { width: min(100%, 1440px); min-height: 64px; padding-block: 9px; }
+.site-nav { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0 clamp(12px, 2.5vw, 32px); }
+.site-nav a, .feature-link { text-decoration: none; }
+.site-nav a { position: relative; padding-block: 9px; color: var(--workspace-muted); font-size: 14px; font-weight: 520; white-space: nowrap; }
+.site-nav a:hover, .site-nav a[aria-current='location'] { color: var(--workspace-accent); }
+.site-nav a[aria-current='location']::after { position: absolute; inset: auto 0 3px; height: 2px; background: currentColor; content: ''; }
+
+.site-login { padding: 8px 4px; color: inherit; background: transparent; border: 0; cursor: pointer; font-weight: 650; white-space: nowrap; }
+.site-login:hover, .feature-link:hover { color: var(--workspace-accent); text-decoration: underline; }
+.pill-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 19px;
+  color: var(--workspace-on-primary);
+  background: var(--workspace-primary);
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 620;
+  line-height: 1.35;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.pill-button:hover { color: var(--workspace-on-primary); background: var(--workspace-primary-hover); }
+.section-wrap { width: min(100%, 1260px); margin-inline: auto; padding-inline: var(--workspace-gutter); }
+.hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding-block: clamp(48px, 6.3vw, 90px) clamp(36px, 5.5vw, 78px);
+  background:
+    radial-gradient(ellipse at 8% 88%, color-mix(in srgb, var(--workspace-halo) 56%, transparent), transparent 63%),
+    radial-gradient(ellipse at 92% 84%, color-mix(in srgb, var(--workspace-halo) 60%, transparent), transparent 61%),
+    var(--workspace-surface);
+}
+
+.hero::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 15%, var(--workspace-surface) 22%, transparent 65%);
+  pointer-events: none;
+  content: '';
+}
+
+.hero-copy { display: grid; justify-items: center; gap: 20px; text-align: center; }
+.hero-copy h1 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(10px, 1.6vw, 21px);
+  margin: 0;
+  font-size: clamp(3.9rem, 8.25vw, 6.6rem);
+  font-weight: 660;
+  letter-spacing: -.068em;
+  line-height: .98;
+}
+
+.hero-copy h1 img { width: clamp(50px, 6.3vw, 82px); height: auto; object-fit: contain; }
+.hero-copy p, .section-heading p { max-width: 550px; margin: 0; color: var(--workspace-muted); font-size: 16px; line-height: 1.75; text-wrap: pretty; }
+.hero-actions { display: grid; justify-items: center; gap: 14px; padding-top: 8px; }
+.hero-login { min-height: 48px; padding-inline: 24px; font-size: 16px; }
+.feature-link { color: var(--workspace-accent); font-size: 14px; font-weight: 560; }
+.hero-preview { width: min(100%, 960px); margin: clamp(30px, 5vw, 70px) auto 0; }
+
+.section-block { padding-block: clamp(52px, 7.8vw, 108px); }
+.section-heading { display: grid; align-content: start; gap: 12px; }
+.section-heading h2 { margin: 0; font-size: clamp(2rem, 4.4vw, 3.5rem); font-weight: 570; line-height: 1.16; letter-spacing: -.055em; text-wrap: balance; }
+.centered-heading { justify-items: center; margin-bottom: 26px; text-align: center; }
+.scene-controls { display: flex; justify-content: center; margin-bottom: 25px; }
+.scene-controls :deep(.ant-segmented) { padding: 5px; background: var(--workspace-raised); border: 1px solid var(--workspace-line); border-radius: 999px; }
+.scene-controls :deep(.ant-segmented-item), .scene-controls :deep(.ant-segmented-thumb) { border-radius: 999px; }
+.scene-controls :deep(.ant-segmented-item-label) { min-width: 57px; line-height: 32px; }
+.scene-controls :deep(.ant-segmented-item-selected) { color: var(--workspace-accent); }
+
+.scene-card { display: grid; grid-template-columns: minmax(265px, .44fr) minmax(0, 1fr); overflow: hidden; background: var(--workspace-surface); border: 1px solid var(--workspace-line); border-radius: 22px; }
+.scene-copy { display: grid; align-content: center; gap: 14px; padding: clamp(24px, 4vw, 52px); }
+.scene-copy h3 { margin: 0; font-size: clamp(1.45rem, 2.5vw, 2rem); line-height: 1.35; font-weight: 570; letter-spacing: -.025em; text-wrap: balance; }
+.scene-copy p, .value-card p, .guide-grid p { margin: 0; color: var(--workspace-muted); font-size: 15px; line-height: 1.75; }
+.scene-media { display: grid; align-items: center; min-width: 0; min-height: 460px; padding: clamp(18px, 5vw, 72px); background: linear-gradient(145deg, var(--workspace-halo-cool), var(--workspace-raised)); }
+.scene-media > * { width: min(100%, 605px); margin-inline: auto; }
+.integrations { padding-top: 10px; }
+.integration-list { display: flex; justify-content: center; flex-wrap: wrap; gap: 9px 12px; padding: 0; margin: 0; list-style: none; }
+.integration-list li { display: flex; align-items: center; gap: 8px; padding: 9px 15px; color: var(--workspace-muted); background: var(--workspace-raised); border: 1px solid var(--workspace-line); border-radius: 999px; font-size: 14px; }
+.integration-list .anticon { color: var(--workspace-accent); }
+
+.value-section {
+  display: grid;
+  gap: 32px;
+  padding: clamp(22px, 5.9vw, 78px);
+  background:
+    linear-gradient(to right, color-mix(in srgb, var(--workspace-line) 35%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--workspace-line) 35%, transparent) 1px, transparent 1px),
+    var(--workspace-raised);
+  background-size: 32px 32px;
+  border: 1px solid var(--workspace-line);
+  border-radius: 22px;
+}
+
+.value-heading { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); align-items: center; gap: 14px 30px; }
+.feature-grid, .guide-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(10px, 1.5vw, 17px); }
+.value-card, .guide-grid li { display: grid; align-content: start; gap: 10px; padding: clamp(16px, 2.7vw, 31px); background: var(--workspace-surface); border: 1px solid var(--workspace-line); border-radius: 16px; }
+.value-card > .anticon, .guide-grid li > .anticon { justify-self: start; margin-bottom: 7px; color: var(--workspace-accent); font-size: 25px; }
+.value-card h3, .guide-grid h3 { margin: 0; font-size: 18px; font-weight: 620; }
+.guide-section { display: grid; justify-items: center; }
+.guide-grid { width: min(100%, 910px); padding: 0; margin: 0 0 27px; list-style: none; }
+
+.site-footer { padding-block: 32px; border-top: 1px solid var(--workspace-line); }
+.footer-layout { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(82px, .55fr) minmax(0, 1fr); gap: 20px 32px; }
+.site-footer p { margin: 8px 0 0; color: var(--workspace-muted); font-size: 13px; line-height: 1.65; }
+.site-footer nav { display: flex; flex-wrap: wrap; align-content: start; gap: 6px 13px; }
+.site-footer nav a { color: var(--workspace-muted); font-size: 13px; text-decoration: none; }
+.site-footer nav a:hover { color: var(--workspace-accent); }
+.footer-contact { display: flex; align-items: start; gap: 12px; }
+.footer-contact img { flex: none; border: 1px solid var(--workspace-line); border-radius: var(--workspace-control-radius); }
+
+.login-dialog-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+:global(.site-login-layer .ant-modal-content) { padding: 0; }
+:global(.site-login-layer .ant-modal-header) { margin: 0; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero-copy { animation: landing-enter .45s ease-out both; }
+  .hero-preview { animation: landing-enter .6s .08s ease-out both; }
+  .scene-media > * { animation: landing-enter .26s ease-out both; }
+  .pill-button { transition: background-color .18s ease, transform .18s ease; }
+
+  @keyframes landing-enter {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .pill-button:hover { transform: translateY(-2px); }
+}
+
+@media (max-width: 940px) {
+  .site-header-inner { flex-wrap: wrap; gap: 3px 12px; }
+  .site-nav { order: 1; width: 100%; justify-content: flex-start; }
+  .landing-page { --site-header-height: 100px; }
+  .scene-media { min-height: 360px; }
+}
+
+@media (max-width: 700px) {
+  .scene-card, .value-heading, .footer-layout { grid-template-columns: 1fr; }
+  .scene-media { min-height: 310px; }
+  .footer-layout { gap: 18px; }
+}
+
+@media (max-width: 550px) {
+  .header-start { display: none; }
+  .site-nav { gap: 0 14px; }
+  .site-nav a { font-size: 13px; }
+  .hero-copy { gap: 15px; }
+  .hero-copy p { font-size: 15px; }
+  .value-section { gap: 20px; }
+  .feature-grid, .guide-grid { grid-template-columns: 1fr; }
+  .guide-grid li { grid-template-columns: auto 1fr; gap: 5px 12px; }
+  .guide-grid li > .anticon { align-self: start; grid-row: span 2; }
+  .scene-controls :deep(.ant-segmented-item-label) { min-width: 45px; padding-inline: 8px; }
+}
+
+@media (max-width: 360px) {
+  .scene-controls :deep(.ant-segmented-group) { flex-wrap: wrap; justify-content: center; }
+}
 </style>

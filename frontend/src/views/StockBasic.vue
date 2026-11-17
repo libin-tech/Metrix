@@ -120,22 +120,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.stock-basic-container {
-  padding: 0;
-}
-
-.stock-basic-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.stock-basic-header h3 {
-  margin: 0;
-  color: var(--theme-text, #333);
-}
-
 .stock-basic-header .header-actions {
   display: flex;
   gap: 12px;

@@ -40,10 +40,12 @@ import { LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import { getDailyMarketIntelligence } from '../api'
+import { useTheme } from '../composables/useTheme'
 import { formatIntelligenceNumber, formatIntelligencePercent, intelligenceNumber, reportIsStale, riskColor } from '../composables/marketIntelligence.js'
 
 echarts.use([LineChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer])
 const { t, locale } = useI18n()
+const { isDark } = useTheme()
 const report = ref(null)
 const pending = ref(true)
 const error = ref(false)
@@ -108,31 +110,52 @@ const renderChart = async () => {
   if (!drawerReady.value || !chartElement.value || !market.value) return
   chart ||= echarts.init(chartElement.value)
   const points = market.value.history.slice(-20)
-  chart.setOption({ tooltip: { trigger: 'axis' }, legend: { data: [t('dailyMarket.turnover'), t('dailyMarket.upPct')] }, grid: { left: 75, right: 45, bottom: 32, top: 40 }, xAxis: { type: 'category', data: points.map(point => point.date) }, yAxis: [{ type: 'value', name: t('dailyMarket.yuanUnit') }, { type: 'value', min: 0, max: 100, axisLabel: { formatter: '{value}%' } }], series: [{ name: t('dailyMarket.turnover'), type: 'line', connectNulls: false, data: points.map(point => point.turnover), itemStyle: { color: '#5c7cc4' } }, { name: t('dailyMarket.upPct'), type: 'line', yAxisIndex: 1, connectNulls: false, data: points.map(point => point.upPct), itemStyle: { color: '#499d8b' } }] })
-  chart.resize()
+  const styles = getComputedStyle(chartElement.value)
+  const color = name => styles.getPropertyValue(name).trim()
+  const textStyle = { color: color('--workspace-muted') }
+  const turnover = t('dailyMarket.turnover')
+  const upPct = t('dailyMarket.upPct')
+  chart.setOption({
+    tooltip: {
+      trigger: 'axis', confine: true,
+      backgroundColor: color('--workspace-surface'), borderColor: color('--workspace-line'),
+      textStyle: { color: color('--workspace-ink') }
+    },
+    legend: { data: [turnover, upPct], textStyle },
+    grid: { left: 75, right: 45, bottom: 32, top: 40 },
+    xAxis: { type: 'category', data: points.map(point => point.date), axisLabel: textStyle },
+    yAxis: [
+      { type: 'value', name: t('dailyMarket.yuanUnit'), nameTextStyle: textStyle, axisLabel: textStyle, splitLine: { lineStyle: { color: color('--workspace-line') } } },
+      { type: 'value', min: 0, max: 100, axisLabel: { ...textStyle, formatter: '{value}%' }, splitLine: { show: false } }
+    ],
+    series: [
+      { name: turnover, type: 'line', connectNulls: false, data: points.map(point => point.turnover), itemStyle: { color: color('--workspace-chart') } },
+      { name: upPct, type: 'line', yAxisIndex: 1, connectNulls: false, data: points.map(point => point.upPct), itemStyle: { color: color('--theme-green') } }
+    ]
+  })
   observer ||= new ResizeObserver(() => chart?.resize())
   observer.observe(chartElement.value)
 }
 const handleDrawerChange = open => { drawerReady.value = open; if (open) renderChart() }
-watch([report, locale, chartElement], renderChart)
+watch([report, locale, chartElement, isDark], renderChart)
 onMounted(load)
 onBeforeUnmount(() => { disposed = true; clearTimeout(timer); controller?.abort(); observer?.disconnect(); chart?.dispose() })
 </script>
 
 <style scoped>
-.intelligence-card { min-width: 0; padding: 18px; background: var(--theme-surface, #fff); border: 1px solid var(--theme-line, #e1e7f0); border-top: 3px solid var(--theme-primary, #597ac3); border-radius: 14px; color: var(--theme-text, #263957); }
+.intelligence-card { min-width: 0; padding: var(--home-card-padding, 18px); background: var(--theme-surface, #fff); border: 1px solid var(--theme-line, #e1e7f0); border-top: 3px solid var(--workspace-chart); border-radius: var(--workspace-radius); box-shadow: var(--workspace-shadow); color: var(--theme-text, #263957); }
 header, footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 h3, p { margin: 0; } h3 { font-size: 17px; } .eyebrow, small, dt, .muted { color: var(--theme-muted, #7c899d); font-size: 11px; } .eyebrow { letter-spacing: .06em; margin-bottom: 4px; }
-.core-judgment { display: flex; align-items: baseline; gap: 12px; margin-top: 12px; } .core-judgment strong { font-size: 25px; } .core-judgment span { font-size: 12px; }
+.core-judgment { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 12px; margin-top: 12px; } .core-judgment strong { min-width: 0; font-size: 25px; overflow-wrap: anywhere; } .core-judgment span { font-size: 12px; }
 .cycle-line { margin: 3px 0 12px; font-size: 13px; } .cycle-line small { margin-left: 5px; }
-.metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0; } .metrics-grid div { min-width: 0; } dd { margin: 3px 0; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; } .metrics-grid div { min-width: 0; } dd { margin: 3px 0; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .indices-strip { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 10px; font-size: 10px; padding-bottom: 10px; } .indices-strip b { font-weight: 500; } .indices-strip small { display: block; }
 .portfolio-block { border-top: 1px solid var(--theme-line, #e1e7f0); padding-top: 9px; font-size: 11px; } .portfolio-block > a { font-size: 12px; font-weight: 600; } .portfolio-block p { line-height: 1.8; }
-.action-block { background: var(--theme-surface-soft, #f4f6fb); padding: 10px; margin: 10px 0; border-radius: 8px; font-size: 12px; } .action-block p { color: var(--theme-muted, #7c899d); margin-top: 4px; font-size: 11px; line-height: 1.6; }
+.action-block { background: var(--workspace-soft-accent); padding: 12px; margin: 14px 0; border-radius: 8px; font-size: 12px; } .action-block p { color: var(--theme-muted, #7c899d); margin-top: 4px; font-size: 11px; line-height: 1.6; }
 .highlights { padding-left: 15px; font-size: 11px; line-height: 1.7; margin: 10px 0; } .highlights li + li { margin-top: 4px; }
-footer { border-top: 1px solid var(--theme-line, #e1e7f0); padding-top: 9px; } .missing-note { display: block; margin-top: 6px; } .quality-warning { color: #9a6927; background: #fff7e6; border-radius: 6px; padding: 7px; font-size: 11px; margin-top: 10px; } .empty-state { padding: 50px 10px; text-align: center; } .empty-state p { margin-bottom: 16px; }
-.positive { color: #b95b62; } .negative { color: #27836d; }
+footer { border-top: 1px solid var(--theme-line, #e1e7f0); padding-top: 9px; } .missing-note { display: block; margin-top: 6px; } .quality-warning { color: var(--theme-amber); background: var(--theme-amber-surface); border-radius: 6px; padding: 7px; font-size: 11px; margin-top: 10px; } .empty-state { padding: 50px 10px; text-align: center; } .empty-state p { margin-bottom: 16px; }
+.positive { color: var(--theme-red); } .negative { color: var(--theme-green); }
 .intelligence-details { color: var(--theme-text, #263957); line-height: 1.7; } .intelligence-details section { padding: 18px 0; border-bottom: 1px solid var(--theme-line, #e1e7f0); } .intelligence-details h3 { margin-bottom: 12px; } .intelligence-details p { margin: 10px 0; } .intelligence-details ul { padding-left: 20px; } .intelligence-details small { display: block; } .intelligence-details .muted { font-size: 12px; }
-.details-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; } .table-scroll { overflow-x: auto; max-width: 100%; } table { width: 100%; border-collapse: collapse; font-size: 12px; } td, th { text-align: left; padding: 10px; border-bottom: 1px solid var(--theme-line, #e1e7f0); white-space: nowrap; } th { background: var(--theme-surface-soft, #f4f6fb); } .history-chart { height: 260px; width: 100%; }
+.details-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; } .table-scroll { overflow-x: auto; max-width: 100%; } table { width: 100%; border-collapse: collapse; font-size: 12px; } td, th { text-align: left; padding: 10px; border-bottom: 1px solid var(--theme-line, #e1e7f0); white-space: nowrap; } th { background: var(--workspace-soft-accent); } .history-chart { height: 260px; width: 100%; }
 @media (max-width: 600px) { .details-metrics { grid-template-columns: 1fr 1fr; } }
 </style>

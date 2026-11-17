@@ -125,7 +125,13 @@ const routes = [
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes,
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) return savedPosition
+    const target = to.hash && document.getElementById(to.hash.slice(1))
+    if (target) return {el: target, top: parseFloat(getComputedStyle(target).scrollMarginTop) || 0}
+    if (to.path !== from.path) return {top: 0}
+  }
 })
 
 router.beforeEach((to, from, next) => {

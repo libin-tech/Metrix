@@ -9,7 +9,7 @@
   >
     <BulbFilled v-if="isDark" />
     <BulbOutlined v-else />
-    <span>{{ $t(isDark ? 'common.darkTheme' : 'common.lightTheme') }}</span>
+    <span class="theme-label">{{ $t(isDark ? 'common.darkTheme' : 'common.lightTheme') }}</span>
   </button>
 </template>
 
@@ -32,15 +32,15 @@ const {isDark, toggleTheme} = useTheme()
   color: var(--workspace-ink);
   background: var(--workspace-surface);
   border: 1px solid var(--workspace-line);
-  border-radius: 8px;
+  border-radius: var(--workspace-control-radius);
   cursor: pointer;
   font: inherit;
   font-size: 12px;
 }
 .theme-toggle:hover { background: var(--workspace-soft-accent); }
 .theme-toggle:focus-visible { outline: 2px solid var(--workspace-accent); outline-offset: 3px; }
-@media (max-width: 1100px) {
+@media (max-width: 1200px) {
   .theme-toggle { padding: 0 9px; }
-  .theme-toggle span { display: none; }
+  .theme-label { display: none; }
 }
 </style>
